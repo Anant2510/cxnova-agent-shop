@@ -41,58 +41,76 @@ if (-not $nssm -and (Test-Path "C:\nssm\nssm.exe")) { $nssm = "C:\nssm\nssm.exe"
 if (-not $nssm -and (Test-Path "C:\nssm\win64\nssm.exe")) { $nssm = "C:\nssm\win64\nssm.exe" }
 New-Item -ItemType Directory -Force -Path "logs" | Out-Null
 
+# NSSM writes some of its messages to stderr, which PowerShell would treat as a terminating error under
+# $ErrorActionPreference = "Stop"; every NSSM call goes through here and reports its exit code instead.
+$script:NssmExit = 0
+function Invoke-Nssm {
+  param([Parameter(ValueFromRemainingArguments = $true)][string[]]$NssmArgs)
+  $prev = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try {
+    $out = & $nssm @NssmArgs 2>&1 | ForEach-Object { "$_" }
+    $script:NssmExit = $LASTEXITCODE
+    return (($out -join "`n") -replace "`0", "")   # NSSM prints UTF-16 on some consoles
+  } finally { $ErrorActionPreference = $prev }
+}
+function Service-Exists { [bool](Get-Service -Name $Name -ErrorAction SilentlyContinue) }
+
 function Show-Status {
-  if ($nssm) { & $nssm status $Name } else {
+  if ($nssm) {
+    if (Service-Exists) { "$Name service: $((Get-Service -Name $Name).Status)" } else { "$Name service is not installed" }
+  } else {
     $t = Get-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue
     if ($t) { "$Name task: $($t.State)" } else { "$Name is not installed" }
   }
   try { $h = Invoke-RestMethod "http://127.0.0.1:$Port/health" -TimeoutSec 5; "health: $($h.status), agents $($h.agents_registered)/$($h.agents_expected), provider $($h.llm.provider)" }
-  catch { "health: not answering on port $Port yet" }
+  catch { "health: not answering on port $Port yet (give it 20 seconds after a start, then check logs\service.log)" }
 }
 
 if ($Status) { Show-Status; exit 0 }
 
 if ($Uninstall) {
-  if ($nssm) { & $nssm stop $Name 2>$null; & $nssm remove $Name confirm } else {
-    Stop-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue
-    Unregister-ScheduledTask -TaskName $Name -Confirm:$false -ErrorAction SilentlyContinue
-    Get-Process -Name caf -ErrorAction SilentlyContinue | Stop-Process -Force
-  }
+  if ($nssm -and (Service-Exists)) { Invoke-Nssm stop $Name | Out-Null; Invoke-Nssm remove $Name confirm | Out-Null }
+  Stop-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue
+  Unregister-ScheduledTask -TaskName $Name -Confirm:$false -ErrorAction SilentlyContinue
+  Get-Process -Name caf -ErrorAction SilentlyContinue | Stop-Process -Force
   Remove-NetFirewallRule -DisplayName "CX Nova Agent Shop ($Port)" -ErrorAction SilentlyContinue
   Write-Host "Removed $Name"
   exit 0
 }
 
 if ($Restart) {
-  if ($nssm) { & $nssm restart $Name } else {
+  if ($nssm -and (Service-Exists)) { Invoke-Nssm restart $Name | Out-Null }
+  elseif (Get-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue) {
     Stop-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue
     Get-Process -Name caf -ErrorAction SilentlyContinue | Stop-Process -Force
     Start-Sleep -Seconds 2
     Start-ScheduledTask -TaskName $Name
-  }
-  Start-Sleep -Seconds 4
+  } else { Write-Host "$Name is not installed yet: run .\deploy\windows\service.ps1 without -Restart" -ForegroundColor Yellow; exit 1 }
+  Start-Sleep -Seconds 8
   Show-Status
   exit 0
 }
 
 # ---- install
 if ($nssm) {
-  & $nssm stop $Name 2>$null | Out-Null
-  & $nssm remove $Name confirm 2>$null | Out-Null
-  & $nssm install $Name $caf serve --host $bind --port $Port
-  & $nssm set $Name AppDirectory $root
-  & $nssm set $Name DisplayName "CX Nova Agent Shop"
-  & $nssm set $Name Description "CX Nova Agent Shop: storefront, agent console, API, MCP and A2A (Coforge Agentic Framework)"
-  & $nssm set $Name Start SERVICE_AUTO_START
-  & $nssm set $Name AppStdout (Join-Path $root "logs\service.log")
-  & $nssm set $Name AppStderr (Join-Path $root "logs\service.log")
-  & $nssm set $Name AppRotateFiles 1
-  & $nssm set $Name AppRotateBytes 10485760
-  & $nssm set $Name AppExit Default Restart
-  & $nssm set $Name AppRestartDelay 5000
-  & $nssm set $Name AppEnvironmentExtra PYTHONUTF8=1
-  & $nssm start $Name
-  Write-Host "Installed Windows service $Name (NSSM); logs in logs\service.log"
+  if (Service-Exists) { Invoke-Nssm stop $Name | Out-Null; Invoke-Nssm remove $Name confirm | Out-Null; Start-Sleep -Seconds 2 }
+  $out = Invoke-Nssm install $Name $caf serve --host $bind --port $Port
+  if ($script:NssmExit -ne 0) { throw "NSSM could not install the service: $out" }
+  Invoke-Nssm set $Name AppDirectory $root | Out-Null
+  Invoke-Nssm set $Name DisplayName "CX Nova Agent Shop" | Out-Null
+  Invoke-Nssm set $Name Description "CX Nova Agent Shop: storefront, agent console, API, MCP and A2A (Coforge Agentic Framework)" | Out-Null
+  Invoke-Nssm set $Name Start SERVICE_AUTO_START | Out-Null
+  Invoke-Nssm set $Name AppStdout (Join-Path $root "logs\service.log") | Out-Null
+  Invoke-Nssm set $Name AppStderr (Join-Path $root "logs\service.log") | Out-Null
+  Invoke-Nssm set $Name AppRotateFiles 1 | Out-Null
+  Invoke-Nssm set $Name AppRotateBytes 10485760 | Out-Null
+  Invoke-Nssm set $Name AppExit Default Restart | Out-Null
+  Invoke-Nssm set $Name AppRestartDelay 5000 | Out-Null
+  Invoke-Nssm set $Name AppEnvironmentExtra PYTHONUTF8=1 | Out-Null
+  $out = Invoke-Nssm start $Name
+  if ($script:NssmExit -ne 0) { Write-Host "Service installed but did not start: $out`nSee logs\service.log" -ForegroundColor Yellow }
+  else { Write-Host "Installed Windows service $Name (NSSM); logs in logs\service.log" }
 } else {
   $action = New-ScheduledTaskAction -Execute "powershell.exe" `
     -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command `"& '$root\deploy\windows\start.ps1' -BindHost $bind -Port $Port *>> '$root\logs\service.log'`"" `
@@ -111,7 +129,7 @@ if (-not (Get-NetFirewallRule -DisplayName "CX Nova Agent Shop ($Port)" -ErrorAc
   New-NetFirewallRule -DisplayName "CX Nova Agent Shop ($Port)" -Direction Inbound -Protocol TCP -LocalPort $Port -Action Allow | Out-Null
   Write-Host "Opened Windows Firewall for TCP $Port (also open it in the Azure network security group if people connect from outside)"
 }
-Start-Sleep -Seconds 5
+Start-Sleep -Seconds 10
 Show-Status
 $publicUrl = Get-EnvValue "CAF_PUBLIC_URL" "http://$($env:COMPUTERNAME):$Port"
 Write-Host "`nStorefront  $publicUrl/shop`nConsole     $publicUrl/console`nAdmin       $publicUrl/shop/admin  (operator token = CAF_API_TOKEN in .env)" -ForegroundColor Green
