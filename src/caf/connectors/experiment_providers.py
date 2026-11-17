@@ -37,9 +37,9 @@ class _ExternalExperiments(ExternalProvider, Experiments):
         out = self.settings.runs_dir / "_experiments" / f"{self.provider}_drafts.json"
         out.parent.mkdir(parents=True, exist_ok=True)
         with _draft_lock:
-            items = json.loads(out.read_text()).get("experiments", []) if out.exists() else []
+            items = json.loads(out.read_text(encoding="utf-8")).get("experiments", []) if out.exists() else []
             items = [e for e in items if e.get("id") != exp.id] + [exp.model_dump(mode="json")]
-            out.write_text(json.dumps({"experiments": items}, indent=2))
+            out.write_text(json.dumps({"experiments": items}, indent=2), encoding="utf-8")
         return exp
 
 

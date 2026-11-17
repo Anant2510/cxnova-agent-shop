@@ -879,7 +879,7 @@ class ContentTranslationAgent(BaseAgent):
                 raise RuntimeError("Refusing to write translation memory into sample_data")
             xml = build_tmx(new_units, data["source_locale"])
             path.write_text(xml, encoding="utf-8")
-            tm_file = str(path.relative_to(ctx.settings.runs_dir)) if ctx.settings.runs_dir in path.parents else str(path)
+            tm_file = path.relative_to(ctx.settings.runs_dir).as_posix() if ctx.settings.runs_dir in path.parents else str(path)
             artifacts.append(ctx.artifacts.write_text(f"tm-{ctx.run_id}.tmx", xml, "application/x-tmx+xml",
                                                       "New translation units for review (TMX 1.4)"))
             checks.append(Check(rule="tm.write", status="info", severity="low",

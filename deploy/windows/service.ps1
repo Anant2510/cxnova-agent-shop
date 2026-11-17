@@ -90,6 +90,7 @@ if ($nssm) {
   & $nssm set $Name AppRotateBytes 10485760
   & $nssm set $Name AppExit Default Restart
   & $nssm set $Name AppRestartDelay 5000
+  & $nssm set $Name AppEnvironmentExtra PYTHONUTF8=1
   & $nssm start $Name
   Write-Host "Installed Windows service $Name (NSSM); logs in logs\service.log"
 } else {

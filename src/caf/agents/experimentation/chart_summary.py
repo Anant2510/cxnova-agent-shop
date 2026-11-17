@@ -282,7 +282,7 @@ def _date(v: Any, frequency: str | None = None) -> str:
         return f"Q{(ts.month - 1) // 3 + 1} {ts.year}"
     if frequency == "yearly":
         return str(ts.year)
-    return ts.strftime("%-d %b %Y")
+    return f"{ts.day} {ts.strftime('%b %Y')}"  # no %-d: Windows strftime has no "no padding" flag
 
 
 def fact_lines(meta: dict[str, Any], facts: dict[str, Any]) -> list[str]:
@@ -561,7 +561,7 @@ class ChartSummaryAgent(BaseAgent):
                 raise ValueError(f"dataset_path is not readable here: {exc}") from exc
             if not p.exists():
                 raise ValueError(f"dataset_path not found: {inp['dataset_path']}")
-            df, source_desc = pd.read_csv(p), str(p.relative_to(home)) if p.is_relative_to(home) else p.name
+            df, source_desc = pd.read_csv(p), p.relative_to(home).as_posix() if p.is_relative_to(home) else p.name
         else:
             up = ctx.upstream_output("exploration_generation")
             if up and up.get("dataset"):

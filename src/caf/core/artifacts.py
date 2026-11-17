@@ -38,7 +38,7 @@ class ArtifactStore:
         return ArtifactRef(
             name=path.name,
             mime=mime,
-            path=str(path.relative_to(self.runs_dir)),
+            path=path.relative_to(self.runs_dir).as_posix(),  # "run/agent/file" on every OS: it becomes a URL
             size=path.stat().st_size,
             description=description,
         )

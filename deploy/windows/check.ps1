@@ -9,6 +9,7 @@ param([switch]$Fast, [switch]$Offline)
 $ErrorActionPreference = "Continue"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 Set-Location $root
+$env:PYTHONUTF8 = "1"
 $caf = Join-Path $root ".venv\Scripts\caf.exe"
 if (-not (Test-Path $caf)) { throw "Not installed: run .\deploy\windows\install.ps1 first" }
 Write-Host "Model routing on this server:" -ForegroundColor Cyan

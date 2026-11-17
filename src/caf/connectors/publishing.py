@@ -109,7 +109,7 @@ class JsonFileTasks(_FileOut, Tasks):
     def create(self, tasks: list[dict[str, Any]], *, project: str | None = None) -> list[dict[str, Any]]:
         path = self.out_dir / "tasks.json"
         with self._lock:
-            existing = json.loads(path.read_text()) if path.exists() else []
+            existing = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
             created = []
             for t in tasks:
                 item = {"id": f"TASK-{uuid.uuid4().hex[:6].upper()}", "project": project or "CAF", "created_at": _stamp(), **t}

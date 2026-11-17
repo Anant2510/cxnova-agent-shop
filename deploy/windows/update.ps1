@@ -8,6 +8,7 @@ $root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 Set-Location $root
 Write-Host "Pulling the latest code..." -ForegroundColor Cyan
 git pull --ff-only
+$env:PYTHONUTF8 = "1"
 $venvPy = Join-Path $root ".venv\Scripts\python.exe"
 & $venvPy -m pip install -e ".[anthropic,mcp,browser,dev]" --quiet
 if ((Get-Command node -ErrorAction SilentlyContinue) -and (Test-Path "console\build.py")) {

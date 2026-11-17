@@ -52,7 +52,7 @@ class SkillStore:
         for d in self.dirs:
             if d.exists():
                 for p in d.rglob("*.yaml"):
-                    names.add(str(p.relative_to(d))[:-5])
+                    names.add(p.relative_to(d).as_posix()[:-5])  # forward slashes on every OS: "industries/insurance"
         return sorted(names)
 
     def all(self) -> dict[str, Any]:

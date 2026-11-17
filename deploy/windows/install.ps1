@@ -25,6 +25,7 @@ $ErrorActionPreference = "Stop"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 Set-Location $root
 Write-Host "CX Nova Agent Shop: installing in $root" -ForegroundColor Cyan
+$env:PYTHONUTF8 = "1"
 
 function Find-Python {
   param([string]$Preferred)

@@ -7,6 +7,7 @@ param([string]$BindHost = "", [int]$Port = 0)
 $ErrorActionPreference = "Stop"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 Set-Location $root
+$env:PYTHONUTF8 = "1"   # UTF-8 everywhere: reports carry curly quotes and em dashes
 $caf = Join-Path $root ".venv\Scripts\caf.exe"
 if (-not (Test-Path $caf)) { throw "Not installed: run .\deploy\windows\install.ps1 first" }
 $args = @("serve")

@@ -274,3 +274,21 @@ def test_vague_goal_asks_for_clarification_instead_of_guessing():
     assert view["final"]["next_steps"] and view["suggestions"]
     ok = Orchestrator().start("What did the August traffic drop look like?")
     assert ok["status"] != "needs_clarification" and ok["steps"][0]["agent"] == "ga4_traffic_report"
+
+
+def test_paths_that_become_names_or_urls_use_forward_slashes_everywhere(tmp_path):
+    """Skill names ('industries/insurance'), artifact paths ('run/agent/file') and chart dates must not depend on the
+    OS path separator or on glibc-only strftime flags: the VM runs Windows."""
+    import pandas as pd
+
+    from caf.agents.experimentation.chart_summary import _date
+    from caf.core.artifacts import ArtifactStore
+    from caf.core.skills import SkillStore
+
+    (tmp_path / "skills" / "industries").mkdir(parents=True)
+    (tmp_path / "skills" / "industries" / "insurance.yaml").write_text("name: Insurance\n", encoding="utf-8")
+    names = SkillStore([tmp_path / "skills"]).list()
+    assert names == ["industries/insurance"] and "\\" not in names[0]
+    ref = ArtifactStore(tmp_path / "runs", "run-x").for_agent("chart_summary").write_text("a.txt", "hi")
+    assert ref.path == "run-x/chart_summary/a.txt"
+    assert _date(pd.Timestamp("2026-08-05")) == "5 Aug 2026" and _date(pd.Timestamp("2026-08-05"), "monthly") == "Aug 2026"

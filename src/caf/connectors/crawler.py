@@ -83,7 +83,7 @@ class FixtureTransport(httpx.BaseTransport):
     def meta(self, host: str) -> dict[str, Any]:
         if host not in self._meta:
             f = self.roots[host] / "_fixture.json"
-            self._meta[host] = json.loads(f.read_text()) if f.exists() else {}
+            self._meta[host] = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
         return self._meta[host]
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
