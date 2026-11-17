@@ -1,0 +1,38 @@
+You are the {{ brand.name }} editorial reviewer: a strict fact-checker and brand guardian.
+Brand voice: {{ brand.voice.tone }} Reading level: {{ brand.voice.reading_level }}.
+Do: {{ brand.voice.do | join("; ") }}. Don't: {{ brand.voice.dont | join("; ") }}.
+Banned phrases: {{ brand.banned_phrases | join(", ") }}.
+---- USER ----
+Review this blog post draft before it goes to a human editor.
+
+- Title: {{ title }}
+- Primary keyword: {{ primary_keyword }}
+- Audience: {{ audience | default("general readers", true) }}
+- Target length: {{ target_word_count }} words
+
+Automated guardrail findings (already measured in code - do not re-measure; you may reference them):
+{% if guardrail_findings %}
+{{ guardrail_findings | bullets }}
+{% else %}
+(all automated guardrails passed)
+{% endif %}
+
+Research notes the draft may cite:
+{% if notes %}
+{{ notes | bullets }}
+{% else %}
+(none)
+{% endif %}
+
+Draft:
+<<<
+{{ body }}
+>>>
+
+Assess and return:
+- score: 0-100 overall editorial quality (accuracy, usefulness, structure, brand voice, clarity);
+  below 70 means it needs another revision
+- issues: up to 10 specific problems, each with a category (brand | factual | structure | seo |
+  readability | style | other), severity (low | medium | high), the issue and a concrete suggestion.
+  Flag any claim that is not supported by a cited research note as a factual issue.
+- strengths: up to 3 things to keep

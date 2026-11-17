@@ -1,0 +1,2001 @@
+customer_id,signup_date,region,segment,acquisition_channel,age_band
+C00001,2023-01-01,West,family,Organic Search,25-34
+C00002,2023-01-01,West,family,Organic Search,35-44
+C00003,2023-01-01,Midwest,family,Paid Search,35-44
+C00004,2023-01-04,Midwest,family,Display,25-34
+C00005,2023-01-08,Southeast,empty_nester,Broker,55-64
+C00006,2023-01-08,Southwest,young_professional,Direct,18-24
+C00007,2023-01-08,Southeast,landlord,Organic Search,55-64
+C00008,2023-01-11,Southwest,young_professional,Organic Search,25-34
+C00009,2023-01-11,Northeast,young_professional,Broker,25-34
+C00010,2023-01-12,Southeast,young_professional,Direct,18-24
+C00011,2023-01-12,West,empty_nester,Direct,55-64
+C00012,2023-01-13,Southwest,family,Broker,45-54
+C00013,2023-01-14,Midwest,young_professional,Referral,25-34
+C00014,2023-01-14,Northeast,retiree,Organic Search,65+
+C00015,2023-01-14,West,family,Organic Search,35-44
+C00016,2023-01-15,Midwest,landlord,Organic Search,35-44
+C00017,2023-01-15,Midwest,family,Paid Search,25-34
+C00018,2023-01-19,Southeast,family,Paid Search,35-44
+C00019,2023-01-20,Midwest,family,Paid Search,35-44
+C00020,2023-01-20,Southeast,family,Broker,25-34
+C00021,2023-01-22,Midwest,family,Broker,25-34
+C00022,2023-01-23,Northeast,young_professional,Broker,25-34
+C00023,2023-01-23,West,family,Organic Social,45-54
+C00024,2023-01-24,Southwest,family,Paid Social,25-34
+C00025,2023-01-25,West,empty_nester,Paid Search,45-54
+C00026,2023-01-27,Southeast,landlord,Display,55-64
+C00027,2023-01-29,Southeast,empty_nester,Organic Search,55-64
+C00028,2023-01-29,West,young_professional,Broker,25-34
+C00029,2023-01-29,Midwest,family,Organic Search,45-54
+C00030,2023-01-29,Southeast,family,Organic Search,45-54
+C00031,2023-01-29,Midwest,retiree,Referral,65+
+C00032,2023-01-31,Southwest,family,Paid Search,25-34
+C00033,2023-02-01,Southwest,family,Broker,25-34
+C00034,2023-02-01,Northeast,young_professional,Organic Search,25-34
+C00035,2023-02-01,Northeast,empty_nester,Organic Search,45-54
+C00036,2023-02-02,Midwest,empty_nester,Organic Search,45-54
+C00037,2023-02-02,Southeast,young_professional,Referral,18-24
+C00038,2023-02-07,West,young_professional,Organic Search,25-34
+C00039,2023-02-08,Southwest,family,Broker,25-34
+C00040,2023-02-09,Northeast,retiree,Email,65+
+C00041,2023-02-11,Southeast,young_professional,Broker,35-44
+C00042,2023-02-12,Midwest,retiree,Paid Search,65+
+C00043,2023-02-14,West,young_professional,Broker,25-34
+C00044,2023-02-17,West,empty_nester,Organic Search,45-54
+C00045,2023-02-17,Northeast,family,Broker,45-54
+C00046,2023-02-19,Midwest,young_professional,Organic Search,25-34
+C00047,2023-02-20,Southwest,family,Paid Search,25-34
+C00048,2023-02-20,Southeast,young_professional,Broker,25-34
+C00049,2023-02-21,Southeast,young_professional,Paid Search,25-34
+C00050,2023-02-21,Midwest,family,Email,35-44
+C00051,2023-02-22,Northeast,family,Paid Search,35-44
+C00052,2023-02-24,Northeast,family,Referral,35-44
+C00053,2023-02-27,West,young_professional,Broker,25-34
+C00054,2023-02-28,Southwest,landlord,Broker,35-44
+C00055,2023-03-01,Southwest,family,Organic Search,25-34
+C00056,2023-03-02,Southwest,landlord,Paid Search,55-64
+C00057,2023-03-04,Northeast,young_professional,Paid Search,35-44
+C00058,2023-03-04,Southeast,family,Referral,25-34
+C00059,2023-03-08,Northeast,empty_nester,Referral,55-64
+C00060,2023-03-09,Northeast,empty_nester,Organic Social,55-64
+C00061,2023-03-10,Midwest,landlord,Organic Search,55-64
+C00062,2023-03-10,Southeast,family,Referral,25-34
+C00063,2023-03-13,West,empty_nester,Organic Search,45-54
+C00064,2023-03-13,Midwest,retiree,Broker,65+
+C00065,2023-03-14,Southwest,family,Broker,25-34
+C00066,2023-03-15,Southeast,young_professional,Broker,25-34
+C00067,2023-03-15,Northeast,empty_nester,Display,55-64
+C00068,2023-03-17,Southeast,landlord,Broker,65+
+C00069,2023-03-17,Southwest,family,Paid Search,35-44
+C00070,2023-03-18,Southeast,young_professional,Organic Social,35-44
+C00071,2023-03-18,Midwest,family,Broker,25-34
+C00072,2023-03-19,Midwest,young_professional,Paid Search,25-34
+C00073,2023-03-19,Southwest,retiree,Paid Search,65+
+C00074,2023-03-22,West,family,Paid Search,45-54
+C00075,2023-03-23,Southwest,empty_nester,Referral,45-54
+C00076,2023-03-23,West,family,Referral,35-44
+C00077,2023-03-25,Southwest,empty_nester,Broker,55-64
+C00078,2023-03-26,Midwest,family,Paid Search,35-44
+C00079,2023-03-26,Midwest,family,Broker,25-34
+C00080,2023-03-26,Midwest,family,Referral,35-44
+C00081,2023-03-28,West,empty_nester,Broker,45-54
+C00082,2023-03-29,Northeast,young_professional,Referral,18-24
+C00083,2023-03-30,Southeast,family,Broker,25-34
+C00084,2023-03-31,West,family,Paid Social,25-34
+C00085,2023-04-01,Midwest,family,Broker,45-54
+C00086,2023-04-02,Southeast,young_professional,Paid Search,25-34
+C00087,2023-04-02,Northeast,family,Broker,35-44
+C00088,2023-04-02,Southeast,family,Paid Search,35-44
+C00089,2023-04-04,Southeast,empty_nester,Organic Search,45-54
+C00090,2023-04-05,Northeast,family,Paid Search,45-54
+C00091,2023-04-06,Northeast,young_professional,Broker,25-34
+C00092,2023-04-07,Southeast,family,Direct,35-44
+C00093,2023-04-08,Southeast,family,Paid Search,35-44
+C00094,2023-04-10,West,empty_nester,Paid Search,55-64
+C00095,2023-04-10,Midwest,landlord,Broker,55-64
+C00096,2023-04-11,Southwest,young_professional,Organic Search,25-34
+C00097,2023-04-15,Southwest,young_professional,Referral,25-34
+C00098,2023-04-15,West,young_professional,Direct,18-24
+C00099,2023-04-16,Midwest,retiree,Organic Search,65+
+C00100,2023-04-16,Southeast,landlord,Broker,55-64
+C00101,2023-04-17,West,young_professional,Paid Search,18-24
+C00102,2023-04-19,Northeast,family,Organic Social,35-44
+C00103,2023-04-21,Northeast,landlord,Organic Search,55-64
+C00104,2023-04-22,Southwest,retiree,Organic Search,65+
+C00105,2023-04-22,Midwest,family,Broker,35-44
+C00106,2023-04-23,Southwest,family,Referral,35-44
+C00107,2023-04-24,Southeast,landlord,Broker,45-54
+C00108,2023-04-25,Southeast,empty_nester,Direct,45-54
+C00109,2023-04-27,Southeast,young_professional,Organic Social,25-34
+C00110,2023-04-27,West,young_professional,Paid Social,25-34
+C00111,2023-04-27,Northeast,landlord,Organic Search,45-54
+C00112,2023-04-30,Southeast,landlord,Broker,35-44
+C00113,2023-05-02,West,landlord,Organic Search,65+
+C00114,2023-05-02,Midwest,family,Paid Search,25-34
+C00115,2023-05-03,Midwest,young_professional,Organic Search,25-34
+C00116,2023-05-03,Northeast,young_professional,Paid Search,25-34
+C00117,2023-05-04,West,young_professional,Organic Search,25-34
+C00118,2023-05-04,Midwest,young_professional,Paid Social,18-24
+C00119,2023-05-04,Northeast,retiree,Email,65+
+C00120,2023-05-06,West,family,Direct,35-44
+C00121,2023-05-07,Northeast,young_professional,Broker,25-34
+C00122,2023-05-07,Midwest,family,Paid Search,45-54
+C00123,2023-05-08,Southwest,young_professional,Paid Social,18-24
+C00124,2023-05-09,Midwest,landlord,Direct,65+
+C00125,2023-05-10,Southwest,retiree,Paid Social,65+
+C00126,2023-05-10,West,family,Paid Social,45-54
+C00127,2023-05-10,Southeast,retiree,Organic Search,65+
+C00128,2023-05-11,West,family,Organic Search,25-34
+C00129,2023-05-11,Southwest,young_professional,Paid Search,35-44
+C00130,2023-05-13,Southeast,retiree,Display,65+
+C00131,2023-05-13,Midwest,young_professional,Paid Social,18-24
+C00132,2023-05-13,West,family,Broker,45-54
+C00133,2023-05-14,Northeast,young_professional,Display,25-34
+C00134,2023-05-14,Southeast,retiree,Broker,65+
+C00135,2023-05-16,Southwest,family,Paid Social,45-54
+C00136,2023-05-17,Midwest,retiree,Referral,65+
+C00137,2023-05-17,Midwest,young_professional,Organic Search,25-34
+C00138,2023-05-18,Midwest,empty_nester,Direct,55-64
+C00139,2023-05-21,West,landlord,Paid Search,45-54
+C00140,2023-05-23,Southeast,family,Paid Search,45-54
+C00141,2023-05-24,Southeast,retiree,Organic Social,65+
+C00142,2023-05-25,Southeast,empty_nester,Paid Search,55-64
+C00143,2023-05-25,West,landlord,Referral,45-54
+C00144,2023-05-26,Southeast,family,Broker,35-44
+C00145,2023-05-27,Southwest,family,Organic Search,45-54
+C00146,2023-05-28,Northeast,family,Organic Search,45-54
+C00147,2023-05-28,Southwest,family,Organic Search,45-54
+C00148,2023-05-31,Southwest,landlord,Broker,55-64
+C00149,2023-06-01,Northeast,family,Organic Search,35-44
+C00150,2023-06-01,West,retiree,Direct,65+
+C00151,2023-06-02,Midwest,empty_nester,Organic Search,55-64
+C00152,2023-06-02,Northeast,family,Organic Social,35-44
+C00153,2023-06-03,West,landlord,Paid Search,45-54
+C00154,2023-06-04,West,family,Paid Search,35-44
+C00155,2023-06-05,West,empty_nester,Direct,45-54
+C00156,2023-06-08,Northeast,family,Direct,35-44
+C00157,2023-06-10,West,young_professional,Direct,18-24
+C00158,2023-06-10,Northeast,empty_nester,Referral,55-64
+C00159,2023-06-11,West,young_professional,Broker,25-34
+C00160,2023-06-13,Southwest,landlord,Organic Search,45-54
+C00161,2023-06-14,Southeast,young_professional,Referral,25-34
+C00162,2023-06-14,Southwest,young_professional,Paid Search,18-24
+C00163,2023-06-14,Northeast,family,Paid Search,25-34
+C00164,2023-06-16,Southeast,family,Organic Social,35-44
+C00165,2023-06-17,Midwest,family,Broker,35-44
+C00166,2023-06-20,Northeast,young_professional,Paid Search,25-34
+C00167,2023-06-21,Southwest,family,Email,35-44
+C00168,2023-06-21,West,young_professional,Organic Search,18-24
+C00169,2023-06-22,Southwest,empty_nester,Direct,45-54
+C00170,2023-06-22,Southwest,family,Organic Search,45-54
+C00171,2023-06-23,Midwest,retiree,Paid Search,65+
+C00172,2023-06-24,Northeast,family,Organic Search,35-44
+C00173,2023-06-26,West,family,Paid Social,45-54
+C00174,2023-06-27,Southeast,family,Organic Search,45-54
+C00175,2023-06-30,Northeast,family,Broker,45-54
+C00176,2023-07-02,Northeast,retiree,Organic Social,65+
+C00177,2023-07-03,Midwest,landlord,Direct,45-54
+C00178,2023-07-03,Northeast,retiree,Broker,65+
+C00179,2023-07-05,West,family,Broker,45-54
+C00180,2023-07-05,Southeast,young_professional,Paid Search,25-34
+C00181,2023-07-06,West,empty_nester,Email,45-54
+C00182,2023-07-07,Southeast,family,Paid Search,25-34
+C00183,2023-07-10,West,landlord,Direct,45-54
+C00184,2023-07-11,Southeast,family,Broker,45-54
+C00185,2023-07-11,Southeast,landlord,Organic Social,65+
+C00186,2023-07-12,Midwest,empty_nester,Display,55-64
+C00187,2023-07-12,Northeast,retiree,Broker,65+
+C00188,2023-07-12,Northeast,family,Referral,35-44
+C00189,2023-07-14,Midwest,retiree,Organic Search,65+
+C00190,2023-07-15,Southwest,young_professional,Paid Search,18-24
+C00191,2023-07-16,West,landlord,Organic Search,45-54
+C00192,2023-07-16,West,retiree,Paid Search,65+
+C00193,2023-07-16,Northeast,family,Display,25-34
+C00194,2023-07-19,West,young_professional,Paid Search,25-34
+C00195,2023-07-20,Midwest,landlord,Direct,55-64
+C00196,2023-07-21,Northeast,retiree,Organic Search,65+
+C00197,2023-07-22,Northeast,family,Broker,45-54
+C00198,2023-07-23,Southwest,retiree,Referral,65+
+C00199,2023-07-24,Southeast,family,Organic Search,35-44
+C00200,2023-07-25,Southwest,retiree,Paid Search,65+
+C00201,2023-07-25,Northeast,empty_nester,Broker,55-64
+C00202,2023-07-26,Northeast,empty_nester,Paid Search,55-64
+C00203,2023-07-27,West,retiree,Paid Search,65+
+C00204,2023-07-27,Northeast,family,Organic Search,35-44
+C00205,2023-07-28,Midwest,family,Organic Search,35-44
+C00206,2023-07-28,Midwest,young_professional,Organic Search,35-44
+C00207,2023-07-30,West,young_professional,Referral,25-34
+C00208,2023-07-30,West,young_professional,Direct,25-34
+C00209,2023-07-31,Northeast,young_professional,Broker,25-34
+C00210,2023-08-02,West,family,Direct,35-44
+C00211,2023-08-04,Southeast,landlord,Paid Search,55-64
+C00212,2023-08-05,Northeast,empty_nester,Paid Search,45-54
+C00213,2023-08-05,West,family,Organic Search,25-34
+C00214,2023-08-05,Northeast,retiree,Organic Search,55-64
+C00215,2023-08-06,Northeast,empty_nester,Direct,55-64
+C00216,2023-08-06,Southeast,family,Paid Search,35-44
+C00217,2023-08-07,West,family,Organic Search,25-34
+C00218,2023-08-09,Southeast,young_professional,Paid Search,25-34
+C00219,2023-08-09,Southeast,family,Paid Search,35-44
+C00220,2023-08-10,Southeast,retiree,Organic Search,65+
+C00221,2023-08-10,Southeast,family,Organic Search,25-34
+C00222,2023-08-11,Midwest,landlord,Broker,35-44
+C00223,2023-08-11,West,family,Organic Search,35-44
+C00224,2023-08-11,West,landlord,Broker,45-54
+C00225,2023-08-12,Southeast,family,Referral,25-34
+C00226,2023-08-14,Northeast,young_professional,Broker,18-24
+C00227,2023-08-14,Southwest,family,Referral,45-54
+C00228,2023-08-17,West,retiree,Broker,65+
+C00229,2023-08-20,Midwest,empty_nester,Paid Search,55-64
+C00230,2023-08-20,Northeast,young_professional,Paid Social,25-34
+C00231,2023-08-20,Midwest,empty_nester,Broker,55-64
+C00232,2023-08-21,West,young_professional,Organic Social,25-34
+C00233,2023-08-21,Southwest,empty_nester,Organic Search,45-54
+C00234,2023-08-22,Northeast,family,Organic Search,35-44
+C00235,2023-08-23,Southeast,landlord,Broker,55-64
+C00236,2023-08-23,Southeast,family,Paid Search,35-44
+C00237,2023-08-24,Midwest,young_professional,Organic Search,18-24
+C00238,2023-08-25,Southwest,landlord,Referral,45-54
+C00239,2023-08-26,Southeast,family,Broker,25-34
+C00240,2023-08-28,Midwest,landlord,Organic Search,35-44
+C00241,2023-08-30,Northeast,young_professional,Organic Search,25-34
+C00242,2023-09-02,Southeast,retiree,Paid Search,55-64
+C00243,2023-09-03,Southeast,retiree,Paid Search,55-64
+C00244,2023-09-03,Southwest,family,Paid Search,25-34
+C00245,2023-09-03,West,family,Broker,35-44
+C00246,2023-09-03,Southwest,family,Paid Search,45-54
+C00247,2023-09-03,Northeast,retiree,Paid Search,65+
+C00248,2023-09-04,West,family,Direct,45-54
+C00249,2023-09-04,Northeast,young_professional,Paid Search,25-34
+C00250,2023-09-05,Southeast,empty_nester,Paid Search,55-64
+C00251,2023-09-09,Southwest,family,Paid Search,25-34
+C00252,2023-09-10,Southeast,family,Referral,25-34
+C00253,2023-09-10,Midwest,family,Organic Search,35-44
+C00254,2023-09-11,Southeast,empty_nester,Broker,55-64
+C00255,2023-09-13,Southeast,retiree,Organic Search,65+
+C00256,2023-09-14,Northeast,retiree,Broker,65+
+C00257,2023-09-14,Midwest,young_professional,Display,25-34
+C00258,2023-09-15,West,young_professional,Paid Search,25-34
+C00259,2023-09-16,Southeast,family,Organic Search,35-44
+C00260,2023-09-16,Midwest,empty_nester,Paid Search,45-54
+C00261,2023-09-21,West,family,Organic Search,25-34
+C00262,2023-09-21,Southeast,family,Referral,35-44
+C00263,2023-09-21,West,landlord,Referral,45-54
+C00264,2023-09-21,Midwest,young_professional,Organic Search,25-34
+C00265,2023-09-22,West,landlord,Direct,45-54
+C00266,2023-09-22,West,young_professional,Organic Search,25-34
+C00267,2023-09-25,Northeast,young_professional,Direct,25-34
+C00268,2023-09-25,West,landlord,Paid Search,55-64
+C00269,2023-09-25,Northeast,family,Referral,35-44
+C00270,2023-09-25,Northeast,empty_nester,Direct,45-54
+C00271,2023-09-26,Midwest,young_professional,Paid Search,25-34
+C00272,2023-09-26,Southeast,landlord,Paid Search,45-54
+C00273,2023-09-28,Northeast,landlord,Broker,65+
+C00274,2023-09-29,Northeast,landlord,Paid Social,35-44
+C00275,2023-09-29,Northeast,landlord,Direct,35-44
+C00276,2023-09-30,Southeast,landlord,Organic Search,35-44
+C00277,2023-09-30,Northeast,young_professional,Broker,18-24
+C00278,2023-09-30,Northeast,family,Broker,25-34
+C00279,2023-10-01,Northeast,empty_nester,Organic Search,55-64
+C00280,2023-10-02,Midwest,empty_nester,Direct,45-54
+C00281,2023-10-02,Northeast,empty_nester,Paid Social,45-54
+C00282,2023-10-03,West,empty_nester,Email,55-64
+C00283,2023-10-04,West,young_professional,Organic Search,25-34
+C00284,2023-10-05,Southwest,family,Direct,25-34
+C00285,2023-10-05,West,empty_nester,Broker,55-64
+C00286,2023-10-05,Northeast,family,Broker,35-44
+C00287,2023-10-07,Southwest,landlord,Referral,55-64
+C00288,2023-10-07,Northeast,landlord,Organic Search,45-54
+C00289,2023-10-09,Midwest,landlord,Organic Search,35-44
+C00290,2023-10-10,Midwest,landlord,Broker,45-54
+C00291,2023-10-12,Northeast,family,Broker,45-54
+C00292,2023-10-13,West,family,Paid Social,35-44
+C00293,2023-10-13,Northeast,family,Paid Search,35-44
+C00294,2023-10-13,Southwest,landlord,Paid Search,65+
+C00295,2023-10-15,West,family,Organic Search,35-44
+C00296,2023-10-15,Midwest,family,Referral,35-44
+C00297,2023-10-15,West,landlord,Paid Search,45-54
+C00298,2023-10-17,Southwest,empty_nester,Direct,45-54
+C00299,2023-10-18,West,family,Direct,25-34
+C00300,2023-10-18,Southeast,young_professional,Broker,25-34
+C00301,2023-10-19,Northeast,landlord,Organic Search,35-44
+C00302,2023-10-19,Southeast,empty_nester,Paid Search,45-54
+C00303,2023-10-19,Southwest,retiree,Broker,65+
+C00304,2023-10-19,Midwest,retiree,Display,55-64
+C00305,2023-10-20,Southeast,retiree,Organic Search,65+
+C00306,2023-10-21,Midwest,family,Referral,35-44
+C00307,2023-10-21,Southeast,young_professional,Paid Search,25-34
+C00308,2023-10-21,West,young_professional,Organic Search,25-34
+C00309,2023-10-23,Northeast,family,Referral,35-44
+C00310,2023-10-23,Midwest,young_professional,Paid Search,18-24
+C00311,2023-10-25,Southeast,empty_nester,Broker,45-54
+C00312,2023-10-26,Midwest,retiree,Organic Search,65+
+C00313,2023-10-27,Midwest,family,Direct,35-44
+C00314,2023-10-28,West,young_professional,Direct,25-34
+C00315,2023-10-29,Southeast,family,Direct,25-34
+C00316,2023-10-30,West,retiree,Direct,65+
+C00317,2023-10-30,Southeast,empty_nester,Paid Search,45-54
+C00318,2023-10-30,West,family,Organic Social,35-44
+C00319,2023-10-31,Northeast,empty_nester,Organic Search,55-64
+C00320,2023-11-01,Southwest,family,Email,45-54
+C00321,2023-11-01,Northeast,young_professional,Organic Search,25-34
+C00322,2023-11-01,Northeast,family,Referral,35-44
+C00323,2023-11-02,West,family,Paid Search,45-54
+C00324,2023-11-03,Southeast,retiree,Referral,65+
+C00325,2023-11-06,Northeast,family,Broker,35-44
+C00326,2023-11-06,West,family,Email,35-44
+C00327,2023-11-07,West,empty_nester,Broker,55-64
+C00328,2023-11-07,Northeast,landlord,Direct,55-64
+C00329,2023-11-07,West,family,Organic Search,35-44
+C00330,2023-11-07,Midwest,family,Broker,35-44
+C00331,2023-11-07,West,young_professional,Paid Social,35-44
+C00332,2023-11-10,Midwest,family,Direct,45-54
+C00333,2023-11-11,Midwest,young_professional,Direct,35-44
+C00334,2023-11-11,West,landlord,Broker,65+
+C00335,2023-11-13,West,young_professional,Broker,25-34
+C00336,2023-11-14,Northeast,family,Direct,35-44
+C00337,2023-11-15,Southwest,family,Paid Search,35-44
+C00338,2023-11-15,Midwest,retiree,Referral,65+
+C00339,2023-11-18,West,family,Paid Social,45-54
+C00340,2023-11-18,Northeast,retiree,Organic Social,55-64
+C00341,2023-11-18,Southwest,landlord,Paid Social,55-64
+C00342,2023-11-18,Northeast,family,Referral,35-44
+C00343,2023-11-18,Northeast,family,Organic Search,45-54
+C00344,2023-11-20,Southwest,empty_nester,Paid Social,45-54
+C00345,2023-11-21,Southwest,family,Organic Search,35-44
+C00346,2023-11-23,Midwest,empty_nester,Organic Search,55-64
+C00347,2023-11-23,Northeast,retiree,Organic Search,55-64
+C00348,2023-11-24,Southeast,young_professional,Direct,25-34
+C00349,2023-11-24,Southwest,empty_nester,Paid Search,55-64
+C00350,2023-11-25,Southeast,landlord,Organic Search,55-64
+C00351,2023-11-25,West,family,Direct,35-44
+C00352,2023-11-26,Southeast,landlord,Broker,45-54
+C00353,2023-11-27,Northeast,retiree,Organic Search,55-64
+C00354,2023-11-29,West,empty_nester,Organic Social,45-54
+C00355,2023-11-30,Midwest,empty_nester,Paid Social,55-64
+C00356,2023-11-30,Northeast,young_professional,Paid Search,18-24
+C00357,2023-12-03,Southwest,family,Direct,45-54
+C00358,2023-12-03,West,retiree,Paid Search,65+
+C00359,2023-12-06,Midwest,family,Broker,45-54
+C00360,2023-12-07,Midwest,family,Organic Search,35-44
+C00361,2023-12-08,Southwest,young_professional,Direct,25-34
+C00362,2023-12-09,Northeast,landlord,Organic Search,45-54
+C00363,2023-12-10,Southeast,family,Direct,35-44
+C00364,2023-12-11,Midwest,retiree,Paid Search,65+
+C00365,2023-12-11,Northeast,young_professional,Broker,25-34
+C00366,2023-12-11,West,family,Referral,35-44
+C00367,2023-12-12,Midwest,retiree,Paid Search,65+
+C00368,2023-12-13,Southwest,retiree,Referral,55-64
+C00369,2023-12-13,Midwest,landlord,Broker,45-54
+C00370,2023-12-13,Southeast,family,Paid Social,35-44
+C00371,2023-12-13,Northeast,family,Paid Search,35-44
+C00372,2023-12-15,Southeast,family,Referral,45-54
+C00373,2023-12-16,Midwest,empty_nester,Referral,45-54
+C00374,2023-12-16,Northeast,family,Organic Search,35-44
+C00375,2023-12-17,Southeast,young_professional,Organic Search,25-34
+C00376,2023-12-20,West,young_professional,Organic Search,25-34
+C00377,2023-12-21,Northeast,empty_nester,Organic Search,45-54
+C00378,2023-12-21,Northeast,empty_nester,Organic Search,45-54
+C00379,2023-12-21,Midwest,family,Paid Search,35-44
+C00380,2023-12-21,West,young_professional,Organic Social,35-44
+C00381,2023-12-24,Southeast,retiree,Paid Search,55-64
+C00382,2023-12-24,West,family,Broker,45-54
+C00383,2023-12-26,Southwest,young_professional,Paid Social,25-34
+C00384,2023-12-28,Southeast,empty_nester,Broker,55-64
+C00385,2023-12-28,West,family,Organic Search,25-34
+C00386,2023-12-28,Midwest,family,Paid Search,35-44
+C00387,2024-01-01,West,family,Direct,45-54
+C00388,2024-01-01,Midwest,young_professional,Paid Search,18-24
+C00389,2024-01-02,Northeast,empty_nester,Paid Search,55-64
+C00390,2024-01-02,Northeast,family,Broker,25-34
+C00391,2024-01-03,West,family,Referral,25-34
+C00392,2024-01-04,Northeast,family,Paid Search,35-44
+C00393,2024-01-05,Northeast,young_professional,Email,18-24
+C00394,2024-01-06,West,empty_nester,Paid Search,55-64
+C00395,2024-01-06,Southwest,family,Organic Search,35-44
+C00396,2024-01-06,West,young_professional,Direct,25-34
+C00397,2024-01-07,Midwest,family,Organic Search,35-44
+C00398,2024-01-07,West,family,Paid Search,35-44
+C00399,2024-01-08,West,empty_nester,Broker,45-54
+C00400,2024-01-09,Midwest,retiree,Paid Search,65+
+C00401,2024-01-09,West,landlord,Direct,45-54
+C00402,2024-01-10,Northeast,family,Organic Search,25-34
+C00403,2024-01-10,Northeast,family,Display,35-44
+C00404,2024-01-11,Southwest,retiree,Email,65+
+C00405,2024-01-11,Southeast,family,Broker,45-54
+C00406,2024-01-11,Southwest,family,Direct,35-44
+C00407,2024-01-12,West,family,Organic Search,45-54
+C00408,2024-01-16,Midwest,young_professional,Broker,25-34
+C00409,2024-01-16,Southwest,empty_nester,Paid Search,45-54
+C00410,2024-01-17,West,young_professional,Direct,25-34
+C00411,2024-01-18,Northeast,family,Organic Search,35-44
+C00412,2024-01-18,Northeast,landlord,Organic Search,35-44
+C00413,2024-01-19,Midwest,retiree,Display,65+
+C00414,2024-01-20,Northeast,retiree,Organic Social,65+
+C00415,2024-01-20,Midwest,young_professional,Broker,25-34
+C00416,2024-01-21,Northeast,family,Organic Search,35-44
+C00417,2024-01-23,West,young_professional,Referral,25-34
+C00418,2024-01-23,Midwest,young_professional,Direct,25-34
+C00419,2024-01-23,Northeast,retiree,Broker,55-64
+C00420,2024-01-24,Midwest,landlord,Direct,35-44
+C00421,2024-01-26,Southeast,young_professional,Direct,25-34
+C00422,2024-01-29,Northeast,young_professional,Email,18-24
+C00423,2024-01-29,Northeast,landlord,Paid Search,45-54
+C00424,2024-01-30,Southeast,family,Organic Search,35-44
+C00425,2024-01-31,Midwest,young_professional,Direct,25-34
+C00426,2024-02-01,Midwest,young_professional,Referral,25-34
+C00427,2024-02-02,West,retiree,Organic Search,65+
+C00428,2024-02-03,Southeast,retiree,Referral,65+
+C00429,2024-02-03,Southeast,empty_nester,Direct,55-64
+C00430,2024-02-03,Southeast,empty_nester,Paid Search,55-64
+C00431,2024-02-03,Southeast,family,Organic Search,35-44
+C00432,2024-02-03,Southeast,young_professional,Broker,25-34
+C00433,2024-02-04,Northeast,retiree,Direct,65+
+C00434,2024-02-05,Northeast,young_professional,Organic Search,25-34
+C00435,2024-02-06,Northeast,empty_nester,Paid Social,55-64
+C00436,2024-02-07,Southeast,family,Organic Search,25-34
+C00437,2024-02-07,Northeast,retiree,Organic Social,65+
+C00438,2024-02-08,Southeast,empty_nester,Direct,45-54
+C00439,2024-02-08,Northeast,family,Organic Search,35-44
+C00440,2024-02-09,Southwest,young_professional,Organic Social,25-34
+C00441,2024-02-09,Northeast,family,Paid Social,45-54
+C00442,2024-02-10,Southwest,retiree,Referral,65+
+C00443,2024-02-11,Southwest,family,Paid Search,35-44
+C00444,2024-02-11,Midwest,family,Broker,25-34
+C00445,2024-02-12,Midwest,family,Organic Search,35-44
+C00446,2024-02-13,Midwest,family,Organic Search,25-34
+C00447,2024-02-14,Northeast,young_professional,Organic Search,25-34
+C00448,2024-02-16,Midwest,retiree,Organic Search,55-64
+C00449,2024-02-16,Midwest,young_professional,Direct,25-34
+C00450,2024-02-16,Southeast,young_professional,Paid Social,25-34
+C00451,2024-02-18,Midwest,family,Paid Social,35-44
+C00452,2024-02-19,Southwest,landlord,Referral,45-54
+C00453,2024-02-20,Northeast,empty_nester,Paid Social,45-54
+C00454,2024-02-20,Northeast,family,Organic Search,35-44
+C00455,2024-02-21,Southeast,empty_nester,Organic Search,45-54
+C00456,2024-02-21,Southeast,family,Organic Search,35-44
+C00457,2024-02-23,Southeast,young_professional,Email,18-24
+C00458,2024-02-24,Northeast,family,Paid Search,25-34
+C00459,2024-02-25,Southeast,family,Paid Search,25-34
+C00460,2024-02-25,Southeast,young_professional,Referral,25-34
+C00461,2024-02-25,Southeast,landlord,Organic Search,45-54
+C00462,2024-02-26,Midwest,family,Broker,35-44
+C00463,2024-03-01,Midwest,family,Organic Search,25-34
+C00464,2024-03-02,Southwest,family,Paid Search,35-44
+C00465,2024-03-02,Southeast,landlord,Organic Search,35-44
+C00466,2024-03-03,West,young_professional,Email,18-24
+C00467,2024-03-04,Midwest,empty_nester,Referral,55-64
+C00468,2024-03-07,Northeast,empty_nester,Organic Search,45-54
+C00469,2024-03-07,Southwest,empty_nester,Direct,55-64
+C00470,2024-03-08,Southeast,young_professional,Direct,25-34
+C00471,2024-03-08,West,young_professional,Direct,25-34
+C00472,2024-03-08,Southeast,empty_nester,Paid Social,45-54
+C00473,2024-03-08,Southwest,family,Paid Search,45-54
+C00474,2024-03-09,Midwest,family,Email,35-44
+C00475,2024-03-10,Southeast,family,Organic Search,35-44
+C00476,2024-03-11,Southeast,family,Organic Search,35-44
+C00477,2024-03-13,Northeast,landlord,Paid Search,45-54
+C00478,2024-03-16,Northeast,family,Paid Search,45-54
+C00479,2024-03-16,Midwest,family,Direct,35-44
+C00480,2024-03-17,Southeast,empty_nester,Broker,55-64
+C00481,2024-03-19,Midwest,family,Organic Search,45-54
+C00482,2024-03-20,West,empty_nester,Broker,45-54
+C00483,2024-03-21,West,young_professional,Broker,25-34
+C00484,2024-03-21,Midwest,empty_nester,Paid Search,55-64
+C00485,2024-03-22,West,young_professional,Paid Social,18-24
+C00486,2024-03-22,Midwest,family,Organic Search,45-54
+C00487,2024-03-23,Southeast,young_professional,Broker,25-34
+C00488,2024-03-24,Midwest,family,Organic Social,45-54
+C00489,2024-03-27,West,landlord,Paid Social,65+
+C00490,2024-03-28,West,empty_nester,Broker,55-64
+C00491,2024-03-29,West,young_professional,Direct,25-34
+C00492,2024-03-30,West,retiree,Direct,55-64
+C00493,2024-03-30,Midwest,landlord,Paid Social,35-44
+C00494,2024-03-31,Northeast,landlord,Paid Search,35-44
+C00495,2024-04-01,Southeast,empty_nester,Email,55-64
+C00496,2024-04-01,Northeast,young_professional,Organic Search,25-34
+C00497,2024-04-01,Midwest,retiree,Organic Social,65+
+C00498,2024-04-01,Northeast,retiree,Broker,55-64
+C00499,2024-04-01,Northeast,young_professional,Direct,18-24
+C00500,2024-04-02,Midwest,landlord,Broker,55-64
+C00501,2024-04-02,Southeast,landlord,Broker,55-64
+C00502,2024-04-03,West,young_professional,Paid Search,35-44
+C00503,2024-04-03,Southeast,empty_nester,Display,45-54
+C00504,2024-04-03,Southeast,retiree,Broker,65+
+C00505,2024-04-05,Southeast,family,Organic Search,45-54
+C00506,2024-04-05,Southeast,retiree,Paid Search,65+
+C00507,2024-04-07,Northeast,empty_nester,Organic Search,45-54
+C00508,2024-04-07,Northeast,young_professional,Paid Search,25-34
+C00509,2024-04-08,Midwest,family,Broker,25-34
+C00510,2024-04-08,Southeast,young_professional,Broker,18-24
+C00511,2024-04-08,Southwest,retiree,Organic Search,65+
+C00512,2024-04-09,Northeast,family,Organic Search,45-54
+C00513,2024-04-09,West,young_professional,Paid Search,25-34
+C00514,2024-04-11,Southeast,family,Broker,35-44
+C00515,2024-04-11,Southeast,family,Broker,35-44
+C00516,2024-04-11,Southwest,family,Organic Search,35-44
+C00517,2024-04-13,West,family,Paid Search,35-44
+C00518,2024-04-14,Southeast,family,Paid Search,45-54
+C00519,2024-04-15,Southeast,retiree,Direct,65+
+C00520,2024-04-16,West,empty_nester,Organic Search,45-54
+C00521,2024-04-16,Northeast,landlord,Paid Social,45-54
+C00522,2024-04-17,Southeast,family,Broker,25-34
+C00523,2024-04-18,Northeast,retiree,Direct,65+
+C00524,2024-04-19,Midwest,young_professional,Organic Search,25-34
+C00525,2024-04-19,Southeast,family,Referral,25-34
+C00526,2024-04-19,Southwest,family,Direct,25-34
+C00527,2024-04-19,Southeast,retiree,Organic Search,65+
+C00528,2024-04-19,Southeast,retiree,Paid Search,65+
+C00529,2024-04-20,Northeast,landlord,Paid Search,35-44
+C00530,2024-04-20,Southeast,young_professional,Organic Social,25-34
+C00531,2024-04-21,Northeast,family,Paid Search,25-34
+C00532,2024-04-22,West,family,Paid Search,25-34
+C00533,2024-04-23,Southeast,young_professional,Organic Search,18-24
+C00534,2024-04-24,West,young_professional,Organic Search,18-24
+C00535,2024-04-25,Northeast,empty_nester,Organic Search,45-54
+C00536,2024-04-25,Southeast,landlord,Organic Search,35-44
+C00537,2024-04-25,West,young_professional,Organic Search,25-34
+C00538,2024-04-26,West,retiree,Organic Search,65+
+C00539,2024-04-27,Midwest,family,Paid Search,35-44
+C00540,2024-04-28,Southwest,young_professional,Broker,25-34
+C00541,2024-04-30,Midwest,young_professional,Direct,25-34
+C00542,2024-04-30,Southeast,empty_nester,Referral,55-64
+C00543,2024-05-01,West,landlord,Referral,55-64
+C00544,2024-05-03,West,family,Organic Search,25-34
+C00545,2024-05-04,Southeast,landlord,Paid Search,55-64
+C00546,2024-05-05,Northeast,family,Referral,45-54
+C00547,2024-05-06,Southwest,landlord,Direct,35-44
+C00548,2024-05-08,Midwest,young_professional,Organic Social,25-34
+C00549,2024-05-08,Southeast,family,Broker,35-44
+C00550,2024-05-08,Southwest,young_professional,Referral,18-24
+C00551,2024-05-09,Midwest,young_professional,Organic Search,25-34
+C00552,2024-05-09,Northeast,landlord,Broker,35-44
+C00553,2024-05-09,Midwest,empty_nester,Direct,45-54
+C00554,2024-05-09,Southwest,family,Organic Search,45-54
+C00555,2024-05-10,Midwest,young_professional,Organic Search,18-24
+C00556,2024-05-10,Southeast,empty_nester,Paid Search,55-64
+C00557,2024-05-10,Northeast,landlord,Email,55-64
+C00558,2024-05-11,West,family,Direct,35-44
+C00559,2024-05-11,West,retiree,Broker,65+
+C00560,2024-05-13,Southwest,retiree,Organic Search,65+
+C00561,2024-05-14,Midwest,empty_nester,Broker,55-64
+C00562,2024-05-14,Midwest,family,Broker,35-44
+C00563,2024-05-14,Northeast,family,Organic Search,35-44
+C00564,2024-05-14,Southwest,family,Paid Search,35-44
+C00565,2024-05-14,Southeast,retiree,Broker,65+
+C00566,2024-05-14,Northeast,family,Organic Search,45-54
+C00567,2024-05-15,Southwest,young_professional,Organic Search,25-34
+C00568,2024-05-16,Southeast,empty_nester,Organic Search,45-54
+C00569,2024-05-16,Southeast,landlord,Paid Search,35-44
+C00570,2024-05-18,Midwest,family,Organic Search,35-44
+C00571,2024-05-18,Midwest,young_professional,Broker,18-24
+C00572,2024-05-19,Midwest,landlord,Organic Search,45-54
+C00573,2024-05-19,West,family,Direct,35-44
+C00574,2024-05-19,Midwest,empty_nester,Direct,45-54
+C00575,2024-05-20,West,family,Display,35-44
+C00576,2024-05-22,Midwest,family,Direct,35-44
+C00577,2024-05-24,West,empty_nester,Paid Search,45-54
+C00578,2024-05-25,Northeast,family,Organic Search,35-44
+C00579,2024-05-26,Northeast,retiree,Organic Search,55-64
+C00580,2024-05-27,Midwest,empty_nester,Referral,45-54
+C00581,2024-05-29,Southwest,empty_nester,Organic Social,45-54
+C00582,2024-05-30,Southwest,young_professional,Paid Social,25-34
+C00583,2024-05-30,Midwest,empty_nester,Broker,45-54
+C00584,2024-05-31,Southeast,young_professional,Organic Search,25-34
+C00585,2024-05-31,Northeast,retiree,Paid Search,65+
+C00586,2024-06-01,West,family,Organic Search,25-34
+C00587,2024-06-02,West,family,Paid Search,45-54
+C00588,2024-06-02,Southeast,family,Organic Search,45-54
+C00589,2024-06-03,Northeast,empty_nester,Broker,55-64
+C00590,2024-06-03,Midwest,young_professional,Direct,25-34
+C00591,2024-06-04,Southeast,retiree,Direct,65+
+C00592,2024-06-06,Midwest,retiree,Organic Search,55-64
+C00593,2024-06-07,Northeast,young_professional,Paid Search,25-34
+C00594,2024-06-07,Southeast,landlord,Organic Search,35-44
+C00595,2024-06-07,West,young_professional,Direct,18-24
+C00596,2024-06-08,Southeast,family,Direct,35-44
+C00597,2024-06-08,Southwest,landlord,Broker,45-54
+C00598,2024-06-09,Midwest,young_professional,Broker,25-34
+C00599,2024-06-09,Midwest,empty_nester,Organic Search,45-54
+C00600,2024-06-09,Northeast,young_professional,Paid Social,25-34
+C00601,2024-06-09,Southeast,family,Referral,35-44
+C00602,2024-06-11,West,young_professional,Organic Social,25-34
+C00603,2024-06-12,Northeast,empty_nester,Organic Search,55-64
+C00604,2024-06-12,Southeast,family,Organic Social,35-44
+C00605,2024-06-12,West,empty_nester,Organic Social,55-64
+C00606,2024-06-13,Southeast,empty_nester,Paid Search,45-54
+C00607,2024-06-13,Southeast,family,Paid Search,45-54
+C00608,2024-06-13,Southeast,family,Direct,45-54
+C00609,2024-06-14,Midwest,landlord,Paid Search,45-54
+C00610,2024-06-17,Southeast,empty_nester,Organic Search,55-64
+C00611,2024-06-18,Northeast,retiree,Email,65+
+C00612,2024-06-19,West,young_professional,Paid Search,18-24
+C00613,2024-06-19,Southeast,family,Broker,25-34
+C00614,2024-06-19,Southeast,retiree,Broker,55-64
+C00615,2024-06-19,Northeast,family,Organic Search,45-54
+C00616,2024-06-20,Northeast,family,Organic Search,35-44
+C00617,2024-06-21,Midwest,family,Broker,35-44
+C00618,2024-06-21,Southeast,family,Paid Social,35-44
+C00619,2024-06-21,Midwest,family,Organic Search,45-54
+C00620,2024-06-23,Northeast,family,Direct,25-34
+C00621,2024-06-23,Northeast,family,Referral,35-44
+C00622,2024-06-24,Southeast,family,Broker,45-54
+C00623,2024-06-26,Midwest,young_professional,Referral,25-34
+C00624,2024-06-27,Southeast,retiree,Organic Search,65+
+C00625,2024-06-27,West,retiree,Direct,65+
+C00626,2024-06-27,West,retiree,Organic Search,55-64
+C00627,2024-06-28,Southeast,landlord,Organic Search,65+
+C00628,2024-06-29,West,landlord,Paid Search,65+
+C00629,2024-06-29,West,family,Email,45-54
+C00630,2024-07-03,Midwest,young_professional,Organic Social,25-34
+C00631,2024-07-03,Southeast,family,Organic Search,25-34
+C00632,2024-07-04,Southeast,family,Organic Social,35-44
+C00633,2024-07-05,Southeast,family,Broker,45-54
+C00634,2024-07-06,Northeast,retiree,Organic Search,65+
+C00635,2024-07-07,West,family,Organic Search,45-54
+C00636,2024-07-07,Southeast,family,Broker,35-44
+C00637,2024-07-09,Southwest,young_professional,Organic Search,18-24
+C00638,2024-07-09,Northeast,retiree,Direct,65+
+C00639,2024-07-10,Northeast,young_professional,Organic Search,18-24
+C00640,2024-07-10,Midwest,young_professional,Organic Search,25-34
+C00641,2024-07-10,Southeast,family,Referral,35-44
+C00642,2024-07-11,West,family,Broker,35-44
+C00643,2024-07-12,Midwest,retiree,Broker,65+
+C00644,2024-07-12,Southwest,empty_nester,Organic Search,45-54
+C00645,2024-07-15,Southeast,family,Organic Search,35-44
+C00646,2024-07-16,West,family,Direct,35-44
+C00647,2024-07-17,Southeast,empty_nester,Organic Search,55-64
+C00648,2024-07-17,Southwest,retiree,Organic Search,55-64
+C00649,2024-07-17,West,retiree,Paid Social,65+
+C00650,2024-07-18,West,young_professional,Paid Search,25-34
+C00651,2024-07-19,Midwest,empty_nester,Paid Social,55-64
+C00652,2024-07-20,Southwest,retiree,Display,65+
+C00653,2024-07-20,Northeast,family,Organic Search,25-34
+C00654,2024-07-21,Midwest,retiree,Direct,65+
+C00655,2024-07-21,Northeast,retiree,Broker,65+
+C00656,2024-07-21,Midwest,retiree,Broker,65+
+C00657,2024-07-22,Northeast,family,Organic Search,35-44
+C00658,2024-07-23,Midwest,empty_nester,Paid Search,55-64
+C00659,2024-07-23,Southwest,retiree,Display,65+
+C00660,2024-07-24,Northeast,landlord,Referral,35-44
+C00661,2024-07-24,Southwest,young_professional,Broker,18-24
+C00662,2024-07-25,Midwest,young_professional,Organic Search,25-34
+C00663,2024-07-25,West,family,Direct,45-54
+C00664,2024-07-26,Southwest,young_professional,Organic Search,18-24
+C00665,2024-07-26,Midwest,family,Referral,25-34
+C00666,2024-07-26,Midwest,family,Paid Search,45-54
+C00667,2024-07-27,Southeast,young_professional,Organic Search,35-44
+C00668,2024-07-27,Southeast,young_professional,Organic Search,18-24
+C00669,2024-07-27,Southeast,family,Broker,35-44
+C00670,2024-07-29,Northeast,retiree,Organic Search,65+
+C00671,2024-07-29,Southwest,empty_nester,Display,45-54
+C00672,2024-07-30,Northeast,young_professional,Organic Search,18-24
+C00673,2024-08-01,Midwest,family,Organic Search,25-34
+C00674,2024-08-04,Southeast,family,Broker,35-44
+C00675,2024-08-05,Northeast,family,Paid Search,35-44
+C00676,2024-08-05,Southeast,retiree,Referral,65+
+C00677,2024-08-08,Northeast,young_professional,Email,35-44
+C00678,2024-08-08,Northeast,landlord,Paid Search,65+
+C00679,2024-08-08,Southwest,family,Broker,35-44
+C00680,2024-08-08,Northeast,retiree,Paid Search,65+
+C00681,2024-08-09,Northeast,retiree,Broker,65+
+C00682,2024-08-09,Northeast,young_professional,Organic Search,25-34
+C00683,2024-08-09,West,young_professional,Paid Search,25-34
+C00684,2024-08-10,Midwest,family,Paid Search,45-54
+C00685,2024-08-10,Northeast,landlord,Display,55-64
+C00686,2024-08-11,Southwest,retiree,Broker,65+
+C00687,2024-08-11,West,young_professional,Email,25-34
+C00688,2024-08-12,Northeast,retiree,Paid Search,65+
+C00689,2024-08-13,Midwest,family,Broker,45-54
+C00690,2024-08-14,West,family,Direct,35-44
+C00691,2024-08-14,Southwest,landlord,Organic Search,45-54
+C00692,2024-08-15,Southeast,landlord,Display,45-54
+C00693,2024-08-15,West,young_professional,Referral,25-34
+C00694,2024-08-17,Southeast,empty_nester,Paid Social,55-64
+C00695,2024-08-17,Southeast,empty_nester,Paid Social,55-64
+C00696,2024-08-18,Southeast,family,Organic Search,45-54
+C00697,2024-08-18,Midwest,young_professional,Direct,25-34
+C00698,2024-08-19,West,young_professional,Direct,25-34
+C00699,2024-08-19,Southeast,family,Paid Social,45-54
+C00700,2024-08-19,Southeast,young_professional,Broker,25-34
+C00701,2024-08-19,Southwest,young_professional,Organic Search,25-34
+C00702,2024-08-20,Midwest,retiree,Organic Search,65+
+C00703,2024-08-20,Southeast,landlord,Paid Search,45-54
+C00704,2024-08-21,Northeast,young_professional,Email,18-24
+C00705,2024-08-21,Northeast,landlord,Organic Search,35-44
+C00706,2024-08-22,Southeast,young_professional,Referral,25-34
+C00707,2024-08-23,Southeast,young_professional,Referral,18-24
+C00708,2024-08-23,Northeast,young_professional,Paid Search,25-34
+C00709,2024-08-26,West,family,Referral,45-54
+C00710,2024-08-26,West,family,Referral,45-54
+C00711,2024-08-27,Southeast,family,Referral,35-44
+C00712,2024-08-28,West,landlord,Organic Social,55-64
+C00713,2024-08-29,Southeast,family,Paid Search,35-44
+C00714,2024-08-29,Southeast,young_professional,Referral,25-34
+C00715,2024-08-30,Southeast,family,Organic Search,25-34
+C00716,2024-08-31,Southeast,retiree,Direct,65+
+C00717,2024-09-01,Southwest,retiree,Broker,65+
+C00718,2024-09-04,Northeast,young_professional,Paid Search,25-34
+C00719,2024-09-05,Southeast,young_professional,Paid Search,18-24
+C00720,2024-09-07,Northeast,empty_nester,Broker,45-54
+C00721,2024-09-08,Midwest,empty_nester,Paid Search,45-54
+C00722,2024-09-09,West,empty_nester,Organic Search,45-54
+C00723,2024-09-10,Midwest,family,Organic Search,25-34
+C00724,2024-09-11,West,family,Paid Search,35-44
+C00725,2024-09-11,West,family,Email,35-44
+C00726,2024-09-11,Southeast,retiree,Referral,65+
+C00727,2024-09-11,Northeast,retiree,Organic Search,65+
+C00728,2024-09-12,Northeast,retiree,Organic Search,65+
+C00729,2024-09-12,West,empty_nester,Organic Search,55-64
+C00730,2024-09-12,West,retiree,Organic Search,65+
+C00731,2024-09-12,West,family,Paid Search,35-44
+C00732,2024-09-13,Northeast,retiree,Organic Search,65+
+C00733,2024-09-13,Northeast,young_professional,Paid Search,18-24
+C00734,2024-09-14,Northeast,young_professional,Paid Search,25-34
+C00735,2024-09-14,Northeast,young_professional,Paid Search,25-34
+C00736,2024-09-15,Northeast,retiree,Direct,55-64
+C00737,2024-09-15,Southeast,family,Direct,45-54
+C00738,2024-09-16,Northeast,family,Referral,35-44
+C00739,2024-09-17,Midwest,family,Organic Search,45-54
+C00740,2024-09-20,Northeast,empty_nester,Paid Search,55-64
+C00741,2024-09-21,West,young_professional,Referral,25-34
+C00742,2024-09-21,Northeast,family,Broker,35-44
+C00743,2024-09-22,Midwest,empty_nester,Organic Search,55-64
+C00744,2024-09-24,Northeast,young_professional,Paid Social,25-34
+C00745,2024-09-25,Northeast,young_professional,Paid Search,25-34
+C00746,2024-09-25,Northeast,family,Paid Search,45-54
+C00747,2024-09-26,Midwest,retiree,Broker,65+
+C00748,2024-09-26,Southeast,empty_nester,Referral,45-54
+C00749,2024-09-26,Southwest,landlord,Organic Search,55-64
+C00750,2024-09-27,Southeast,landlord,Direct,35-44
+C00751,2024-09-27,Midwest,retiree,Referral,65+
+C00752,2024-09-28,West,landlord,Organic Social,65+
+C00753,2024-10-01,Midwest,family,Paid Search,45-54
+C00754,2024-10-02,Southeast,empty_nester,Paid Search,45-54
+C00755,2024-10-04,West,landlord,Direct,55-64
+C00756,2024-10-05,Midwest,young_professional,Organic Social,25-34
+C00757,2024-10-05,Northeast,retiree,Organic Search,65+
+C00758,2024-10-06,Midwest,retiree,Organic Search,65+
+C00759,2024-10-06,West,family,Direct,35-44
+C00760,2024-10-06,Southeast,empty_nester,Broker,55-64
+C00761,2024-10-07,Southwest,family,Organic Search,45-54
+C00762,2024-10-07,Southeast,retiree,Organic Search,55-64
+C00763,2024-10-07,Southeast,young_professional,Broker,25-34
+C00764,2024-10-07,Midwest,empty_nester,Paid Search,45-54
+C00765,2024-10-08,Northeast,retiree,Referral,65+
+C00766,2024-10-08,West,family,Direct,45-54
+C00767,2024-10-09,West,young_professional,Organic Search,18-24
+C00768,2024-10-10,West,family,Direct,45-54
+C00769,2024-10-11,West,empty_nester,Email,55-64
+C00770,2024-10-11,Southeast,family,Paid Search,45-54
+C00771,2024-10-11,West,young_professional,Email,25-34
+C00772,2024-10-15,Northeast,young_professional,Organic Search,25-34
+C00773,2024-10-15,Southwest,young_professional,Organic Search,18-24
+C00774,2024-10-16,Southeast,young_professional,Direct,18-24
+C00775,2024-10-16,Northeast,family,Email,25-34
+C00776,2024-10-16,Southeast,retiree,Organic Search,65+
+C00777,2024-10-17,Southeast,empty_nester,Organic Search,55-64
+C00778,2024-10-18,West,retiree,Organic Search,55-64
+C00779,2024-10-19,Midwest,retiree,Broker,65+
+C00780,2024-10-19,West,young_professional,Broker,25-34
+C00781,2024-10-20,West,family,Organic Search,45-54
+C00782,2024-10-20,Southeast,empty_nester,Paid Search,55-64
+C00783,2024-10-20,Midwest,young_professional,Paid Search,25-34
+C00784,2024-10-21,Northeast,empty_nester,Organic Search,55-64
+C00785,2024-10-22,Southeast,young_professional,Broker,25-34
+C00786,2024-10-23,Southwest,retiree,Organic Search,65+
+C00787,2024-10-23,Midwest,young_professional,Referral,25-34
+C00788,2024-10-23,Northeast,landlord,Referral,65+
+C00789,2024-10-24,Midwest,landlord,Email,45-54
+C00790,2024-10-24,Southwest,family,Display,45-54
+C00791,2024-10-25,West,retiree,Email,55-64
+C00792,2024-10-25,Midwest,young_professional,Broker,25-34
+C00793,2024-10-26,Southwest,family,Paid Search,35-44
+C00794,2024-10-26,Southeast,landlord,Organic Search,45-54
+C00795,2024-10-26,West,empty_nester,Organic Search,55-64
+C00796,2024-10-26,Southeast,landlord,Broker,65+
+C00797,2024-10-27,Southeast,landlord,Organic Search,55-64
+C00798,2024-10-28,Southeast,family,Referral,35-44
+C00799,2024-10-29,Southeast,young_professional,Paid Social,25-34
+C00800,2024-10-31,West,retiree,Referral,65+
+C00801,2024-11-01,Southwest,family,Organic Search,45-54
+C00802,2024-11-03,Midwest,young_professional,Organic Social,25-34
+C00803,2024-11-04,Southwest,family,Paid Search,45-54
+C00804,2024-11-04,Southwest,landlord,Paid Search,45-54
+C00805,2024-11-04,Southeast,family,Paid Social,35-44
+C00806,2024-11-05,Northeast,retiree,Display,65+
+C00807,2024-11-06,Midwest,family,Organic Search,25-34
+C00808,2024-11-06,Midwest,landlord,Paid Search,35-44
+C00809,2024-11-06,Southwest,empty_nester,Organic Search,45-54
+C00810,2024-11-06,Midwest,empty_nester,Organic Search,45-54
+C00811,2024-11-07,West,family,Organic Search,35-44
+C00812,2024-11-07,Southeast,landlord,Organic Search,45-54
+C00813,2024-11-07,Southeast,empty_nester,Email,55-64
+C00814,2024-11-08,Northeast,empty_nester,Broker,45-54
+C00815,2024-11-09,Southwest,retiree,Paid Search,65+
+C00816,2024-11-10,Southwest,landlord,Display,45-54
+C00817,2024-11-10,West,retiree,Organic Search,55-64
+C00818,2024-11-10,Southeast,empty_nester,Organic Search,45-54
+C00819,2024-11-11,Southeast,landlord,Paid Search,55-64
+C00820,2024-11-12,Southeast,family,Broker,35-44
+C00821,2024-11-13,West,retiree,Broker,55-64
+C00822,2024-11-13,Midwest,young_professional,Paid Search,18-24
+C00823,2024-11-13,West,retiree,Broker,65+
+C00824,2024-11-13,Southeast,young_professional,Paid Search,25-34
+C00825,2024-11-14,Northeast,family,Direct,45-54
+C00826,2024-11-14,West,young_professional,Referral,18-24
+C00827,2024-11-15,Southwest,retiree,Direct,65+
+C00828,2024-11-15,Midwest,family,Direct,45-54
+C00829,2024-11-17,Southwest,family,Broker,35-44
+C00830,2024-11-18,Southwest,family,Referral,45-54
+C00831,2024-11-18,Midwest,family,Broker,35-44
+C00832,2024-11-18,Northeast,empty_nester,Broker,45-54
+C00833,2024-11-18,West,family,Paid Search,25-34
+C00834,2024-11-19,Midwest,retiree,Direct,55-64
+C00835,2024-11-19,Southwest,family,Paid Search,25-34
+C00836,2024-11-19,Midwest,young_professional,Paid Social,18-24
+C00837,2024-11-20,Southeast,landlord,Broker,55-64
+C00838,2024-11-21,Southeast,family,Paid Social,45-54
+C00839,2024-11-21,Midwest,retiree,Organic Search,65+
+C00840,2024-11-21,West,young_professional,Organic Search,25-34
+C00841,2024-11-22,Southeast,empty_nester,Organic Search,55-64
+C00842,2024-11-22,Southwest,empty_nester,Paid Search,45-54
+C00843,2024-11-23,West,family,Direct,35-44
+C00844,2024-11-25,Northeast,retiree,Paid Search,65+
+C00845,2024-11-26,Northeast,landlord,Direct,55-64
+C00846,2024-11-26,Southeast,family,Organic Search,35-44
+C00847,2024-11-27,Southwest,landlord,Display,35-44
+C00848,2024-11-27,Southeast,landlord,Referral,35-44
+C00849,2024-11-29,Southwest,retiree,Email,65+
+C00850,2024-11-30,Southeast,landlord,Organic Search,55-64
+C00851,2024-12-01,Southeast,retiree,Email,65+
+C00852,2024-12-01,Midwest,retiree,Organic Social,55-64
+C00853,2024-12-02,Midwest,family,Organic Social,35-44
+C00854,2024-12-02,Southwest,landlord,Organic Search,55-64
+C00855,2024-12-02,West,retiree,Referral,65+
+C00856,2024-12-03,Southeast,family,Organic Search,25-34
+C00857,2024-12-04,Northeast,young_professional,Email,18-24
+C00858,2024-12-05,Northeast,landlord,Referral,45-54
+C00859,2024-12-05,Northeast,landlord,Broker,55-64
+C00860,2024-12-06,Southwest,empty_nester,Organic Search,45-54
+C00861,2024-12-06,Midwest,retiree,Organic Search,55-64
+C00862,2024-12-06,Southwest,retiree,Referral,65+
+C00863,2024-12-07,Southeast,family,Direct,45-54
+C00864,2024-12-08,Southeast,landlord,Broker,35-44
+C00865,2024-12-09,Southeast,empty_nester,Paid Search,55-64
+C00866,2024-12-10,Northeast,landlord,Paid Search,45-54
+C00867,2024-12-10,Southeast,retiree,Direct,65+
+C00868,2024-12-10,Southeast,young_professional,Organic Search,35-44
+C00869,2024-12-12,Southwest,landlord,Broker,35-44
+C00870,2024-12-13,Southeast,retiree,Broker,65+
+C00871,2024-12-13,Midwest,family,Broker,45-54
+C00872,2024-12-13,Southwest,young_professional,Paid Search,25-34
+C00873,2024-12-14,West,landlord,Organic Search,45-54
+C00874,2024-12-14,Northeast,family,Email,25-34
+C00875,2024-12-15,Southwest,family,Organic Search,35-44
+C00876,2024-12-15,Midwest,family,Email,45-54
+C00877,2024-12-16,West,family,Organic Search,35-44
+C00878,2024-12-17,Northeast,family,Organic Search,25-34
+C00879,2024-12-17,Northeast,young_professional,Organic Search,25-34
+C00880,2024-12-17,Southwest,empty_nester,Referral,55-64
+C00881,2024-12-18,West,retiree,Referral,65+
+C00882,2024-12-19,Midwest,empty_nester,Broker,45-54
+C00883,2024-12-19,Midwest,young_professional,Broker,25-34
+C00884,2024-12-20,Southeast,family,Direct,35-44
+C00885,2024-12-20,Northeast,family,Paid Search,35-44
+C00886,2024-12-20,West,landlord,Direct,55-64
+C00887,2024-12-22,Southwest,young_professional,Direct,25-34
+C00888,2024-12-23,Midwest,empty_nester,Organic Search,55-64
+C00889,2024-12-23,Midwest,young_professional,Broker,25-34
+C00890,2024-12-24,West,family,Broker,35-44
+C00891,2024-12-26,West,family,Organic Search,35-44
+C00892,2024-12-27,Southeast,landlord,Paid Search,55-64
+C00893,2024-12-27,Midwest,family,Organic Search,45-54
+C00894,2024-12-28,Southeast,retiree,Broker,65+
+C00895,2024-12-29,West,family,Organic Search,35-44
+C00896,2024-12-29,Midwest,landlord,Organic Search,35-44
+C00897,2025-01-01,West,young_professional,Broker,18-24
+C00898,2025-01-01,Midwest,retiree,Email,65+
+C00899,2025-01-02,Southwest,retiree,Broker,65+
+C00900,2025-01-04,Northeast,empty_nester,Referral,55-64
+C00901,2025-01-04,Southeast,retiree,Paid Search,65+
+C00902,2025-01-04,Midwest,retiree,Referral,65+
+C00903,2025-01-04,Southwest,young_professional,Paid Search,25-34
+C00904,2025-01-06,West,landlord,Broker,65+
+C00905,2025-01-08,West,young_professional,Direct,25-34
+C00906,2025-01-08,Northeast,young_professional,Organic Search,25-34
+C00907,2025-01-09,West,retiree,Organic Search,65+
+C00908,2025-01-09,Southeast,landlord,Organic Social,45-54
+C00909,2025-01-09,West,family,Organic Search,35-44
+C00910,2025-01-10,Northeast,young_professional,Broker,25-34
+C00911,2025-01-10,Midwest,empty_nester,Paid Search,55-64
+C00912,2025-01-10,Southeast,empty_nester,Paid Social,45-54
+C00913,2025-01-11,Southeast,family,Paid Search,25-34
+C00914,2025-01-12,Northeast,family,Referral,35-44
+C00915,2025-01-12,Southeast,young_professional,Paid Search,25-34
+C00916,2025-01-12,Southwest,family,Email,35-44
+C00917,2025-01-12,West,family,Broker,35-44
+C00918,2025-01-12,Southwest,landlord,Paid Search,55-64
+C00919,2025-01-14,Southeast,empty_nester,Referral,45-54
+C00920,2025-01-14,Midwest,family,Broker,35-44
+C00921,2025-01-16,Southeast,young_professional,Broker,35-44
+C00922,2025-01-17,Northeast,empty_nester,Direct,55-64
+C00923,2025-01-17,Midwest,retiree,Organic Search,65+
+C00924,2025-01-18,Southeast,young_professional,Organic Search,25-34
+C00925,2025-01-18,Northeast,family,Paid Search,45-54
+C00926,2025-01-19,Northeast,young_professional,Broker,25-34
+C00927,2025-01-20,West,empty_nester,Broker,45-54
+C00928,2025-01-20,Southeast,empty_nester,Broker,55-64
+C00929,2025-01-20,Midwest,empty_nester,Broker,55-64
+C00930,2025-01-22,Southeast,family,Referral,45-54
+C00931,2025-01-22,West,retiree,Paid Search,65+
+C00932,2025-01-22,West,landlord,Direct,45-54
+C00933,2025-01-24,Southwest,landlord,Organic Search,35-44
+C00934,2025-01-26,Midwest,young_professional,Paid Search,25-34
+C00935,2025-01-26,Southwest,retiree,Display,65+
+C00936,2025-01-26,Southwest,landlord,Broker,55-64
+C00937,2025-01-26,Southeast,empty_nester,Referral,45-54
+C00938,2025-01-27,Southwest,young_professional,Paid Search,25-34
+C00939,2025-01-27,Midwest,family,Email,35-44
+C00940,2025-01-28,Northeast,empty_nester,Email,55-64
+C00941,2025-01-28,Midwest,retiree,Organic Search,55-64
+C00942,2025-01-31,Southeast,landlord,Broker,45-54
+C00943,2025-02-01,Southeast,empty_nester,Broker,45-54
+C00944,2025-02-01,Northeast,family,Organic Search,45-54
+C00945,2025-02-02,Midwest,family,Paid Search,35-44
+C00946,2025-02-03,Southwest,retiree,Organic Search,65+
+C00947,2025-02-03,Northeast,family,Broker,45-54
+C00948,2025-02-04,Southeast,retiree,Paid Search,65+
+C00949,2025-02-04,Midwest,retiree,Paid Search,65+
+C00950,2025-02-04,West,young_professional,Display,25-34
+C00951,2025-02-04,West,empty_nester,Paid Search,55-64
+C00952,2025-02-05,Midwest,landlord,Paid Social,45-54
+C00953,2025-02-05,Southeast,family,Paid Social,35-44
+C00954,2025-02-05,Midwest,landlord,Paid Social,55-64
+C00955,2025-02-06,West,retiree,Direct,65+
+C00956,2025-02-06,Midwest,young_professional,Organic Search,35-44
+C00957,2025-02-06,Southwest,retiree,Referral,55-64
+C00958,2025-02-06,Northeast,empty_nester,Paid Search,45-54
+C00959,2025-02-06,Southeast,landlord,Referral,55-64
+C00960,2025-02-06,Southwest,landlord,Organic Search,35-44
+C00961,2025-02-07,Northeast,landlord,Paid Social,35-44
+C00962,2025-02-08,Southeast,landlord,Organic Social,35-44
+C00963,2025-02-08,West,young_professional,Broker,18-24
+C00964,2025-02-09,Southeast,young_professional,Organic Social,25-34
+C00965,2025-02-09,West,landlord,Paid Search,35-44
+C00966,2025-02-09,Southeast,family,Broker,45-54
+C00967,2025-02-11,Northeast,retiree,Organic Social,65+
+C00968,2025-02-12,Southwest,young_professional,Organic Search,25-34
+C00969,2025-02-12,West,young_professional,Organic Search,25-34
+C00970,2025-02-12,Northeast,family,Paid Search,35-44
+C00971,2025-02-13,Midwest,family,Organic Search,35-44
+C00972,2025-02-14,West,retiree,Paid Social,65+
+C00973,2025-02-15,Southeast,retiree,Organic Search,65+
+C00974,2025-02-15,Midwest,landlord,Paid Search,55-64
+C00975,2025-02-15,Northeast,young_professional,Organic Search,25-34
+C00976,2025-02-16,Southwest,young_professional,Paid Search,35-44
+C00977,2025-02-18,West,empty_nester,Broker,45-54
+C00978,2025-02-18,Midwest,young_professional,Paid Search,25-34
+C00979,2025-02-19,Southeast,landlord,Broker,55-64
+C00980,2025-02-19,Southeast,family,Organic Search,35-44
+C00981,2025-02-21,Southwest,family,Paid Search,35-44
+C00982,2025-02-22,West,landlord,Organic Search,35-44
+C00983,2025-02-23,Midwest,family,Organic Search,45-54
+C00984,2025-02-24,West,retiree,Direct,65+
+C00985,2025-02-25,Southeast,empty_nester,Paid Search,55-64
+C00986,2025-02-25,Northeast,family,Organic Search,35-44
+C00987,2025-02-25,West,empty_nester,Paid Search,55-64
+C00988,2025-02-26,Southeast,empty_nester,Email,55-64
+C00989,2025-02-27,Southeast,empty_nester,Email,45-54
+C00990,2025-02-28,Midwest,family,Referral,35-44
+C00991,2025-03-01,West,empty_nester,Direct,45-54
+C00992,2025-03-01,Southwest,family,Referral,25-34
+C00993,2025-03-04,Northeast,empty_nester,Broker,55-64
+C00994,2025-03-05,West,landlord,Direct,45-54
+C00995,2025-03-05,Midwest,landlord,Organic Search,35-44
+C00996,2025-03-05,Southeast,young_professional,Organic Search,18-24
+C00997,2025-03-06,Midwest,family,Direct,45-54
+C00998,2025-03-06,Southeast,family,Direct,45-54
+C00999,2025-03-06,Southeast,retiree,Organic Search,65+
+C01000,2025-03-07,Southwest,family,Organic Search,35-44
+C01001,2025-03-07,West,family,Direct,35-44
+C01002,2025-03-07,Midwest,family,Broker,25-34
+C01003,2025-03-08,Southwest,landlord,Email,45-54
+C01004,2025-03-09,Midwest,young_professional,Display,25-34
+C01005,2025-03-09,Northeast,family,Broker,25-34
+C01006,2025-03-09,Southeast,family,Organic Search,45-54
+C01007,2025-03-10,West,family,Organic Search,35-44
+C01008,2025-03-11,Southeast,family,Paid Search,35-44
+C01009,2025-03-11,Northeast,family,Paid Search,35-44
+C01010,2025-03-12,West,family,Direct,25-34
+C01011,2025-03-13,Midwest,young_professional,Referral,25-34
+C01012,2025-03-13,Southeast,retiree,Direct,65+
+C01013,2025-03-14,Northeast,family,Paid Search,35-44
+C01014,2025-03-14,Southwest,family,Direct,35-44
+C01015,2025-03-14,Midwest,young_professional,Organic Search,25-34
+C01016,2025-03-14,Southeast,retiree,Paid Social,65+
+C01017,2025-03-15,Southwest,empty_nester,Email,45-54
+C01018,2025-03-15,Southwest,young_professional,Organic Search,18-24
+C01019,2025-03-15,West,family,Email,35-44
+C01020,2025-03-16,West,empty_nester,Organic Search,55-64
+C01021,2025-03-16,Northeast,empty_nester,Organic Search,45-54
+C01022,2025-03-16,Southwest,young_professional,Direct,25-34
+C01023,2025-03-16,West,family,Broker,25-34
+C01024,2025-03-17,Midwest,family,Organic Search,25-34
+C01025,2025-03-18,West,young_professional,Display,25-34
+C01026,2025-03-19,Northeast,retiree,Organic Search,65+
+C01027,2025-03-20,Northeast,young_professional,Broker,25-34
+C01028,2025-03-20,Southwest,empty_nester,Organic Search,45-54
+C01029,2025-03-21,Southeast,young_professional,Organic Search,25-34
+C01030,2025-03-21,Midwest,empty_nester,Broker,55-64
+C01031,2025-03-21,Northeast,young_professional,Organic Search,25-34
+C01032,2025-03-22,West,empty_nester,Broker,55-64
+C01033,2025-03-23,West,landlord,Email,45-54
+C01034,2025-03-25,West,young_professional,Organic Search,18-24
+C01035,2025-03-26,Southeast,retiree,Referral,65+
+C01036,2025-03-26,Midwest,young_professional,Organic Social,18-24
+C01037,2025-03-26,Southeast,young_professional,Paid Search,25-34
+C01038,2025-03-26,Midwest,young_professional,Broker,25-34
+C01039,2025-03-26,Southwest,family,Organic Search,35-44
+C01040,2025-03-27,Midwest,young_professional,Direct,25-34
+C01041,2025-03-28,Southeast,young_professional,Paid Search,25-34
+C01042,2025-03-28,Southeast,retiree,Broker,65+
+C01043,2025-03-28,Southeast,family,Organic Search,45-54
+C01044,2025-03-29,Midwest,family,Referral,45-54
+C01045,2025-03-29,Southeast,retiree,Broker,55-64
+C01046,2025-03-30,Southeast,family,Broker,35-44
+C01047,2025-03-30,Northeast,family,Organic Search,35-44
+C01048,2025-03-30,Southeast,young_professional,Broker,25-34
+C01049,2025-03-31,Southeast,retiree,Broker,65+
+C01050,2025-04-01,West,empty_nester,Paid Search,55-64
+C01051,2025-04-02,West,landlord,Paid Social,45-54
+C01052,2025-04-02,Midwest,young_professional,Organic Search,35-44
+C01053,2025-04-02,Northeast,retiree,Broker,65+
+C01054,2025-04-03,Southwest,family,Direct,35-44
+C01055,2025-04-03,Southwest,family,Paid Search,25-34
+C01056,2025-04-06,West,young_professional,Broker,35-44
+C01057,2025-04-07,Northeast,landlord,Organic Search,45-54
+C01058,2025-04-07,Southwest,landlord,Organic Search,55-64
+C01059,2025-04-09,Northeast,young_professional,Broker,25-34
+C01060,2025-04-09,Midwest,young_professional,Direct,18-24
+C01061,2025-04-10,Southeast,landlord,Paid Social,35-44
+C01062,2025-04-10,West,family,Direct,35-44
+C01063,2025-04-11,Northeast,retiree,Organic Search,65+
+C01064,2025-04-11,Northeast,family,Organic Search,35-44
+C01065,2025-04-12,Midwest,empty_nester,Paid Search,45-54
+C01066,2025-04-14,West,family,Organic Search,35-44
+C01067,2025-04-15,West,empty_nester,Paid Search,45-54
+C01068,2025-04-15,Southwest,family,Broker,25-34
+C01069,2025-04-16,Midwest,landlord,Paid Search,45-54
+C01070,2025-04-20,Southwest,empty_nester,Organic Search,45-54
+C01071,2025-04-21,Midwest,young_professional,Organic Search,25-34
+C01072,2025-04-22,Northeast,young_professional,Organic Social,18-24
+C01073,2025-04-24,Midwest,landlord,Email,35-44
+C01074,2025-04-24,Midwest,family,Paid Search,35-44
+C01075,2025-04-24,Southwest,young_professional,Broker,18-24
+C01076,2025-04-24,Southeast,family,Email,25-34
+C01077,2025-04-25,West,empty_nester,Paid Social,45-54
+C01078,2025-04-25,Southeast,family,Paid Search,45-54
+C01079,2025-04-26,Northeast,young_professional,Direct,25-34
+C01080,2025-04-27,Southwest,family,Organic Search,45-54
+C01081,2025-04-27,Midwest,young_professional,Organic Search,18-24
+C01082,2025-04-29,Southeast,retiree,Paid Search,65+
+C01083,2025-04-30,Midwest,empty_nester,Broker,45-54
+C01084,2025-04-30,Northeast,retiree,Organic Search,65+
+C01085,2025-04-30,Southwest,retiree,Organic Search,65+
+C01086,2025-05-01,West,family,Email,25-34
+C01087,2025-05-01,Southeast,landlord,Email,55-64
+C01088,2025-05-02,Northeast,family,Organic Search,25-34
+C01089,2025-05-02,Northeast,young_professional,Broker,25-34
+C01090,2025-05-03,Southeast,young_professional,Organic Search,25-34
+C01091,2025-05-03,Midwest,landlord,Referral,45-54
+C01092,2025-05-03,Midwest,retiree,Organic Search,65+
+C01093,2025-05-03,West,retiree,Broker,55-64
+C01094,2025-05-04,Midwest,young_professional,Organic Search,25-34
+C01095,2025-05-05,Southwest,empty_nester,Direct,45-54
+C01096,2025-05-06,Midwest,family,Display,45-54
+C01097,2025-05-06,Southeast,young_professional,Referral,25-34
+C01098,2025-05-07,Northeast,landlord,Direct,35-44
+C01099,2025-05-07,Southeast,empty_nester,Organic Search,55-64
+C01100,2025-05-08,Southeast,family,Email,45-54
+C01101,2025-05-08,West,young_professional,Direct,25-34
+C01102,2025-05-10,West,empty_nester,Paid Search,55-64
+C01103,2025-05-10,West,retiree,Organic Search,65+
+C01104,2025-05-12,Midwest,family,Organic Search,25-34
+C01105,2025-05-13,Southeast,family,Paid Search,25-34
+C01106,2025-05-13,West,family,Paid Search,35-44
+C01107,2025-05-13,Midwest,empty_nester,Organic Social,55-64
+C01108,2025-05-15,Midwest,family,Broker,45-54
+C01109,2025-05-17,Southeast,landlord,Direct,65+
+C01110,2025-05-17,West,family,Organic Social,45-54
+C01111,2025-05-18,Southeast,family,Organic Social,35-44
+C01112,2025-05-18,Southeast,landlord,Paid Social,35-44
+C01113,2025-05-18,Southwest,empty_nester,Paid Search,55-64
+C01114,2025-05-19,Southeast,family,Display,35-44
+C01115,2025-05-20,Northeast,landlord,Email,35-44
+C01116,2025-05-21,Northeast,family,Organic Social,35-44
+C01117,2025-05-22,Southwest,family,Organic Search,25-34
+C01118,2025-05-23,Northeast,family,Direct,35-44
+C01119,2025-05-24,Southwest,empty_nester,Paid Search,45-54
+C01120,2025-05-24,Southwest,retiree,Broker,55-64
+C01121,2025-05-25,Midwest,retiree,Organic Search,65+
+C01122,2025-05-25,Northeast,family,Paid Search,35-44
+C01123,2025-05-26,Northeast,young_professional,Organic Search,18-24
+C01124,2025-05-28,West,family,Display,45-54
+C01125,2025-05-30,Northeast,empty_nester,Paid Search,55-64
+C01126,2025-05-31,Southeast,landlord,Paid Search,55-64
+C01127,2025-05-31,Northeast,family,Paid Search,35-44
+C01128,2025-06-01,Northeast,empty_nester,Organic Search,55-64
+C01129,2025-06-03,Northeast,family,Paid Search,25-34
+C01130,2025-06-03,Southeast,family,Organic Search,25-34
+C01131,2025-06-04,Southwest,family,Paid Search,35-44
+C01132,2025-06-05,Midwest,family,Email,35-44
+C01133,2025-06-06,Southeast,family,Paid Search,35-44
+C01134,2025-06-07,Southeast,empty_nester,Direct,55-64
+C01135,2025-06-07,Northeast,empty_nester,Organic Search,45-54
+C01136,2025-06-07,Southeast,landlord,Direct,45-54
+C01137,2025-06-08,West,family,Organic Search,35-44
+C01138,2025-06-08,Southeast,retiree,Broker,65+
+C01139,2025-06-09,Southwest,family,Paid Search,35-44
+C01140,2025-06-10,Southwest,family,Paid Search,35-44
+C01141,2025-06-10,Midwest,young_professional,Organic Social,18-24
+C01142,2025-06-10,West,retiree,Broker,65+
+C01143,2025-06-11,Midwest,young_professional,Organic Search,25-34
+C01144,2025-06-12,Southeast,family,Organic Search,35-44
+C01145,2025-06-12,Northeast,landlord,Organic Search,45-54
+C01146,2025-06-13,Southeast,family,Organic Search,45-54
+C01147,2025-06-14,Southeast,family,Paid Search,25-34
+C01148,2025-06-16,Southwest,landlord,Organic Search,65+
+C01149,2025-06-16,Northeast,young_professional,Paid Search,25-34
+C01150,2025-06-16,Southwest,empty_nester,Organic Search,55-64
+C01151,2025-06-16,Midwest,family,Paid Search,35-44
+C01152,2025-06-16,Southeast,family,Organic Search,35-44
+C01153,2025-06-17,West,landlord,Organic Search,45-54
+C01154,2025-06-17,Midwest,family,Broker,35-44
+C01155,2025-06-17,Northeast,family,Direct,35-44
+C01156,2025-06-18,Southeast,empty_nester,Organic Search,55-64
+C01157,2025-06-19,West,family,Organic Search,45-54
+C01158,2025-06-19,West,retiree,Paid Search,65+
+C01159,2025-06-20,Southwest,young_professional,Display,25-34
+C01160,2025-06-21,Northeast,family,Paid Search,25-34
+C01161,2025-06-21,West,young_professional,Organic Search,18-24
+C01162,2025-06-21,Midwest,family,Broker,45-54
+C01163,2025-06-21,West,empty_nester,Paid Search,55-64
+C01164,2025-06-22,Southwest,empty_nester,Referral,45-54
+C01165,2025-06-23,West,young_professional,Paid Search,25-34
+C01166,2025-06-23,Southeast,retiree,Organic Search,65+
+C01167,2025-06-24,Northeast,young_professional,Paid Search,25-34
+C01168,2025-06-24,Southwest,landlord,Paid Search,55-64
+C01169,2025-06-24,Northeast,empty_nester,Paid Search,45-54
+C01170,2025-06-25,Midwest,family,Broker,45-54
+C01171,2025-06-25,Southeast,family,Email,35-44
+C01172,2025-06-26,West,family,Organic Search,35-44
+C01173,2025-06-26,Northeast,empty_nester,Organic Search,55-64
+C01174,2025-06-26,Midwest,empty_nester,Direct,55-64
+C01175,2025-06-26,Southwest,retiree,Referral,55-64
+C01176,2025-06-28,Southwest,empty_nester,Paid Search,45-54
+C01177,2025-06-28,Southeast,empty_nester,Organic Search,55-64
+C01178,2025-06-30,West,young_professional,Email,25-34
+C01179,2025-06-30,Southwest,family,Organic Search,35-44
+C01180,2025-06-30,Southwest,empty_nester,Paid Search,45-54
+C01181,2025-07-02,West,retiree,Direct,55-64
+C01182,2025-07-02,Northeast,young_professional,Organic Search,25-34
+C01183,2025-07-02,Northeast,family,Direct,25-34
+C01184,2025-07-03,Southeast,family,Paid Social,35-44
+C01185,2025-07-04,Southeast,family,Direct,35-44
+C01186,2025-07-04,West,young_professional,Organic Search,18-24
+C01187,2025-07-04,Midwest,young_professional,Paid Search,25-34
+C01188,2025-07-05,West,family,Organic Search,45-54
+C01189,2025-07-05,West,landlord,Paid Search,45-54
+C01190,2025-07-05,Southeast,landlord,Organic Search,45-54
+C01191,2025-07-06,West,young_professional,Paid Search,25-34
+C01192,2025-07-06,Southeast,family,Paid Search,35-44
+C01193,2025-07-07,Midwest,young_professional,Organic Search,18-24
+C01194,2025-07-07,Southeast,family,Display,35-44
+C01195,2025-07-07,Northeast,empty_nester,Organic Search,45-54
+C01196,2025-07-09,West,young_professional,Organic Search,25-34
+C01197,2025-07-09,Northeast,young_professional,Paid Search,25-34
+C01198,2025-07-09,West,family,Email,35-44
+C01199,2025-07-09,Northeast,young_professional,Organic Search,25-34
+C01200,2025-07-09,West,landlord,Direct,35-44
+C01201,2025-07-10,Southeast,young_professional,Organic Search,25-34
+C01202,2025-07-10,Northeast,young_professional,Broker,35-44
+C01203,2025-07-11,Northeast,empty_nester,Display,45-54
+C01204,2025-07-11,Southeast,empty_nester,Organic Search,55-64
+C01205,2025-07-12,Northeast,family,Organic Search,35-44
+C01206,2025-07-12,West,retiree,Organic Search,65+
+C01207,2025-07-12,Midwest,young_professional,Organic Search,25-34
+C01208,2025-07-13,West,empty_nester,Organic Search,45-54
+C01209,2025-07-13,West,empty_nester,Paid Search,45-54
+C01210,2025-07-13,Southeast,family,Paid Search,35-44
+C01211,2025-07-13,Midwest,family,Broker,35-44
+C01212,2025-07-14,West,family,Paid Search,35-44
+C01213,2025-07-14,Southeast,family,Referral,35-44
+C01214,2025-07-15,Southeast,empty_nester,Paid Social,45-54
+C01215,2025-07-15,Southwest,young_professional,Broker,25-34
+C01216,2025-07-17,Southeast,landlord,Broker,35-44
+C01217,2025-07-18,Southeast,empty_nester,Organic Search,55-64
+C01218,2025-07-18,West,family,Direct,35-44
+C01219,2025-07-18,Southeast,young_professional,Email,18-24
+C01220,2025-07-18,West,landlord,Paid Search,45-54
+C01221,2025-07-20,Northeast,young_professional,Direct,35-44
+C01222,2025-07-21,Northeast,young_professional,Organic Search,18-24
+C01223,2025-07-21,Northeast,landlord,Organic Search,65+
+C01224,2025-07-21,Southeast,family,Organic Social,35-44
+C01225,2025-07-22,Midwest,family,Paid Search,45-54
+C01226,2025-07-22,Southwest,family,Organic Social,25-34
+C01227,2025-07-22,Northeast,young_professional,Direct,25-34
+C01228,2025-07-22,West,landlord,Organic Search,35-44
+C01229,2025-07-23,Midwest,empty_nester,Broker,55-64
+C01230,2025-07-25,Southeast,young_professional,Paid Search,18-24
+C01231,2025-07-26,Midwest,landlord,Paid Search,65+
+C01232,2025-07-26,Midwest,young_professional,Organic Search,35-44
+C01233,2025-07-27,Southwest,landlord,Paid Search,55-64
+C01234,2025-07-28,West,young_professional,Organic Search,25-34
+C01235,2025-07-29,West,landlord,Organic Search,45-54
+C01236,2025-07-30,Southwest,family,Direct,35-44
+C01237,2025-07-31,Southeast,family,Paid Social,35-44
+C01238,2025-08-04,Northeast,empty_nester,Referral,55-64
+C01239,2025-08-04,West,empty_nester,Organic Search,55-64
+C01240,2025-08-06,West,young_professional,Organic Social,35-44
+C01241,2025-08-06,Southwest,family,Referral,25-34
+C01242,2025-08-06,West,family,Direct,25-34
+C01243,2025-08-08,West,empty_nester,Organic Search,55-64
+C01244,2025-08-08,Midwest,young_professional,Paid Search,25-34
+C01245,2025-08-08,Northeast,family,Organic Social,35-44
+C01246,2025-08-09,Southwest,family,Broker,45-54
+C01247,2025-08-09,Midwest,family,Referral,35-44
+C01248,2025-08-09,Midwest,empty_nester,Paid Search,45-54
+C01249,2025-08-09,West,young_professional,Organic Search,25-34
+C01250,2025-08-09,Northeast,landlord,Broker,45-54
+C01251,2025-08-10,West,retiree,Organic Search,55-64
+C01252,2025-08-10,Northeast,young_professional,Organic Search,25-34
+C01253,2025-08-10,Midwest,young_professional,Broker,25-34
+C01254,2025-08-11,Midwest,landlord,Broker,55-64
+C01255,2025-08-12,Southwest,young_professional,Direct,25-34
+C01256,2025-08-12,Southeast,young_professional,Organic Search,18-24
+C01257,2025-08-12,Southeast,young_professional,Broker,25-34
+C01258,2025-08-13,Southwest,young_professional,Paid Search,18-24
+C01259,2025-08-13,West,empty_nester,Broker,55-64
+C01260,2025-08-14,Midwest,family,Organic Search,35-44
+C01261,2025-08-16,West,family,Organic Search,45-54
+C01262,2025-08-16,Southwest,family,Paid Search,35-44
+C01263,2025-08-16,Southeast,empty_nester,Paid Search,45-54
+C01264,2025-08-17,Midwest,retiree,Organic Search,65+
+C01265,2025-08-17,Midwest,empty_nester,Direct,55-64
+C01266,2025-08-18,Northeast,family,Organic Search,45-54
+C01267,2025-08-18,Midwest,young_professional,Direct,18-24
+C01268,2025-08-19,Southeast,landlord,Organic Search,45-54
+C01269,2025-08-20,Midwest,empty_nester,Email,55-64
+C01270,2025-08-20,Southeast,young_professional,Organic Search,25-34
+C01271,2025-08-21,Southwest,young_professional,Referral,25-34
+C01272,2025-08-21,Midwest,retiree,Broker,55-64
+C01273,2025-08-21,West,young_professional,Organic Search,18-24
+C01274,2025-08-22,Southwest,empty_nester,Broker,55-64
+C01275,2025-08-24,Southeast,family,Paid Search,25-34
+C01276,2025-08-25,Southwest,family,Referral,45-54
+C01277,2025-08-26,West,empty_nester,Organic Search,45-54
+C01278,2025-08-26,Midwest,young_professional,Organic Search,25-34
+C01279,2025-08-26,West,young_professional,Broker,25-34
+C01280,2025-08-26,Northeast,retiree,Broker,65+
+C01281,2025-08-27,Northeast,young_professional,Broker,25-34
+C01282,2025-08-27,Northeast,young_professional,Organic Search,25-34
+C01283,2025-08-28,West,landlord,Email,35-44
+C01284,2025-08-30,Northeast,young_professional,Organic Search,18-24
+C01285,2025-08-30,Northeast,empty_nester,Direct,45-54
+C01286,2025-08-30,West,retiree,Paid Search,65+
+C01287,2025-08-31,Northeast,young_professional,Organic Search,25-34
+C01288,2025-09-01,West,young_professional,Organic Search,25-34
+C01289,2025-09-02,Southwest,family,Broker,35-44
+C01290,2025-09-03,Southeast,landlord,Organic Search,65+
+C01291,2025-09-04,Midwest,young_professional,Direct,25-34
+C01292,2025-09-06,Southeast,young_professional,Direct,25-34
+C01293,2025-09-06,Midwest,empty_nester,Organic Search,55-64
+C01294,2025-09-06,Northeast,landlord,Email,35-44
+C01295,2025-09-07,Southwest,landlord,Paid Search,35-44
+C01296,2025-09-07,Southeast,family,Paid Search,35-44
+C01297,2025-09-07,Northeast,family,Broker,35-44
+C01298,2025-09-07,West,landlord,Paid Search,45-54
+C01299,2025-09-08,Midwest,landlord,Display,45-54
+C01300,2025-09-08,Midwest,retiree,Display,65+
+C01301,2025-09-09,West,empty_nester,Broker,45-54
+C01302,2025-09-09,Southeast,family,Display,35-44
+C01303,2025-09-11,Southwest,family,Direct,25-34
+C01304,2025-09-12,Northeast,empty_nester,Paid Search,55-64
+C01305,2025-09-13,Southeast,family,Broker,25-34
+C01306,2025-09-13,West,empty_nester,Broker,55-64
+C01307,2025-09-13,Southeast,family,Broker,35-44
+C01308,2025-09-14,Midwest,young_professional,Broker,25-34
+C01309,2025-09-14,West,family,Broker,25-34
+C01310,2025-09-16,Southeast,landlord,Direct,45-54
+C01311,2025-09-16,Southwest,young_professional,Broker,18-24
+C01312,2025-09-16,Southeast,retiree,Paid Search,65+
+C01313,2025-09-18,Midwest,retiree,Organic Search,65+
+C01314,2025-09-19,Southwest,retiree,Organic Search,65+
+C01315,2025-09-20,Southeast,empty_nester,Paid Search,55-64
+C01316,2025-09-20,Northeast,young_professional,Paid Search,25-34
+C01317,2025-09-23,Midwest,retiree,Email,65+
+C01318,2025-09-23,Midwest,family,Paid Search,45-54
+C01319,2025-09-25,West,empty_nester,Broker,55-64
+C01320,2025-09-26,Northeast,empty_nester,Direct,55-64
+C01321,2025-09-27,Midwest,young_professional,Organic Search,25-34
+C01322,2025-09-27,Midwest,family,Referral,35-44
+C01323,2025-09-28,Northeast,empty_nester,Direct,55-64
+C01324,2025-09-28,Northeast,family,Organic Search,25-34
+C01325,2025-09-29,Midwest,young_professional,Referral,25-34
+C01326,2025-09-29,West,family,Organic Social,25-34
+C01327,2025-09-29,Midwest,young_professional,Direct,25-34
+C01328,2025-10-03,West,empty_nester,Email,55-64
+C01329,2025-10-03,Northeast,empty_nester,Email,55-64
+C01330,2025-10-04,Southeast,young_professional,Referral,25-34
+C01331,2025-10-04,Southwest,young_professional,Organic Search,18-24
+C01332,2025-10-04,Southeast,empty_nester,Broker,45-54
+C01333,2025-10-05,Southwest,family,Referral,25-34
+C01334,2025-10-05,Midwest,retiree,Organic Search,65+
+C01335,2025-10-06,Southeast,landlord,Broker,65+
+C01336,2025-10-06,West,family,Direct,25-34
+C01337,2025-10-07,Northeast,empty_nester,Broker,45-54
+C01338,2025-10-07,Southeast,empty_nester,Organic Search,55-64
+C01339,2025-10-09,Midwest,empty_nester,Direct,55-64
+C01340,2025-10-09,Midwest,landlord,Referral,35-44
+C01341,2025-10-09,Southwest,family,Organic Search,25-34
+C01342,2025-10-09,West,landlord,Broker,35-44
+C01343,2025-10-10,West,young_professional,Organic Search,25-34
+C01344,2025-10-10,West,young_professional,Paid Search,25-34
+C01345,2025-10-10,Northeast,empty_nester,Organic Search,55-64
+C01346,2025-10-11,Midwest,family,Referral,35-44
+C01347,2025-10-11,Southeast,retiree,Paid Search,55-64
+C01348,2025-10-11,West,family,Display,35-44
+C01349,2025-10-12,Northeast,retiree,Broker,65+
+C01350,2025-10-12,Northeast,retiree,Organic Search,65+
+C01351,2025-10-13,Midwest,empty_nester,Paid Search,55-64
+C01352,2025-10-14,Southeast,family,Paid Search,25-34
+C01353,2025-10-14,Northeast,empty_nester,Paid Search,55-64
+C01354,2025-10-14,Southeast,retiree,Direct,55-64
+C01355,2025-10-14,Midwest,family,Broker,35-44
+C01356,2025-10-16,Southeast,empty_nester,Broker,45-54
+C01357,2025-10-17,Northeast,family,Email,35-44
+C01358,2025-10-18,West,retiree,Organic Search,55-64
+C01359,2025-10-18,Southeast,retiree,Paid Search,65+
+C01360,2025-10-18,Midwest,landlord,Paid Social,65+
+C01361,2025-10-19,West,landlord,Organic Search,55-64
+C01362,2025-10-20,West,landlord,Organic Search,55-64
+C01363,2025-10-20,Northeast,empty_nester,Paid Search,45-54
+C01364,2025-10-21,Midwest,young_professional,Organic Search,25-34
+C01365,2025-10-21,West,retiree,Broker,65+
+C01366,2025-10-21,Southwest,young_professional,Paid Search,25-34
+C01367,2025-10-22,Southeast,family,Organic Search,35-44
+C01368,2025-10-22,Midwest,young_professional,Direct,25-34
+C01369,2025-10-23,West,family,Direct,25-34
+C01370,2025-10-23,Northeast,landlord,Broker,55-64
+C01371,2025-10-23,Northeast,empty_nester,Organic Search,55-64
+C01372,2025-10-24,Southwest,retiree,Referral,65+
+C01373,2025-10-24,Midwest,family,Organic Search,45-54
+C01374,2025-10-24,Southeast,young_professional,Organic Search,18-24
+C01375,2025-10-25,Midwest,landlord,Broker,45-54
+C01376,2025-10-25,Midwest,retiree,Paid Social,65+
+C01377,2025-10-25,Northeast,family,Broker,45-54
+C01378,2025-10-26,West,young_professional,Organic Search,18-24
+C01379,2025-10-26,Southeast,empty_nester,Paid Social,45-54
+C01380,2025-10-27,Midwest,family,Organic Search,35-44
+C01381,2025-10-27,Midwest,young_professional,Broker,25-34
+C01382,2025-10-27,Northeast,landlord,Referral,35-44
+C01383,2025-10-27,West,retiree,Email,55-64
+C01384,2025-10-28,Southwest,landlord,Paid Search,45-54
+C01385,2025-10-28,West,young_professional,Paid Search,25-34
+C01386,2025-10-28,Northeast,empty_nester,Paid Social,45-54
+C01387,2025-10-30,Midwest,empty_nester,Broker,55-64
+C01388,2025-10-31,West,young_professional,Broker,25-34
+C01389,2025-11-01,Midwest,empty_nester,Paid Search,55-64
+C01390,2025-11-02,Southeast,retiree,Organic Search,65+
+C01391,2025-11-02,Southeast,young_professional,Organic Search,25-34
+C01392,2025-11-04,West,landlord,Display,45-54
+C01393,2025-11-04,Southeast,family,Organic Search,25-34
+C01394,2025-11-04,Southeast,family,Paid Search,35-44
+C01395,2025-11-05,Northeast,young_professional,Paid Search,25-34
+C01396,2025-11-05,Southeast,young_professional,Referral,35-44
+C01397,2025-11-06,West,family,Paid Search,35-44
+C01398,2025-11-08,Northeast,retiree,Organic Search,65+
+C01399,2025-11-09,Southwest,family,Organic Search,25-34
+C01400,2025-11-09,West,young_professional,Organic Social,18-24
+C01401,2025-11-10,Southwest,young_professional,Broker,25-34
+C01402,2025-11-11,Southeast,retiree,Paid Social,65+
+C01403,2025-11-11,West,young_professional,Paid Search,25-34
+C01404,2025-11-14,Midwest,retiree,Email,65+
+C01405,2025-11-14,Southwest,young_professional,Broker,25-34
+C01406,2025-11-15,Midwest,empty_nester,Paid Search,55-64
+C01407,2025-11-16,Northeast,retiree,Paid Social,55-64
+C01408,2025-11-16,Midwest,young_professional,Organic Search,18-24
+C01409,2025-11-16,Midwest,retiree,Email,65+
+C01410,2025-11-17,Midwest,family,Email,25-34
+C01411,2025-11-18,West,empty_nester,Organic Search,45-54
+C01412,2025-11-19,Northeast,young_professional,Organic Social,25-34
+C01413,2025-11-21,Northeast,landlord,Organic Search,55-64
+C01414,2025-11-21,Midwest,landlord,Organic Search,35-44
+C01415,2025-11-22,Midwest,family,Organic Search,25-34
+C01416,2025-11-22,Northeast,family,Direct,45-54
+C01417,2025-11-22,Southwest,family,Paid Search,25-34
+C01418,2025-11-23,Northeast,family,Organic Search,35-44
+C01419,2025-11-23,Midwest,retiree,Paid Search,65+
+C01420,2025-11-23,Midwest,family,Referral,35-44
+C01421,2025-11-26,Northeast,family,Organic Search,35-44
+C01422,2025-11-26,West,empty_nester,Organic Search,45-54
+C01423,2025-11-26,Northeast,young_professional,Organic Social,25-34
+C01424,2025-11-27,Southwest,family,Referral,35-44
+C01425,2025-11-27,Southeast,family,Direct,35-44
+C01426,2025-11-28,Southeast,young_professional,Referral,25-34
+C01427,2025-11-29,Northeast,landlord,Referral,35-44
+C01428,2025-11-29,Midwest,young_professional,Paid Search,25-34
+C01429,2025-11-29,Northeast,retiree,Direct,65+
+C01430,2025-12-01,Southeast,landlord,Organic Search,35-44
+C01431,2025-12-02,Midwest,retiree,Organic Search,55-64
+C01432,2025-12-02,Southeast,family,Paid Search,35-44
+C01433,2025-12-04,West,family,Organic Search,25-34
+C01434,2025-12-04,Southwest,family,Organic Social,35-44
+C01435,2025-12-04,Southeast,empty_nester,Referral,45-54
+C01436,2025-12-05,Southeast,retiree,Email,65+
+C01437,2025-12-06,Midwest,landlord,Email,35-44
+C01438,2025-12-06,Midwest,young_professional,Direct,18-24
+C01439,2025-12-06,Northeast,family,Organic Search,45-54
+C01440,2025-12-06,Southeast,retiree,Email,65+
+C01441,2025-12-09,Southeast,family,Direct,45-54
+C01442,2025-12-09,Northeast,young_professional,Organic Search,25-34
+C01443,2025-12-10,Southwest,family,Email,35-44
+C01444,2025-12-11,West,young_professional,Paid Search,25-34
+C01445,2025-12-12,Southeast,young_professional,Paid Search,35-44
+C01446,2025-12-13,Southwest,family,Broker,45-54
+C01447,2025-12-13,Midwest,family,Broker,35-44
+C01448,2025-12-14,Southeast,young_professional,Paid Search,25-34
+C01449,2025-12-15,Southwest,family,Direct,35-44
+C01450,2025-12-15,Southwest,young_professional,Broker,25-34
+C01451,2025-12-16,West,empty_nester,Email,45-54
+C01452,2025-12-17,West,retiree,Broker,65+
+C01453,2025-12-17,Northeast,empty_nester,Broker,55-64
+C01454,2025-12-18,West,retiree,Referral,65+
+C01455,2025-12-19,Southeast,young_professional,Paid Search,25-34
+C01456,2025-12-19,Midwest,retiree,Broker,65+
+C01457,2025-12-19,West,young_professional,Organic Search,18-24
+C01458,2025-12-19,Midwest,family,Display,45-54
+C01459,2025-12-19,Midwest,family,Organic Search,45-54
+C01460,2025-12-20,Southeast,family,Paid Search,35-44
+C01461,2025-12-21,Southeast,young_professional,Email,25-34
+C01462,2025-12-21,Northeast,empty_nester,Broker,55-64
+C01463,2025-12-22,West,empty_nester,Email,55-64
+C01464,2025-12-22,Northeast,empty_nester,Referral,45-54
+C01465,2025-12-23,Northeast,family,Direct,35-44
+C01466,2025-12-23,Northeast,family,Organic Search,35-44
+C01467,2025-12-24,Southeast,young_professional,Organic Search,25-34
+C01468,2025-12-24,Southwest,retiree,Organic Search,65+
+C01469,2025-12-24,Southwest,young_professional,Paid Search,25-34
+C01470,2025-12-25,Southeast,empty_nester,Email,55-64
+C01471,2025-12-25,Southwest,landlord,Organic Search,45-54
+C01472,2025-12-26,Southeast,family,Organic Search,45-54
+C01473,2025-12-27,West,young_professional,Broker,18-24
+C01474,2025-12-27,Southwest,empty_nester,Organic Search,55-64
+C01475,2025-12-27,Midwest,young_professional,Organic Search,18-24
+C01476,2025-12-28,Northeast,empty_nester,Organic Search,45-54
+C01477,2025-12-28,Southeast,young_professional,Paid Social,25-34
+C01478,2025-12-29,Northeast,empty_nester,Referral,55-64
+C01479,2025-12-29,Southwest,family,Direct,25-34
+C01480,2025-12-29,Southeast,family,Organic Search,45-54
+C01481,2025-12-29,Midwest,family,Direct,25-34
+C01482,2025-12-30,West,young_professional,Paid Search,25-34
+C01483,2025-12-30,West,young_professional,Broker,25-34
+C01484,2025-12-31,Southeast,empty_nester,Paid Search,45-54
+C01485,2025-12-31,West,landlord,Direct,45-54
+C01486,2026-01-01,Southeast,empty_nester,Organic Search,45-54
+C01487,2026-01-02,Southeast,family,Organic Search,25-34
+C01488,2026-01-02,Northeast,young_professional,Organic Search,25-34
+C01489,2026-01-03,Southeast,young_professional,Email,25-34
+C01490,2026-01-03,Southwest,family,Organic Search,25-34
+C01491,2026-01-03,Northeast,empty_nester,Broker,55-64
+C01492,2026-01-04,Southwest,retiree,Organic Search,55-64
+C01493,2026-01-04,Southeast,family,Organic Search,25-34
+C01494,2026-01-05,Midwest,family,Broker,25-34
+C01495,2026-01-05,Northeast,family,Paid Search,35-44
+C01496,2026-01-05,Southwest,young_professional,Email,25-34
+C01497,2026-01-07,Southwest,family,Broker,35-44
+C01498,2026-01-07,West,retiree,Organic Search,55-64
+C01499,2026-01-08,Northeast,young_professional,Organic Search,25-34
+C01500,2026-01-08,Midwest,family,Paid Social,35-44
+C01501,2026-01-08,Southwest,family,Paid Search,35-44
+C01502,2026-01-09,West,retiree,Display,65+
+C01503,2026-01-10,Southwest,empty_nester,Paid Social,55-64
+C01504,2026-01-10,Northeast,empty_nester,Organic Search,45-54
+C01505,2026-01-12,Southeast,family,Referral,45-54
+C01506,2026-01-12,Midwest,empty_nester,Paid Search,45-54
+C01507,2026-01-12,Midwest,young_professional,Paid Search,25-34
+C01508,2026-01-12,Midwest,retiree,Organic Search,55-64
+C01509,2026-01-12,Northeast,family,Referral,25-34
+C01510,2026-01-14,West,family,Broker,35-44
+C01511,2026-01-14,Northeast,landlord,Paid Search,45-54
+C01512,2026-01-15,Northeast,young_professional,Referral,18-24
+C01513,2026-01-15,West,retiree,Paid Search,65+
+C01514,2026-01-16,Southeast,young_professional,Paid Search,25-34
+C01515,2026-01-16,Midwest,family,Broker,35-44
+C01516,2026-01-17,Northeast,family,Direct,35-44
+C01517,2026-01-18,Southeast,retiree,Direct,55-64
+C01518,2026-01-18,Northeast,family,Broker,35-44
+C01519,2026-01-18,West,family,Email,45-54
+C01520,2026-01-18,West,family,Organic Search,45-54
+C01521,2026-01-18,Southeast,family,Referral,25-34
+C01522,2026-01-20,Northeast,family,Direct,35-44
+C01523,2026-01-21,Northeast,landlord,Organic Social,45-54
+C01524,2026-01-22,Northeast,retiree,Organic Search,65+
+C01525,2026-01-22,Midwest,family,Organic Search,35-44
+C01526,2026-01-23,West,retiree,Referral,55-64
+C01527,2026-01-23,Northeast,family,Broker,35-44
+C01528,2026-01-23,West,family,Broker,35-44
+C01529,2026-01-23,Southwest,family,Paid Search,25-34
+C01530,2026-01-25,Southeast,landlord,Organic Social,55-64
+C01531,2026-01-26,West,young_professional,Direct,35-44
+C01532,2026-01-27,West,family,Direct,35-44
+C01533,2026-01-28,Northeast,retiree,Broker,55-64
+C01534,2026-01-28,Northeast,family,Broker,25-34
+C01535,2026-01-28,West,retiree,Broker,55-64
+C01536,2026-01-28,Northeast,young_professional,Paid Search,18-24
+C01537,2026-01-29,Southeast,landlord,Organic Search,45-54
+C01538,2026-01-29,Northeast,landlord,Referral,35-44
+C01539,2026-01-30,West,family,Paid Search,45-54
+C01540,2026-01-30,Midwest,young_professional,Broker,25-34
+C01541,2026-01-30,Southeast,empty_nester,Paid Search,55-64
+C01542,2026-01-30,Southwest,empty_nester,Display,55-64
+C01543,2026-02-01,Northeast,family,Email,35-44
+C01544,2026-02-01,Midwest,retiree,Broker,65+
+C01545,2026-02-01,West,young_professional,Paid Search,25-34
+C01546,2026-02-03,West,family,Email,35-44
+C01547,2026-02-03,West,young_professional,Organic Search,18-24
+C01548,2026-02-03,Southeast,young_professional,Organic Search,25-34
+C01549,2026-02-04,Midwest,landlord,Broker,35-44
+C01550,2026-02-04,West,empty_nester,Paid Search,55-64
+C01551,2026-02-04,Northeast,young_professional,Organic Search,25-34
+C01552,2026-02-04,Southeast,family,Email,25-34
+C01553,2026-02-05,Midwest,family,Direct,45-54
+C01554,2026-02-05,Midwest,young_professional,Paid Search,25-34
+C01555,2026-02-06,West,retiree,Paid Search,65+
+C01556,2026-02-06,Northeast,family,Paid Search,45-54
+C01557,2026-02-07,West,family,Organic Search,45-54
+C01558,2026-02-07,Northeast,empty_nester,Organic Search,45-54
+C01559,2026-02-08,Midwest,family,Paid Search,35-44
+C01560,2026-02-08,Southeast,retiree,Broker,65+
+C01561,2026-02-08,Southeast,landlord,Direct,55-64
+C01562,2026-02-09,Northeast,empty_nester,Paid Social,45-54
+C01563,2026-02-10,Midwest,empty_nester,Broker,45-54
+C01564,2026-02-10,Midwest,retiree,Broker,65+
+C01565,2026-02-11,Northeast,family,Email,25-34
+C01566,2026-02-12,Northeast,landlord,Paid Search,45-54
+C01567,2026-02-12,Midwest,retiree,Broker,65+
+C01568,2026-02-13,West,family,Organic Search,35-44
+C01569,2026-02-14,West,family,Direct,35-44
+C01570,2026-02-14,Northeast,family,Paid Search,45-54
+C01571,2026-02-14,Southeast,young_professional,Referral,25-34
+C01572,2026-02-14,Northeast,family,Paid Social,25-34
+C01573,2026-02-16,Northeast,retiree,Paid Social,65+
+C01574,2026-02-16,West,young_professional,Direct,25-34
+C01575,2026-02-16,Southeast,family,Paid Social,35-44
+C01576,2026-02-16,Midwest,young_professional,Referral,18-24
+C01577,2026-02-17,Midwest,young_professional,Organic Social,25-34
+C01578,2026-02-18,West,family,Organic Social,35-44
+C01579,2026-02-18,Northeast,empty_nester,Organic Search,45-54
+C01580,2026-02-18,Southeast,retiree,Direct,65+
+C01581,2026-02-18,Southwest,landlord,Organic Search,35-44
+C01582,2026-02-19,Northeast,retiree,Direct,55-64
+C01583,2026-02-20,Northeast,family,Display,35-44
+C01584,2026-02-20,Northeast,family,Organic Search,45-54
+C01585,2026-02-21,Midwest,young_professional,Organic Search,25-34
+C01586,2026-02-23,Northeast,family,Referral,35-44
+C01587,2026-02-24,Midwest,young_professional,Broker,25-34
+C01588,2026-02-26,Southwest,retiree,Referral,65+
+C01589,2026-02-26,Northeast,retiree,Paid Social,55-64
+C01590,2026-02-27,Southwest,empty_nester,Broker,55-64
+C01591,2026-02-28,Midwest,retiree,Paid Search,65+
+C01592,2026-03-03,Southwest,young_professional,Paid Search,35-44
+C01593,2026-03-05,Midwest,family,Direct,25-34
+C01594,2026-03-05,West,landlord,Paid Search,55-64
+C01595,2026-03-06,Southeast,retiree,Broker,65+
+C01596,2026-03-07,Southwest,landlord,Direct,45-54
+C01597,2026-03-08,Midwest,family,Organic Search,35-44
+C01598,2026-03-08,Northeast,landlord,Direct,55-64
+C01599,2026-03-09,Midwest,retiree,Paid Search,65+
+C01600,2026-03-09,Southwest,landlord,Direct,65+
+C01601,2026-03-10,Midwest,family,Display,35-44
+C01602,2026-03-10,West,young_professional,Broker,18-24
+C01603,2026-03-10,Northeast,retiree,Organic Search,65+
+C01604,2026-03-11,Northeast,landlord,Display,55-64
+C01605,2026-03-11,Northeast,family,Broker,45-54
+C01606,2026-03-12,Midwest,family,Referral,35-44
+C01607,2026-03-12,West,family,Organic Search,45-54
+C01608,2026-03-12,Northeast,empty_nester,Organic Search,45-54
+C01609,2026-03-12,Northeast,family,Paid Social,35-44
+C01610,2026-03-12,Midwest,landlord,Email,45-54
+C01611,2026-03-12,Northeast,family,Organic Search,35-44
+C01612,2026-03-16,Southwest,young_professional,Organic Search,25-34
+C01613,2026-03-16,West,young_professional,Broker,18-24
+C01614,2026-03-17,West,young_professional,Organic Social,25-34
+C01615,2026-03-17,Midwest,family,Organic Search,35-44
+C01616,2026-03-17,Northeast,retiree,Direct,65+
+C01617,2026-03-18,Midwest,young_professional,Broker,25-34
+C01618,2026-03-18,Southeast,family,Organic Search,35-44
+C01619,2026-03-18,West,family,Referral,45-54
+C01620,2026-03-19,Northeast,family,Organic Search,35-44
+C01621,2026-03-19,Southeast,family,Organic Search,25-34
+C01622,2026-03-20,Midwest,empty_nester,Paid Search,55-64
+C01623,2026-03-21,West,retiree,Organic Search,65+
+C01624,2026-03-22,Southwest,family,Email,45-54
+C01625,2026-03-25,West,retiree,Direct,65+
+C01626,2026-03-26,Southwest,retiree,Organic Search,65+
+C01627,2026-03-26,West,empty_nester,Broker,55-64
+C01628,2026-03-27,Southeast,landlord,Organic Search,55-64
+C01629,2026-03-27,Midwest,family,Email,35-44
+C01630,2026-03-27,Southwest,family,Organic Search,25-34
+C01631,2026-03-28,Southeast,family,Broker,35-44
+C01632,2026-03-29,Southwest,family,Referral,25-34
+C01633,2026-04-01,West,retiree,Email,65+
+C01634,2026-04-02,Northeast,empty_nester,Direct,45-54
+C01635,2026-04-02,West,young_professional,Organic Search,25-34
+C01636,2026-04-02,Midwest,empty_nester,Paid Search,55-64
+C01637,2026-04-02,Southwest,retiree,Paid Search,65+
+C01638,2026-04-05,Southeast,young_professional,Organic Search,25-34
+C01639,2026-04-06,Southeast,retiree,Organic Search,65+
+C01640,2026-04-07,Midwest,family,Organic Search,45-54
+C01641,2026-04-07,Midwest,landlord,Organic Search,35-44
+C01642,2026-04-08,Southeast,empty_nester,Organic Search,45-54
+C01643,2026-04-08,West,landlord,Organic Search,65+
+C01644,2026-04-10,Midwest,young_professional,Broker,18-24
+C01645,2026-04-10,Northeast,family,Paid Search,45-54
+C01646,2026-04-12,Southwest,young_professional,Broker,25-34
+C01647,2026-04-13,Southwest,family,Direct,45-54
+C01648,2026-04-13,West,empty_nester,Broker,45-54
+C01649,2026-04-13,Northeast,retiree,Direct,65+
+C01650,2026-04-13,West,family,Organic Search,45-54
+C01651,2026-04-14,Southeast,empty_nester,Organic Search,55-64
+C01652,2026-04-14,Southeast,family,Direct,25-34
+C01653,2026-04-15,Northeast,family,Broker,35-44
+C01654,2026-04-15,West,retiree,Direct,55-64
+C01655,2026-04-15,West,landlord,Email,55-64
+C01656,2026-04-16,West,retiree,Paid Search,65+
+C01657,2026-04-16,Northeast,landlord,Direct,55-64
+C01658,2026-04-16,Northeast,landlord,Email,55-64
+C01659,2026-04-16,Midwest,family,Direct,45-54
+C01660,2026-04-17,Northeast,young_professional,Display,35-44
+C01661,2026-04-17,Southwest,retiree,Paid Search,65+
+C01662,2026-04-18,Midwest,family,Broker,45-54
+C01663,2026-04-19,Midwest,landlord,Broker,35-44
+C01664,2026-04-20,Southwest,family,Organic Search,25-34
+C01665,2026-04-20,Southeast,landlord,Organic Search,35-44
+C01666,2026-04-20,Southeast,young_professional,Display,18-24
+C01667,2026-04-21,Southeast,empty_nester,Direct,55-64
+C01668,2026-04-21,Northeast,empty_nester,Paid Search,45-54
+C01669,2026-04-21,Southwest,young_professional,Paid Search,25-34
+C01670,2026-04-22,Southwest,landlord,Organic Search,45-54
+C01671,2026-04-22,Southeast,family,Paid Search,45-54
+C01672,2026-04-22,Midwest,young_professional,Organic Search,18-24
+C01673,2026-04-23,Southeast,retiree,Referral,65+
+C01674,2026-04-25,Northeast,empty_nester,Organic Social,55-64
+C01675,2026-04-27,Northeast,retiree,Organic Search,65+
+C01676,2026-04-28,Southwest,empty_nester,Direct,55-64
+C01677,2026-04-28,Midwest,family,Broker,35-44
+C01678,2026-04-28,West,landlord,Broker,65+
+C01679,2026-04-28,Southwest,empty_nester,Direct,55-64
+C01680,2026-04-29,Southeast,family,Broker,45-54
+C01681,2026-04-29,Midwest,retiree,Paid Social,55-64
+C01682,2026-04-29,Midwest,retiree,Organic Search,65+
+C01683,2026-04-30,Southeast,young_professional,Paid Search,25-34
+C01684,2026-05-02,Midwest,landlord,Organic Search,35-44
+C01685,2026-05-02,Northeast,landlord,Paid Search,35-44
+C01686,2026-05-03,Northeast,young_professional,Organic Search,18-24
+C01687,2026-05-03,Southwest,retiree,Email,65+
+C01688,2026-05-03,Southeast,landlord,Broker,55-64
+C01689,2026-05-04,Southwest,empty_nester,Paid Search,45-54
+C01690,2026-05-04,Midwest,landlord,Organic Search,55-64
+C01691,2026-05-04,Northeast,family,Email,35-44
+C01692,2026-05-05,Southeast,empty_nester,Paid Social,55-64
+C01693,2026-05-06,Southeast,empty_nester,Email,45-54
+C01694,2026-05-06,Southeast,family,Paid Search,35-44
+C01695,2026-05-08,Northeast,family,Broker,45-54
+C01696,2026-05-08,Southwest,family,Direct,25-34
+C01697,2026-05-09,West,retiree,Display,65+
+C01698,2026-05-09,West,family,Paid Search,45-54
+C01699,2026-05-10,Midwest,young_professional,Direct,25-34
+C01700,2026-05-10,Southeast,empty_nester,Organic Search,45-54
+C01701,2026-05-11,Southwest,family,Paid Search,35-44
+C01702,2026-05-12,Midwest,family,Organic Search,45-54
+C01703,2026-05-12,Northeast,empty_nester,Organic Search,55-64
+C01704,2026-05-13,Southeast,empty_nester,Direct,55-64
+C01705,2026-05-14,Northeast,family,Paid Search,35-44
+C01706,2026-05-14,Northeast,family,Email,45-54
+C01707,2026-05-14,Northeast,family,Paid Search,25-34
+C01708,2026-05-14,Northeast,young_professional,Email,25-34
+C01709,2026-05-14,West,empty_nester,Direct,45-54
+C01710,2026-05-15,Southeast,retiree,Organic Search,65+
+C01711,2026-05-16,Midwest,empty_nester,Paid Search,55-64
+C01712,2026-05-17,Southeast,young_professional,Paid Search,18-24
+C01713,2026-05-17,Southeast,family,Paid Search,45-54
+C01714,2026-05-19,Northeast,empty_nester,Organic Social,55-64
+C01715,2026-05-19,Northeast,family,Email,45-54
+C01716,2026-05-20,Southeast,family,Paid Search,35-44
+C01717,2026-05-21,Northeast,landlord,Organic Search,55-64
+C01718,2026-05-22,Northeast,family,Broker,35-44
+C01719,2026-05-22,Southeast,family,Paid Social,35-44
+C01720,2026-05-23,Southwest,young_professional,Email,18-24
+C01721,2026-05-23,Northeast,family,Broker,45-54
+C01722,2026-05-24,Northeast,family,Organic Search,35-44
+C01723,2026-05-24,Midwest,family,Email,25-34
+C01724,2026-05-24,Northeast,family,Paid Search,35-44
+C01725,2026-05-25,Southeast,young_professional,Organic Search,25-34
+C01726,2026-05-25,Northeast,empty_nester,Organic Search,45-54
+C01727,2026-05-25,Midwest,family,Paid Social,45-54
+C01728,2026-05-25,West,retiree,Organic Search,65+
+C01729,2026-05-25,Northeast,retiree,Email,65+
+C01730,2026-05-25,Northeast,retiree,Broker,65+
+C01731,2026-05-26,Midwest,retiree,Broker,65+
+C01732,2026-05-28,Northeast,young_professional,Organic Search,18-24
+C01733,2026-05-29,Midwest,young_professional,Paid Search,25-34
+C01734,2026-05-30,Midwest,young_professional,Broker,25-34
+C01735,2026-06-01,Southeast,landlord,Paid Search,35-44
+C01736,2026-06-01,West,young_professional,Paid Social,25-34
+C01737,2026-06-02,Southwest,family,Organic Search,45-54
+C01738,2026-06-02,Southeast,landlord,Broker,55-64
+C01739,2026-06-03,West,family,Organic Search,35-44
+C01740,2026-06-03,Midwest,retiree,Paid Search,65+
+C01741,2026-06-04,West,retiree,Organic Search,65+
+C01742,2026-06-04,Southeast,young_professional,Broker,35-44
+C01743,2026-06-06,Southeast,family,Organic Search,35-44
+C01744,2026-06-07,Northeast,young_professional,Organic Search,25-34
+C01745,2026-06-09,Southeast,retiree,Broker,65+
+C01746,2026-06-09,Northeast,empty_nester,Organic Search,55-64
+C01747,2026-06-10,Northeast,retiree,Email,55-64
+C01748,2026-06-10,West,young_professional,Email,25-34
+C01749,2026-06-11,Southwest,family,Direct,25-34
+C01750,2026-06-11,Northeast,retiree,Email,65+
+C01751,2026-06-11,Northeast,empty_nester,Email,45-54
+C01752,2026-06-11,Southeast,landlord,Referral,45-54
+C01753,2026-06-12,Northeast,empty_nester,Broker,55-64
+C01754,2026-06-12,Midwest,young_professional,Organic Search,25-34
+C01755,2026-06-12,West,retiree,Broker,65+
+C01756,2026-06-12,Midwest,young_professional,Email,25-34
+C01757,2026-06-12,Midwest,landlord,Email,35-44
+C01758,2026-06-12,Southwest,young_professional,Organic Search,18-24
+C01759,2026-06-12,Southeast,family,Broker,45-54
+C01760,2026-06-13,Southeast,young_professional,Email,35-44
+C01761,2026-06-13,Southeast,retiree,Paid Social,55-64
+C01762,2026-06-13,Northeast,empty_nester,Email,45-54
+C01763,2026-06-14,Midwest,landlord,Broker,45-54
+C01764,2026-06-14,Northeast,empty_nester,Email,45-54
+C01765,2026-06-15,Northeast,empty_nester,Email,45-54
+C01766,2026-06-15,Southwest,young_professional,Paid Search,25-34
+C01767,2026-06-15,Midwest,landlord,Direct,35-44
+C01768,2026-06-16,Midwest,landlord,Organic Search,35-44
+C01769,2026-06-16,West,landlord,Direct,45-54
+C01770,2026-06-18,Northeast,landlord,Direct,45-54
+C01771,2026-06-19,Midwest,retiree,Paid Search,65+
+C01772,2026-06-19,Southeast,empty_nester,Display,55-64
+C01773,2026-06-19,Midwest,family,Organic Search,45-54
+C01774,2026-06-20,Southeast,young_professional,Display,25-34
+C01775,2026-06-21,Southeast,landlord,Paid Search,35-44
+C01776,2026-06-21,Southeast,young_professional,Referral,18-24
+C01777,2026-06-21,Southwest,retiree,Paid Search,65+
+C01778,2026-06-21,Southeast,young_professional,Direct,25-34
+C01779,2026-06-21,West,family,Organic Search,35-44
+C01780,2026-06-22,Northeast,retiree,Organic Search,65+
+C01781,2026-06-22,Midwest,family,Email,35-44
+C01782,2026-06-22,Midwest,landlord,Organic Social,45-54
+C01783,2026-06-22,Northeast,family,Organic Social,45-54
+C01784,2026-06-23,West,young_professional,Email,25-34
+C01785,2026-06-23,Southeast,landlord,Email,35-44
+C01786,2026-06-23,Northeast,retiree,Direct,65+
+C01787,2026-06-25,West,empty_nester,Broker,55-64
+C01788,2026-06-25,Southeast,empty_nester,Organic Search,55-64
+C01789,2026-06-25,Southeast,empty_nester,Organic Search,45-54
+C01790,2026-06-25,Southwest,young_professional,Organic Search,25-34
+C01791,2026-06-26,Southeast,young_professional,Direct,18-24
+C01792,2026-06-26,Midwest,family,Organic Search,35-44
+C01793,2026-06-26,Northeast,retiree,Paid Search,65+
+C01794,2026-06-27,Southwest,family,Organic Search,35-44
+C01795,2026-06-27,West,empty_nester,Broker,45-54
+C01796,2026-06-27,Southwest,family,Referral,35-44
+C01797,2026-06-28,Southwest,empty_nester,Organic Search,55-64
+C01798,2026-06-28,Midwest,empty_nester,Email,55-64
+C01799,2026-06-29,Southeast,family,Direct,45-54
+C01800,2026-06-30,Midwest,family,Referral,45-54
+C01801,2026-07-01,Southeast,empty_nester,Organic Search,45-54
+C01802,2026-07-01,Southeast,young_professional,Organic Search,25-34
+C01803,2026-07-01,Southeast,family,Broker,35-44
+C01804,2026-07-01,West,young_professional,Organic Search,25-34
+C01805,2026-07-02,Midwest,family,Email,45-54
+C01806,2026-07-02,Southeast,young_professional,Organic Search,25-34
+C01807,2026-07-04,Northeast,young_professional,Organic Search,18-24
+C01808,2026-07-04,Southeast,retiree,Broker,65+
+C01809,2026-07-04,Southeast,empty_nester,Broker,45-54
+C01810,2026-07-04,West,family,Paid Search,45-54
+C01811,2026-07-06,Midwest,landlord,Organic Search,55-64
+C01812,2026-07-06,Southwest,young_professional,Organic Search,25-34
+C01813,2026-07-06,Northeast,family,Organic Search,35-44
+C01814,2026-07-06,Midwest,young_professional,Broker,18-24
+C01815,2026-07-07,Midwest,young_professional,Organic Search,18-24
+C01816,2026-07-07,Northeast,family,Paid Search,45-54
+C01817,2026-07-07,Southeast,empty_nester,Organic Search,55-64
+C01818,2026-07-07,Midwest,young_professional,Broker,25-34
+C01819,2026-07-08,Midwest,family,Email,35-44
+C01820,2026-07-09,West,empty_nester,Organic Search,55-64
+C01821,2026-07-10,Northeast,family,Organic Search,35-44
+C01822,2026-07-10,Midwest,family,Broker,25-34
+C01823,2026-07-10,Northeast,landlord,Email,55-64
+C01824,2026-07-10,Southeast,landlord,Broker,65+
+C01825,2026-07-13,West,empty_nester,Paid Search,55-64
+C01826,2026-07-14,Northeast,family,Direct,35-44
+C01827,2026-07-14,Northeast,family,Paid Search,35-44
+C01828,2026-07-14,West,family,Organic Search,45-54
+C01829,2026-07-14,West,family,Paid Search,45-54
+C01830,2026-07-14,West,landlord,Direct,45-54
+C01831,2026-07-15,Midwest,family,Direct,25-34
+C01832,2026-07-15,Midwest,empty_nester,Direct,45-54
+C01833,2026-07-16,Southeast,family,Direct,35-44
+C01834,2026-07-16,Midwest,retiree,Organic Search,55-64
+C01835,2026-07-16,Northeast,young_professional,Email,25-34
+C01836,2026-07-17,West,young_professional,Paid Search,18-24
+C01837,2026-07-17,Northeast,young_professional,Direct,25-34
+C01838,2026-07-17,Northeast,young_professional,Organic Search,25-34
+C01839,2026-07-17,Midwest,landlord,Direct,45-54
+C01840,2026-07-18,Northeast,young_professional,Paid Search,25-34
+C01841,2026-07-18,Southeast,young_professional,Paid Search,25-34
+C01842,2026-07-19,Southeast,family,Paid Social,45-54
+C01843,2026-07-19,Southeast,family,Organic Search,25-34
+C01844,2026-07-20,Southwest,retiree,Broker,65+
+C01845,2026-07-20,Northeast,family,Organic Search,45-54
+C01846,2026-07-20,Southwest,young_professional,Organic Search,18-24
+C01847,2026-07-21,Southwest,landlord,Paid Search,35-44
+C01848,2026-07-21,West,family,Direct,35-44
+C01849,2026-07-21,Southwest,family,Referral,25-34
+C01850,2026-07-22,Southeast,empty_nester,Paid Social,45-54
+C01851,2026-07-22,Southwest,family,Paid Search,45-54
+C01852,2026-07-23,West,young_professional,Organic Search,25-34
+C01853,2026-07-23,West,young_professional,Broker,18-24
+C01854,2026-07-23,West,family,Organic Search,35-44
+C01855,2026-07-23,Southeast,empty_nester,Paid Search,45-54
+C01856,2026-07-23,Northeast,empty_nester,Paid Social,55-64
+C01857,2026-07-24,Southeast,empty_nester,Organic Search,55-64
+C01858,2026-07-24,West,family,Paid Search,35-44
+C01859,2026-07-25,Midwest,young_professional,Paid Search,25-34
+C01860,2026-07-25,West,young_professional,Broker,25-34
+C01861,2026-07-25,West,empty_nester,Email,55-64
+C01862,2026-07-27,Southeast,family,Organic Search,35-44
+C01863,2026-07-28,West,landlord,Paid Search,55-64
+C01864,2026-07-29,Northeast,family,Paid Search,25-34
+C01865,2026-07-30,Midwest,family,Direct,35-44
+C01866,2026-07-30,Midwest,family,Paid Search,25-34
+C01867,2026-07-30,Midwest,landlord,Organic Search,45-54
+C01868,2026-07-31,Midwest,retiree,Broker,65+
+C01869,2026-07-31,Northeast,young_professional,Paid Social,25-34
+C01870,2026-08-01,West,retiree,Broker,55-64
+C01871,2026-08-02,West,empty_nester,Display,45-54
+C01872,2026-08-04,Midwest,young_professional,Direct,25-34
+C01873,2026-08-04,Northeast,young_professional,Direct,18-24
+C01874,2026-08-04,West,landlord,Referral,65+
+C01875,2026-08-04,Northeast,young_professional,Referral,25-34
+C01876,2026-08-04,Northeast,family,Organic Search,45-54
+C01877,2026-08-05,West,retiree,Organic Search,65+
+C01878,2026-08-05,Northeast,young_professional,Organic Search,18-24
+C01879,2026-08-06,West,young_professional,Paid Search,25-34
+C01880,2026-08-06,Southwest,family,Broker,35-44
+C01881,2026-08-07,West,young_professional,Organic Search,18-24
+C01882,2026-08-07,Northeast,family,Direct,35-44
+C01883,2026-08-07,West,empty_nester,Broker,45-54
+C01884,2026-08-07,Midwest,young_professional,Direct,25-34
+C01885,2026-08-08,Southwest,landlord,Display,45-54
+C01886,2026-08-08,Midwest,young_professional,Paid Search,18-24
+C01887,2026-08-09,Southwest,empty_nester,Broker,55-64
+C01888,2026-08-09,Southeast,empty_nester,Paid Search,55-64
+C01889,2026-08-10,Midwest,retiree,Direct,65+
+C01890,2026-08-10,Northeast,family,Email,35-44
+C01891,2026-08-12,Southeast,retiree,Paid Search,65+
+C01892,2026-08-12,Southwest,family,Organic Search,35-44
+C01893,2026-08-14,Northeast,retiree,Organic Social,65+
+C01894,2026-08-14,Southeast,empty_nester,Organic Search,55-64
+C01895,2026-08-14,Midwest,family,Direct,35-44
+C01896,2026-08-14,Northeast,retiree,Broker,65+
+C01897,2026-08-14,Southeast,landlord,Organic Search,55-64
+C01898,2026-08-14,Northeast,empty_nester,Direct,55-64
+C01899,2026-08-16,Northeast,empty_nester,Paid Search,55-64
+C01900,2026-08-17,Northeast,family,Organic Social,35-44
+C01901,2026-08-17,West,retiree,Organic Search,65+
+C01902,2026-08-17,Southwest,young_professional,Direct,25-34
+C01903,2026-08-18,West,family,Direct,35-44
+C01904,2026-08-18,West,young_professional,Direct,18-24
+C01905,2026-08-18,West,young_professional,Organic Search,35-44
+C01906,2026-08-18,Northeast,empty_nester,Organic Search,45-54
+C01907,2026-08-18,West,young_professional,Referral,25-34
+C01908,2026-08-19,Southeast,family,Referral,25-34
+C01909,2026-08-20,Midwest,young_professional,Broker,25-34
+C01910,2026-08-20,Southeast,family,Organic Search,45-54
+C01911,2026-08-21,West,family,Organic Search,45-54
+C01912,2026-08-21,Southeast,family,Organic Search,35-44
+C01913,2026-08-22,Southwest,young_professional,Organic Search,18-24
+C01914,2026-08-26,Northeast,landlord,Direct,45-54
+C01915,2026-08-26,West,family,Organic Social,25-34
+C01916,2026-08-27,West,young_professional,Direct,25-34
+C01917,2026-08-28,Midwest,family,Direct,35-44
+C01918,2026-08-28,Southwest,family,Direct,25-34
+C01919,2026-08-28,Midwest,landlord,Organic Search,35-44
+C01920,2026-08-28,Southeast,family,Paid Search,35-44
+C01921,2026-08-29,Midwest,empty_nester,Organic Search,45-54
+C01922,2026-08-29,West,family,Email,45-54
+C01923,2026-08-31,Southeast,empty_nester,Email,55-64
+C01924,2026-08-31,Northeast,retiree,Organic Search,65+
+C01925,2026-08-31,Southeast,young_professional,Direct,25-34
+C01926,2026-09-01,West,young_professional,Paid Search,25-34
+C01927,2026-09-01,Midwest,young_professional,Email,35-44
+C01928,2026-09-02,Southeast,family,Broker,45-54
+C01929,2026-09-03,Southeast,young_professional,Organic Search,35-44
+C01930,2026-09-03,Southeast,family,Organic Search,35-44
+C01931,2026-09-03,Midwest,family,Direct,35-44
+C01932,2026-09-03,Southeast,family,Paid Search,45-54
+C01933,2026-09-03,Southeast,family,Organic Search,45-54
+C01934,2026-09-04,West,young_professional,Paid Search,25-34
+C01935,2026-09-05,West,family,Email,45-54
+C01936,2026-09-05,Midwest,landlord,Direct,35-44
+C01937,2026-09-05,Midwest,empty_nester,Organic Search,55-64
+C01938,2026-09-07,West,empty_nester,Email,45-54
+C01939,2026-09-07,Southeast,landlord,Organic Search,45-54
+C01940,2026-09-07,Southeast,retiree,Direct,65+
+C01941,2026-09-07,Southeast,empty_nester,Email,55-64
+C01942,2026-09-08,Southwest,young_professional,Organic Search,18-24
+C01943,2026-09-08,Southeast,empty_nester,Broker,55-64
+C01944,2026-09-09,West,empty_nester,Organic Search,55-64
+C01945,2026-09-10,West,empty_nester,Paid Search,55-64
+C01946,2026-09-10,West,family,Broker,45-54
+C01947,2026-09-10,Southwest,young_professional,Organic Search,18-24
+C01948,2026-09-10,West,empty_nester,Email,45-54
+C01949,2026-09-10,Southwest,empty_nester,Organic Search,55-64
+C01950,2026-09-10,Midwest,empty_nester,Organic Search,45-54
+C01951,2026-09-11,West,young_professional,Broker,35-44
+C01952,2026-09-11,West,family,Email,35-44
+C01953,2026-09-11,Northeast,family,Paid Search,35-44
+C01954,2026-09-11,Northeast,young_professional,Organic Search,25-34
+C01955,2026-09-12,Northeast,retiree,Paid Search,55-64
+C01956,2026-09-13,Southeast,young_professional,Organic Search,25-34
+C01957,2026-09-13,Southwest,family,Referral,35-44
+C01958,2026-09-14,Southeast,family,Organic Search,25-34
+C01959,2026-09-14,West,empty_nester,Email,55-64
+C01960,2026-09-14,Midwest,landlord,Organic Search,65+
+C01961,2026-09-14,Southeast,retiree,Direct,65+
+C01962,2026-09-15,Southwest,young_professional,Email,25-34
+C01963,2026-09-15,Northeast,young_professional,Direct,25-34
+C01964,2026-09-15,Southwest,empty_nester,Organic Search,55-64
+C01965,2026-09-16,Midwest,empty_nester,Broker,55-64
+C01966,2026-09-16,Southeast,landlord,Organic Search,45-54
+C01967,2026-09-16,Northeast,family,Organic Search,25-34
+C01968,2026-09-16,West,young_professional,Organic Search,25-34
+C01969,2026-09-16,Southeast,young_professional,Paid Search,18-24
+C01970,2026-09-17,Southwest,family,Broker,45-54
+C01971,2026-09-17,West,retiree,Email,65+
+C01972,2026-09-18,Midwest,family,Broker,35-44
+C01973,2026-09-18,West,empty_nester,Direct,45-54
+C01974,2026-09-18,Southwest,young_professional,Organic Search,25-34
+C01975,2026-09-19,Midwest,empty_nester,Organic Search,55-64
+C01976,2026-09-19,Southeast,young_professional,Organic Search,25-34
+C01977,2026-09-20,Southeast,family,Direct,45-54
+C01978,2026-09-20,Southwest,empty_nester,Paid Search,55-64
+C01979,2026-09-21,Midwest,landlord,Broker,35-44
+C01980,2026-09-21,Southwest,family,Broker,35-44
+C01981,2026-09-21,Southeast,young_professional,Paid Search,35-44
+C01982,2026-09-21,Northeast,young_professional,Direct,18-24
+C01983,2026-09-22,West,landlord,Organic Search,45-54
+C01984,2026-09-22,Southeast,family,Organic Search,45-54
+C01985,2026-09-22,Northeast,young_professional,Email,18-24
+C01986,2026-09-22,Northeast,young_professional,Organic Search,25-34
+C01987,2026-09-23,Southwest,family,Organic Search,25-34
+C01988,2026-09-23,Midwest,family,Paid Search,35-44
+C01989,2026-09-24,Northeast,family,Organic Search,45-54
+C01990,2026-09-24,Southeast,empty_nester,Email,55-64
+C01991,2026-09-25,Southeast,empty_nester,Referral,55-64
+C01992,2026-09-26,Northeast,retiree,Direct,65+
+C01993,2026-09-26,Midwest,family,Direct,25-34
+C01994,2026-09-27,Southeast,young_professional,Organic Search,18-24
+C01995,2026-09-28,West,family,Email,35-44
+C01996,2026-09-29,West,empty_nester,Broker,55-64
+C01997,2026-09-29,West,family,Email,45-54
+C01998,2026-09-29,Midwest,empty_nester,Organic Search,45-54
+C01999,2026-09-30,Midwest,young_professional,Broker,25-34
+C02000,2026-09-30,Southeast,retiree,Referral,65+

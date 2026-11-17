@@ -1,0 +1,213 @@
+# Coforge Agentic Framework - runtime configuration.
+# Every value supports ${ENV_VAR} and ${ENV_VAR:-default} interpolation, so the same file works
+# on a laptop, in Docker and in a client's cloud tenancy.
+
+paths:
+  runs: runs                      # artifacts, traces, local connector outputs
+  skills: [config/skills]         # YAML skills (brand voice, taxonomies, rule packs ...)
+  prompts: [config/prompts]       # Jinja2 prompt templates (shared with the browser console)
+  sample_data: sample_data
+
+llm:
+  # auto picks the first provider with credentials in the environment: ANTHROPIC_API_KEY > ANTHROPIC_FOUNDRY_API_KEY
+  # (+ _BASE_URL or _RESOURCE) > AZURE_OPENAI_API_KEY+AZURE_OPENAI_ENDPOINT > OPENAI_API_KEY > CAF_BEDROCK_REGION > OLLAMA_HOST > offline
+  provider: ${CAF_LLM_PROVIDER:-auto}   # auto | anthropic | anthropic_foundry | openai | azure_openai | bedrock | ollama | offline
+  # temperature: 0.4              # leave unset: Claude Sonnet 5.5 / Fable 5 and GPT-5 only accept their default
+  max_tokens: 4096
+  timeout_s: 180
+  # Shared limits for model calls from every agent in the process, per model deployment (0 = no limit).
+  # Override per provider under providers.<name>.throttle, or with CAF_LLM_MAX_CONCURRENT / CAF_LLM_RPM / CAF_LLM_TPM.
+  throttle:
+    max_concurrent: ${CAF_LLM_MAX_CONCURRENT:-4}     # calls in flight at once
+    requests_per_minute: ${CAF_LLM_RPM:-0}           # calls started per rolling minute
+    tokens_per_minute: ${CAF_LLM_TPM:-0}             # input + output tokens per rolling minute
+    max_retries: 6                                   # retries after 429 / overloaded, honouring Retry-After
+    cooldown_s: 20                                   # pause for everyone after a refusal that outlasts the retries
+    max_wait_s: 600                                  # give up waiting for capacity after this long
+  # Agents request a tier, never a model. Map tiers to models per provider here
+  # (or override any tier with CAF_MODEL_FAST / CAF_MODEL_BALANCED / CAF_MODEL_PRO / CAF_MODEL_COMPLEX).
+  providers:
+    anthropic:
+      tiers: {fast: claude-haiku-5-5, balanced: claude-sonnet-5-5, pro: claude-opus-5-5, complex: claude-opus-5-5}
+      max_tokens: 16000           # room for adaptive thinking plus long structured outputs
+      timeout_s: 300              # long structured answers (briefs, plans) can take a few minutes
+      structured_method: json_schema   # native structured outputs (Claude 5.x does not take forced tool choice)
+      structured_max_array_depth: 2   # schemas with arrays nested deeper are asked for in the prompt (Claude: 'Schema is too complex')
+    anthropic_foundry:            # Claude on Microsoft Foundry (Azure): tiers are your deployment names
+      api_key: ${ANTHROPIC_FOUNDRY_API_KEY:-}
+      base_url: ${ANTHROPIC_FOUNDRY_BASE_URL:-}      # https://<resource>.services.ai.azure.com/anthropic/
+      resource: ${ANTHROPIC_FOUNDRY_RESOURCE:-}      # or just the resource name
+      tiers:
+        fast: ${FOUNDRY_DEPLOYMENT_FAST:-claude-sonnet-5-5}
+        balanced: ${FOUNDRY_DEPLOYMENT_BALANCED:-claude-sonnet-5-5}
+        pro: ${FOUNDRY_DEPLOYMENT_PRO:-claude-opus-5}
+        complex: ${FOUNDRY_DEPLOYMENT_COMPLEX:-claude-opus-5}
+      max_tokens: 16000
+      timeout_s: 300
+      structured_method: json_schema   # falls back to JSON-in-the-prompt automatically if the endpoint rejects it
+      structured_max_array_depth: 2   # schemas with arrays nested deeper are asked for in the prompt (Claude: 'Schema is too complex')
+      throttle:                        # Foundry deployments have per-minute quotas: stay under them
+        max_concurrent: ${CAF_LLM_MAX_CONCURRENT:-3}
+        requests_per_minute: ${CAF_LLM_RPM:-40}
+        tokens_per_minute: ${CAF_LLM_TPM:-0}
+    openai:
+      base_url: ${OPENAI_BASE_URL:-}
+      tiers:
+        fast: ${CAF_OPENAI_FAST:-gpt-5-mini}
+        balanced: ${CAF_OPENAI_BALANCED:-gpt-5}
+        pro: ${CAF_OPENAI_PRO:-gpt-5}
+        complex: ${CAF_OPENAI_COMPLEX:-gpt-5}
+    azure_openai:
+      endpoint: ${AZURE_OPENAI_ENDPOINT:-}
+      api_version: ${AZURE_OPENAI_API_VERSION:-2025-04-01-preview}
+      tiers:                      # Azure deployment names
+        fast: ${AZURE_DEPLOYMENT_FAST:-gpt-5-mini}
+        balanced: ${AZURE_DEPLOYMENT_BALANCED:-gpt-5}
+        pro: ${AZURE_DEPLOYMENT_PRO:-gpt-5}
+        complex: ${AZURE_DEPLOYMENT_COMPLEX:-gpt-5}
+    bedrock:
+      region: ${CAF_BEDROCK_REGION:-us-east-1}
+      tiers:                      # Bedrock model or inference-profile IDs available in your account
+        fast: ${BEDROCK_MODEL_FAST:-}
+        balanced: ${BEDROCK_MODEL_BALANCED:-}
+        pro: ${BEDROCK_MODEL_PRO:-}
+        complex: ${BEDROCK_MODEL_COMPLEX:-}
+    ollama:
+      base_url: ${OLLAMA_HOST:-http://localhost:11434}
+      tiers:
+        fast: ${OLLAMA_MODEL_FAST:-llama3.2}
+        balanced: ${OLLAMA_MODEL_BALANCED:-llama3.3}
+        pro: ${OLLAMA_MODEL_PRO:-llama3.3}
+        complex: ${OLLAMA_MODEL_COMPLEX:-llama3.3}
+
+connectors:
+  # Every kind has a local provider that runs offline on the Meridian Mutual demo data, plus vendor
+  # adapters selected by `provider`. See docs/CONNECTORS.md for each provider's keys and verification.
+  ingestion: {provider: local}
+  crawler:
+    provider: httpx
+    user_agent: "CoforgeAgenticFramework/1.0 audit-bot"
+    timeout_s: 20
+    fixtures:                     # hosts served from disk, so audits work offline on the demo site
+      www.meridian-mutual.example: sample_data/site
+  search:
+    provider: ${CAF_SEARCH_PROVIDER:-fixture}   # none | fixture | serpapi | brave | tavily
+    path: sample_data/search
+    reference_date: "2026-10-18"               # fixture provider only: 'today' for recency filters
+    api_key: ${SEARCH_API_KEY:-}
+  keyword_data:
+    provider: ${CAF_KEYWORD_PROVIDER:-csv}     # none | csv | gsc | dataforseo
+    path: sample_data/keywords/gsc_queries.csv
+    site_url: ${GSC_SITE_URL:-}
+    credentials_file: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+    login: ${DATAFORSEO_LOGIN:-}
+    password: ${DATAFORSEO_PASSWORD:-}
+  analytics:
+    provider: ${CAF_ANALYTICS_PROVIDER:-csv}   # csv | ga4 | adobe_analytics
+    path: sample_data/analytics
+    property_id: ${GA4_PROPERTY_ID:-}
+    credentials_file: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+    company_id: ${ADOBE_ANALYTICS_COMPANY_ID:-}
+    rsid: ${ADOBE_ANALYTICS_RSID:-}
+    client_id: ${ADOBE_CLIENT_ID:-}
+    client_secret: ${ADOBE_CLIENT_SECRET:-}
+  behaviour:
+    provider: ${CAF_BEHAVIOUR_PROVIDER:-csv}   # csv | clarity
+    path: sample_data/behaviour/heatmap_events.csv
+    api_token: ${CLARITY_API_TOKEN:-}
+  experiments:
+    provider: ${CAF_EXPERIMENTS_PROVIDER:-json}  # json | optimizely | adobe_target
+    path: sample_data/experiments
+    api_token: ${OPTIMIZELY_API_TOKEN:-}
+    project_id: ${OPTIMIZELY_PROJECT_ID:-}
+    tenant: ${ADOBE_TARGET_TENANT:-}
+    client_id: ${ADOBE_CLIENT_ID:-}
+    client_secret: ${ADOBE_CLIENT_SECRET:-}
+  cms:
+    provider: ${CAF_CMS_PROVIDER:-file}        # file | aem | contentful | wordpress
+    base_url: ${CAF_CMS_BASE_URL:-}            # AEM author URL or WordPress site URL (empty for Contentful)
+    access_token: ${AEM_ACCESS_TOKEN:-}
+    parent_path: ${AEM_PARENT_PATH:-}          # e.g. /content/dam/<site>/{locale}/articles
+    model_path: ${AEM_MODEL_PATH:-}
+    space_id: ${CONTENTFUL_SPACE_ID:-}
+    management_token: ${CONTENTFUL_MANAGEMENT_TOKEN:-}
+    username: ${WP_USERNAME:-}
+    application_password: ${WP_APP_PASSWORD:-}
+  esp:
+    provider: ${CAF_ESP_PROVIDER:-file}        # file | braze | mailchimp | ajo
+    api_key: ${CAF_ESP_API_KEY:-}              # Braze REST key or Mailchimp API key
+    rest_endpoint: ${BRAZE_REST_ENDPOINT:-}
+    list_id: ${MAILCHIMP_LIST_ID:-}
+    client_id: ${ADOBE_CLIENT_ID:-}
+    client_secret: ${ADOBE_CLIENT_SECRET:-}
+    org_id: ${ADOBE_ORG_ID:-}
+    sandbox: ${AJO_SANDBOX:-prod}
+  tasks:
+    provider: ${CAF_TASKS_PROVIDER:-json_file} # json_file | jira | azure_devops
+    base_url: ${CAF_TASKS_BASE_URL:-}          # Jira site URL (empty for Azure DevOps Services)
+    email: ${JIRA_EMAIL:-}
+    api_token: ${JIRA_API_TOKEN:-}
+    project_key: ${JIRA_PROJECT_KEY:-}
+    organization: ${ADO_ORGANIZATION:-}
+    project: ${ADO_PROJECT:-}
+    pat: ${ADO_PAT:-}
+  webinar:
+    provider: ${CAF_WEBINAR_PROVIDER:-csv}     # csv | zoom
+    path: sample_data/webinar
+    account_id: ${ZOOM_ACCOUNT_ID:-}
+    client_id: ${ZOOM_CLIENT_ID:-}
+    client_secret: ${ZOOM_CLIENT_SECRET:-}
+    webinar_id: ${ZOOM_WEBINAR_ID:-}
+  translation:
+    provider: ${CAF_TRANSLATION_PROVIDER:-llm} # llm | deepl | azure
+    api_key: ${CAF_TRANSLATION_API_KEY:-}
+    region: ${AZURE_TRANSLATOR_REGION:-}
+  newswire: {provider: file}
+  flags:
+    provider: ${CAF_FLAGS_PROVIDER:-file}      # file | launchdarkly
+    api_token: ${LAUNCHDARKLY_API_TOKEN:-}
+    project_key: ${LAUNCHDARKLY_PROJECT_KEY:-}
+    environment: ${LAUNCHDARKLY_ENVIRONMENT:-}
+  warehouse:
+    provider: ${CAF_WAREHOUSE_PROVIDER:-duckdb}  # duckdb | sqlalchemy
+    path: sample_data/warehouse
+    url: ${CAF_WAREHOUSE_URL:-}
+  vectorstore:
+    provider: ${CAF_VECTOR_PROVIDER:-tfidf}    # tfidf | qdrant
+    url: ${QDRANT_URL:-}
+    api_key: ${QDRANT_API_KEY:-}
+  crm:
+    provider: ${CAF_CRM_PROVIDER:-csv}         # none | csv | salesforce | hubspot
+    path: sample_data/crm/contacts.csv
+    login_url: ${SALESFORCE_LOGIN_URL:-}
+    client_id: ${SALESFORCE_CLIENT_ID:-}
+    client_secret: ${SALESFORCE_CLIENT_SECRET:-}
+    access_token: ${HUBSPOT_ACCESS_TOKEN:-}
+  store: {provider: sqlite}
+  shortlink:
+    provider: sqlite
+    base_url: ${CAF_PUBLIC_URL:-http://localhost:8080}/r/
+
+approvals:
+  # Publish-type side effects (CMS publish, ESP export, newswire, variation deploy) wait for a human.
+  auto_approve: ${CAF_AUTO_APPROVE:-false}
+  # Let REST callers skip the gate per request ({"options": {"auto_approve": true}} or "auto_approve": true).
+  # Mandatory gates (e.g. blog publish) hold either way. The CLI's --auto-approve is always available.
+  allow_request_auto_approve: ${CAF_ALLOW_REQUEST_AUTO_APPROVE:-false}
+
+orchestrator:
+  max_parallel: 4
+  planner_tier: balanced
+  synthesis_tier: fast
+  min_route_confidence: 0.05      # below this, the deterministic router asks for a clearer goal instead of guessing
+
+security:
+  # Applies to the service surfaces (REST, MCP over HTTP or stdio, A2A), whose callers are remote users or models.
+  # The CLI runs as the local operator and is not restricted. See docs/ARCHITECTURE.md (Security).
+  api_token: ${CAF_API_TOKEN:-}                     # when set, every non-public route needs "Authorization: Bearer <token>";
+                                                    # when empty, only loopback clients are served
+  cors_origins: ${CAF_CORS_ORIGINS:-}               # comma-separated browser origins allowed to call the API (none by default)
+  allowed_hosts: ${CAF_ALLOWED_HOSTS:-}             # optional allowlist of hosts agents may fetch ("*.example.com" wildcards)
+  allow_private_network: ${CAF_ALLOW_PRIVATE_NETWORK:-false}   # let agents fetch loopback / private / link-local hosts
+  file_roots: [sample_data]                         # folders agents may read local files from (runs/ is always readable)
+  allow_any_local_file: ${CAF_ALLOW_ANY_LOCAL_FILE:-false}

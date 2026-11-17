@@ -1,0 +1,517 @@
+# Generated from the Coforge Independent Agent Blueprint workbook.
+# Single source of truth for agent names, categories, use cases and independence design.
+source: Agents_Coforge_Independent_Blueprint.xlsx
+categories:
+  strategy: Strategy and planning
+  content: Content creation
+  web: Website optimization
+  experimentation: End-to-end testing
+agents:
+- id: campaign_brief_generation
+  name: Campaign Brief Generation
+  category: strategy
+  category_label: Strategy and planning
+  opal_reference: 'Opal agent invoked as @campaign_brief_generation. Turns a few inputs into a standardised campaign brief.
+    Inputs: Campaign Type (required), Audience, Objective, Assets Needed (all optional). Uses no tools - purely inference
+    driven. Inference level: Balanced. Output: text brief in seven sections - campaign overview, objectives and goals, target
+    audience, key messages, creative and content deliverables, channels and media plan, measurement and reporting. Deliverables
+    are itemised so each can become a CMP task.'
+  use_cases:
+  - Campaign kick-off briefing
+  - event/webinar/content campaign planning
+  - standardising brief quality across regions and agencies
+  - converting rough marketing notes into an approved brief
+  - auto-generating downstream content tasks from the deliverables list
+  independence: Zero external dependency needed - it is prompt-only. Re-implement as a Jinja2 prompt template + Pydantic output
+    schema behind a model-agnostic LLM adapter (Azure OpenAI / Anthropic / Bedrock / local). Replace the CMP task hand-off
+    with a generic task-emitter interface that can write to Jira, Azure DevOps, Planner or a JSON file. Store brand voice
+    and brief sections as an editable YAML 'skill' so the seven-section contract is configuration, not code.
+  vendor_requirement_removed: null
+- id: keyword_research
+  name: Keyword Research
+  category: strategy
+  category_label: Strategy and planning
+  opal_reference: Opal agent that researches and clusters search keywords for a topic or page, combining first-party keyword/search
+    data with live web search to return ranked keyword opportunities with intent and relevance context for content and SEO
+    planning.
+  use_cases:
+  - Content and SEO planning
+  - topic cluster and pillar-page design
+  - keyword gap analysis before a campaign
+  - informing briefs and blog outlines
+  - prioritising terms by intent and opportunity
+  independence: Swap Opal's bundled search tool for a pluggable KeywordDataConnector (Google Search Console API, SEMrush/Ahrefs/DataForSEO,
+    Bing Webmaster, or a CSV upload) and a SearchConnector (Bing/Google CSE/SerpAPI/local fixture). Clustering done in-process
+    with embeddings + HDBSCAN so no vendor ranking service is required. Ship a 'none' connector where the LLM still returns
+    a structured, clearly-flagged estimate.
+  vendor_requirement_removed: null
+- id: competitive_insights
+  name: Competitive Insights
+  category: strategy
+  category_label: Strategy and planning
+  opal_reference: 'Opal agent @competitive_insights. Takes one competitor name or URL and returns a 30-day competitive intelligence
+    report as a canvas: executive summary, recent headlines, marketing activity, analyst commentary, community signals, next-best-actions
+    grouped by priority, plus high-impact events from the past 60 days. Runs at Pro inference tier with a date-aware research
+    tool. One competitor per run.'
+  use_cases:
+  - Monthly competitor tracking
+  - pre-pitch and account-planning research
+  - positioning and battlecard refresh
+  - spotting competitor launches, pricing and campaign moves
+  - feeding differentiation messaging into briefs
+  independence: 'Replace the built-in date-aware research tool with an evidence-gathering pipeline: pluggable SearchConnector
+    + RSS/news feeds + sitemap and press-page crawler, each result stored with URL, publisher and timestamp. Run synthesis
+    through the model-agnostic adapter at a high-reasoning tier. Remove the one-competitor-per-run limit by iterating a competitor
+    list in parallel with rate limiting, and add a local cache so repeat runs are cheap.'
+  vendor_requirement_removed: null
+- id: utm_generation
+  name: UTM Generation
+  category: strategy
+  category_label: Strategy and planning
+  opal_reference: Opal agent that simplifies creation of UTM parameters - the tags appended to a URL to track source, medium
+    and campaign name in web analytics - producing consistent, correctly-encoded tracking links from campaign inputs.
+  use_cases:
+  - Campaign link tagging across email, paid, social and partner channels
+  - enforcing a single naming taxonomy
+  - bulk link generation for a channel plan
+  - preventing broken or duplicated analytics attribution
+  independence: This is pure deterministic logic - do not use an LLM for the core. Implement taxonomy rules, validation and
+    URL encoding in plain Python driven by an organisation-specific YAML naming convention. Optional LLM only to suggest a
+    compliant campaign name. Add a channel-matrix mode that outputs a whole campaign's links at once and a CSV/Excel export,
+    making it fully standalone and analytics-platform neutral (GA4, Adobe, Piwik, Matomo).
+  vendor_requirement_removed: null
+- id: email_creation
+  name: Email Creation
+  category: content
+  category_label: Content creation
+  opal_reference: Opal agent that creates high-performing marketing emails from a supplied overview, target audience and call-to-action,
+    returning ready-to-use subject line, preheader and body copy aligned to brand tone.
+  use_cases:
+  - Promotional and nurture email drafting
+  - newsletter copy
+  - lifecycle and re-engagement sends
+  - producing audience variants of the same message
+  - accelerating campaign execution after a brief
+  independence: Prompt-only agent - reproduce with an externalised Jinja2 template plus a brand-voice YAML skill and a structured
+    output schema. Add an ESP-neutral export layer (HTML + MJML + plain text) with adapters for Braze, Salesforce Marketing
+    Cloud, Mailchimp, HubSpot or SMTP, so the output is not tied to any one marketing cloud. Add a deliverability linter (subject
+    length, spam terms, alt text, link count) as deterministic post-processing.
+  vendor_requirement_removed: null
+- id: blog_post_creation
+  name: Blog Post Creation
+  category: content
+  category_label: Content creation
+  opal_reference: Opal agent that accelerates creation of high-quality, long-form blog content from a topic or brief, producing
+    a structured, on-brand draft ready for editorial review and CMS publishing.
+  use_cases:
+  - Thought-leadership and SEO blog drafting
+  - expanding a campaign brief into long-form content
+  - refreshing or re-angling existing posts
+  - maintaining publishing cadence with a small content team
+  independence: Rebuild as a multi-stage chain (research -> outline -> draft -> self-critique -> revise) rather than a single
+    call, with the research stage using your own pluggable SearchConnector. Make CMS publishing headless and vendor-neutral
+    via a CmsConnector interface (AEM, Sitecore, Contentful, Drupal, WordPress, Strapi, file). Enforce brand and factual guardrails
+    with a reviewer agent and a mandatory human-approval gate before publish.
+  vendor_requirement_removed: null
+- id: linkedin_inmail_copy
+  name: LinkedIn InMail Copy Creation
+  category: content
+  category_label: Content creation
+  opal_reference: Opal agent that crafts engaging headlines, body text and calls-to-action aligned to LinkedIn's professional
+    audience and ad specifications, optimised for B2B outreach.
+  use_cases:
+  - B2B outbound and ABM sequences
+  - sponsored InMail and message-ad copy
+  - event and webinar invitations
+  - persona-specific outreach variants
+  - SDR enablement at scale
+  independence: Prompt-only - reproduce with an externalised template plus a platform-constraints YAML (character limits,
+    required fields, ad-spec rules) that is version-controlled and updatable without code changes. Add a deterministic validator
+    enforcing those limits. Keep it channel-extensible so the same engine can emit X, email or WhatsApp variants, and integrate
+    CRM personalisation through a generic CrmConnector rather than a fixed platform.
+  vendor_requirement_removed: null
+- id: content_adaptation
+  name: Content Adaptation
+  category: content
+  category_label: Content creation
+  opal_reference: Opal agent that repurposes core content by reformatting, rephrasing and optimising it for a specific destination
+    such as social media, email or web pages, while preserving the original message and brand voice.
+  use_cases:
+  - Turning one asset into a multi-channel set
+  - repurposing webinars, whitepapers and case studies
+  - localising tone per channel
+  - scaling content output without new source material
+  - feeding a social calendar
+  independence: 'Prompt-driven and easy to free: externalise per-channel formatting rules into a YAML channel registry (limits,
+    structure, hashtag and emoji policy) so new channels are configuration. Read source content through an open ingestion
+    layer (URL, PDF, DOCX, Markdown, plain text) using trafilatura/pdfplumber instead of a vendor reader, and emit to any
+    destination through the same neutral export adapters used by the other agents.'
+  vendor_requirement_removed: null
+- id: webinar_followup_email
+  name: Webinar Follow Up Email Creation
+  category: content
+  category_label: Content creation
+  opal_reference: Opal agent that generates personalised follow-up email copy after a webinar, tailored to attendee behaviour
+    and the session content, to sustain engagement and drive next steps.
+  use_cases:
+  - Post-webinar nurture
+  - separate attended / no-show / early-drop journeys
+  - recording and asset distribution
+  - MQL hand-off to sales
+  - recovering pipeline from event investment
+  independence: 'Combine the Content Summary and Email Creation engines: summarise the transcript locally (Whisper for audio,
+    plain parsing for transcripts), then segment recipients by behaviour using rules defined in YAML. Pull attendance from
+    a pluggable WebinarConnector (Zoom, Teams, ON24, GoToWebinar, CSV) instead of a fixed integration, and send through the
+    neutral ESP export adapters.'
+  vendor_requirement_removed: null
+- id: industry_marketing
+  name: Industry Marketing
+  category: content
+  category_label: Content creation
+  opal_reference: Opal agent that tailors marketing content and messaging to a specific industry vertical, applying sector
+    language, buyer priorities and regulatory context so generic assets become industry-relevant.
+  use_cases:
+  - Vertical go-to-market campaigns
+  - adapting a horizontal proposition for BFS, insurance, travel, healthcare or retail
+  - industry event and analyst collateral
+  - sector-specific landing pages and outreach
+  independence: 'Make the industry knowledge yours, not the vendor''s: build a retrieval layer over your own industry corpus
+    - case studies, analyst notes, regulatory summaries - in an open vector store (pgvector, Qdrant or Chroma) so output is
+    grounded in Coforge IP rather than generic model knowledge. Industry profiles (terminology, personas, compliance constraints,
+    proof points) live as versioned YAML plus indexed documents, giving a defensible differentiator no vendor can replicate.'
+  vendor_requirement_removed: null
+- id: press_release_creation
+  name: Press Release Creation
+  category: content
+  category_label: Content creation
+  opal_reference: 'Opal agent @press_release. Creates professional press releases structured for media pickup from a brief
+    overview. Inputs: overview (required), target audience, date, call to action (optional). Requires a configured boilerplate
+    instruction before install so it can insert your organisation''s boilerplate and media contact. Uses no tools. Inference:
+    Balanced. Output: formatted text with headline, introduction, body paragraphs, CTA, boilerplate and media contact.'
+  use_cases:
+  - Product and partnership launch announcements
+  - funding, award and certification news
+  - executive appointments
+  - earnings and milestone communications
+  - consistent newsroom output across regions
+  independence: 'Prompt-only, so freedom is straightforward: keep boilerplate, media contacts and legal disclaimers in a versioned
+    YAML/DB record instead of a vendor ''instruction'' object. Add a deterministic AP-style and structure validator (dateline
+    format, inverted pyramid, quote attribution, word count) and a legal/forward-looking-statement check. Distribute via a
+    pluggable NewswireConnector (Business Wire, PR Newswire, newsroom CMS, file) rather than any single path.'
+  vendor_requirement_removed: null
+- id: quote_extraction
+  name: Quote Extraction
+  category: content
+  category_label: Content creation
+  opal_reference: 'Opal agent @quote_extraction. Extracts five to ten important quotes from a document, file or URL. Inputs:
+    content (text or URL) and/or file - at least one required. Tools used internally: browse_web and read_file_content. Inference:
+    Standard. Output: a table of five to ten verbatim quotes with author attribution and source location for each.'
+  use_cases:
+  - Mining webinars, interviews, research reports and transcripts for usable quotes
+  - sourcing social pull-quotes and testimonials
+  - building analyst and customer quote banks
+  - enriching content with credible third-party voices
+  independence: 'Replace browse_web and read_file_content with your own ingestion stack - trafilatura for HTML, pdfplumber
+    for PDF, python-docx for Word, Whisper for audio - and make extraction verifiable: locate every candidate quote by exact
+    string match against the source and reject any span the model cannot anchor, which removes hallucination risk entirely.
+    Store results in an open searchable quote bank (SQLite/Postgres + embeddings) that compounds in value independently of
+    any vendor.'
+  vendor_requirement_removed: null
+- id: qr_code_generation
+  name: QR Code Generation
+  category: content
+  category_label: Content creation
+  opal_reference: Opal agent that creates QR codes for various marketing purposes, generating a scannable code from a destination
+    URL or payload for use in print, event and offline-to-online campaigns.
+  use_cases:
+  - Event booth and print collateral
+  - packaging and direct mail
+  - offline campaign attribution
+  - app-download and landing-page shortcuts
+  - linking physical assets to digital journeys
+  independence: Entirely deterministic - there is no reason for this to sit inside any vendor platform or use an LLM at all.
+    Use the open qrcode/Pillow libraries locally with full control over error-correction level, size, colour, logo overlay
+    and output format. Chain it with the UTM agent so every code is automatically tagged, and add your own short-link and
+    scan-tracking service so redirect analytics stay in your estate rather than a third party's.
+  vendor_requirement_removed: null
+- id: content_summary
+  name: Content Summary
+  category: content
+  category_label: Content creation
+  opal_reference: Opal agent that summarises lengthy documents and PDFs, extracting the key points from complex content so
+    teams can consume or reuse long-form material quickly.
+  use_cases:
+  - Condensing research reports, RFPs, transcripts and whitepapers
+  - executive summaries
+  - generating abstracts and meta descriptions
+  - pre-reading for meetings
+  - feeding downstream agents with a compact source
+  independence: 'Free it by owning the ingestion and the chunking: trafilatura/pdfplumber/python-docx for parsing, semantic
+    chunking with map-reduce or refine summarisation so arbitrarily long documents work regardless of model context window.
+    Offer multiple summary modes (executive, technical, bullet, abstract, action-items) driven by templates, and support fully
+    on-premise or local models for confidential documents - something a SaaS agent cannot offer.'
+  vendor_requirement_removed: null
+- id: geo_recommendations
+  name: GEO Recommendations
+  category: web
+  category_label: Website optimization
+  opal_reference: 'Opal agent @generative_engine_optimization_recommendations. Runs a comprehensive Generative Engine Optimization
+    audit on a page and returns a branded report with prioritised recommendations. Inputs: Page URL (required), Focus Section
+    (optional). Tools: search_web, analyze_pagespeed, browse_web_html, browse_web, create_canvas. Inference: Pro. Covers crawler
+    access, Core Web Vitals, schema markup, E-E-A-T signals and citation readiness with a prioritised action plan.'
+  use_cases:
+  - Making pages visible and citable in ChatGPT, Perplexity, Google AI Overviews and Copilot
+  - AI-search readiness audits
+  - schema and structured-data remediation
+  - E-E-A-T and authority improvement
+  - content restructuring for LLM retrievability
+  independence: 'Every underlying tool has an open equivalent: PageSpeed Insights API or local Lighthouse for performance,
+    your own crawler with robots.txt and llms.txt checks for crawler access, extruct/JSON-LD parsers for schema, and a rules
+    engine for E-E-A-T scoring. Replace the canvas output with your own HTML report template. Going further than the vendor,
+    add real citation testing by querying multiple LLMs to measure whether the page is actually cited - a measurable outcome
+    rather than a checklist.'
+  vendor_requirement_removed: null
+- id: technical_seo_recommendations
+  name: Technical SEO Recommendations
+  category: web
+  category_label: Website optimization
+  opal_reference: Opal agent that analyses a site or page for technical SEO issues and returns prioritised remediation recommendations
+    covering crawlability, indexation, metadata, performance and structural signals.
+  use_cases:
+  - Pre-launch and post-migration SEO audits
+  - diagnosing traffic drops
+  - fixing crawl, index and canonical issues
+  - metadata and internal-linking hygiene
+  - ongoing technical SEO governance
+  independence: This is largely deterministic crawling and rule evaluation, so it should be a rules engine you own, not an
+    LLM in a SaaS product. Build a crawler (Scrapy or httpx + selectolax, with Playwright for JS rendering) plus a YAML-defined
+    rule pack for canonicals, hreflang, status codes, redirect chains, sitemaps, robots, metadata, headings, structured data
+    and internal links. Pull real data from Google Search Console and Bing Webmaster APIs. Use the LLM only to explain and
+    prioritise findings, keeping detection accurate, auditable and cheap.
+  vendor_requirement_removed: null
+- id: ga4_traffic_report
+  name: GA4 Traffic Report
+  category: web
+  category_label: Website optimization
+  opal_reference: 'Opal agent @ga_traffic_reporter (GA4 Web Traffic Report Generation). Pulls Google Analytics 4 data and
+    delivers an executive-ready HTML report with period-over-period metrics, top pages by sessions, channel attribution and
+    a prioritised action plan. Inputs: Date Range (defaults to last 30 complete days), Domain (optional). Requires an Opal
+    admin to configure the GA4 connector via Optimizely Connect Platform. Tools: run_report, create_canvas, get_dimensions,
+    get_metrics, get_property_id and related. Inference: Pro.'
+  use_cases:
+  - Monthly and weekly traffic reporting
+  - period-over-period performance reviews
+  - channel and campaign attribution analysis
+  - spotting anomalies, drop-offs and growth signals
+  - executive and client-ready dashboards without manual GA4 work
+  independence: 'The key unlock is removing the Optimizely Connect Platform requirement: call the GA4 Data API directly with
+    a Google service account, and abstract it behind an AnalyticsConnector so Adobe Analytics, Matomo, Piwik PRO, Plausible
+    or a warehouse table can be swapped in. Do statistics properly in pandas with anomaly detection, rather than leaving trend
+    interpretation to the model. Render reports from your own Jinja2 HTML template and schedule runs with cron or Airflow,
+    fully outside any vendor platform.'
+  vendor_requirement_removed: null
+- id: web_accessibility_evaluation
+  name: Web Accessibility Evaluation
+  category: web
+  category_label: Website optimization
+  opal_reference: Opal agent that evaluates web pages for accessibility issues and returns findings with recommended fixes,
+    helping teams identify and resolve barriers to compliant, inclusive experiences.
+  use_cases:
+  - WCAG 2.1/2.2 and ADA/EAA compliance auditing
+  - pre-release accessibility gates
+  - remediating colour contrast, alt text, keyboard and ARIA issues
+  - accessibility reporting for regulated clients
+  - VPAT and audit evidence
+  independence: Detection must be deterministic and standards-based, so use axe-core via Playwright plus Pa11y and Lighthouse
+    locally - the same engines the industry trusts - rather than relying on a model. Map every finding to the specific WCAG
+    success criterion and conformance level. Use the LLM only to generate remediation code snippets and plain-English explanations.
+    Wire it into CI so pages fail a build on regression, which is impossible inside a closed marketing SaaS agent.
+  vendor_requirement_removed: null
+- id: heatmap_analysis
+  name: Heatmap Analysis
+  category: web
+  category_label: Website optimization
+  opal_reference: Opal agent that analyses heatmap and on-page interaction data - clicks, scroll depth and attention - to
+    surface behavioural insights and optimisation opportunities for a page.
+  use_cases:
+  - Diagnosing why a page underperforms
+  - identifying dead clicks, false bottoms and ignored CTAs
+  - prioritising layout and content changes
+  - generating evidence-based test hypotheses
+  - supporting conversion-rate optimisation
+  independence: Break the dependency on a bundled behavioural product by defining a BehaviourConnector that accepts data from
+    Microsoft Clarity, Hotjar, Contentsquare, FullStory, Matomo or your own lightweight event collector, normalised to a common
+    event schema. Compute click density, scroll-depth curves, rage and dead clicks and attention time yourself in pandas.
+    Combine with DOM element extraction so insights reference actual components, and feed hypotheses straight into the Experiment
+    Ideation agent.
+  vendor_requirement_removed: null
+- id: content_model_creation
+  name: Content Model Creation
+  category: web
+  category_label: Website optimization
+  opal_reference: Opal agent that analyses URLs or images to build best-practice CMS content models, converting existing pages
+    or designs into structured, reusable content type and field definitions.
+  use_cases:
+  - Accelerating headless CMS implementations and migrations
+  - deriving content types from legacy sites or Figma designs
+  - standardising component libraries
+  - content audit and modelling workshops
+  - reducing modelling effort in DXP builds
+  independence: This is high-value, reusable Coforge IP and should not be tied to one SaaS CMS. Analyse pages with your own
+    crawler plus vision models, then emit a platform-neutral intermediate content model and generate platform-specific artefacts
+    through a ModelEmitter interface - AEM content fragment models, Sitecore templates and serialisation, Contentful/Contentstack
+    migration scripts, Strapi and Drupal definitions, and GraphQL SDL. That portability is exactly the differentiator the
+    vendor agent cannot offer.
+  vendor_requirement_removed: null
+- id: content_translation
+  name: Content Translation
+  category: web
+  category_label: Website optimization
+  opal_reference: Opal agent that converts existing content into a different language, accounting for cultural, company and
+    grammatical differences rather than performing literal translation.
+  use_cases:
+  - Multi-market and multilingual site rollout
+  - localising campaigns, emails and product content
+  - maintaining brand voice across locales
+  - reducing agency translation cost and cycle time
+  - supporting regulated market variants
+  independence: 'Route through a pluggable TranslationConnector - DeepL, Azure Translator, Google Translate, an LLM, or a
+    local NLLB/Marian model - with LLM post-editing for tone and cultural adaptation. Own the assets that actually create
+    quality: a versioned glossary, translation memory in an open TMX-compatible store, and do-not-translate rules. Add locale-aware
+    formatting and a QA pass for placeholder integrity and length constraints, and integrate with any CMS through the same
+    neutral CmsConnector.'
+  vendor_requirement_removed: null
+- id: experiment_ideation
+  name: Experiment Ideation
+  category: experimentation
+  category_label: End-to-end testing
+  opal_reference: Opal agent (Experimentation Ideation / Experiment Idea Building) that analyses a website's pages and suggests
+    high-value test ideas to keep the experimentation pipeline flowing without manual brainstorming - invoked by asking Opal
+    for experiment ideas for a page.
+  use_cases:
+  - Filling the experimentation backlog
+  - kicking off a CRO programme
+  - generating ideas from page analysis
+  - converting analytics and heatmap findings into testable concepts
+  - democratising ideation beyond specialists
+  independence: 'Ground ideation in your own evidence rather than generic page analysis: combine the crawler, the analytics
+    connector, the heatmap connector and the accessibility findings, then generate ideas against a persisted CRO heuristic
+    library (YAML) capturing proven patterns. Score and rank ideas with your own PIE/ICE model computed in code. Because ideas
+    are stored in your own backlog database, learnings compound across clients - independent of any experimentation vendor.'
+  vendor_requirement_removed: null
+- id: experiment_planning
+  name: Experiment Planning
+  category: experimentation
+  category_label: End-to-end testing
+  opal_reference: 'Opal agent @experiment_planning. Transforms a raw idea into a fully formed experiment plan with hypotheses,
+    variant descriptions, targeting settings, a metrics table, statistical sizing guidance, risks and critical assumptions.
+    Inputs: URL and Test Idea (both required). Tools: browse_web_html, take_webpage_screenshot. Inference: Complex. Output:
+    structured test plan as text.'
+  use_cases:
+  - Turning an idea into a runnable, well-designed test
+  - setting hypothesis, primary and guardrail metrics
+  - sample size and duration planning
+  - documenting risks and assumptions
+  - raising the quality bar of an experimentation programme
+  independence: 'The statistical core should be real mathematics you own, not model prose: implement power analysis, MDE and
+    duration calculation in statsmodels/scipy, with support for frequentist and Bayesian designs and sequential testing. Keep
+    page inspection in your own crawler and screenshot tooling. Make targeting and metric definitions platform-neutral and
+    export the plan to whichever testing tool is in use - Optimizely, VWO, AB Tasty, LaunchDarkly, Adobe Target or a homegrown
+    flag service - via a pluggable exporter.'
+  vendor_requirement_removed: null
+- id: variation_development
+  name: Variation Development
+  category: experimentation
+  category_label: End-to-end testing
+  opal_reference: Opal Variation Development agent (marked in the slide as requiring Optimizely Experimentation). Lets users
+    describe a change in natural language and builds the variation in the new Visual Editor - identifying elements, applying
+    updates, retrieving page styles for brand consistency, generating custom code only when needed, validating changes and
+    producing a live preview. Requires Opti ID, a connected Web Experimentation or Personalization instance, the new Visual
+    Editor and a set of exp_ve_* tools enabled.
+  use_cases:
+  - Creating experiment variations without developer dependency
+  - CTA, layout, copy and promo-bar changes
+  - generating additional variants from existing ones
+  - rapid iteration during a test-design session
+  - unblocking non-technical marketers
+  independence: 'This is the most vendor-locked agent, and the break is to generate standard web artefacts instead of editor-specific
+    changes: produce plain CSS and JavaScript mutations plus a DOM patch description, validated by executing them in Playwright
+    against the live page with before/after screenshots and a visual diff. Derive brand consistency from the page''s own computed
+    styles and design tokens. Deliver the variation through a FeatureFlagConnector or your own lightweight edge/client-side
+    mutation runtime, so the same variation can run on any testing tool or none.'
+  vendor_requirement_removed: Optimizely Experimentation
+- id: experiment_review
+  name: Experiment Review
+  category: experimentation
+  category_label: End-to-end testing
+  opal_reference: Opal agent that reviews a configured experiment before launch, checking design and setup quality and surfacing
+    issues or improvements so tests go live correctly - part of Opal's build and optimise experimentation flow, alongside
+    a conflict checker and program health review.
+  use_cases:
+  - Pre-launch QA gate
+  - catching bad metric, targeting or allocation setup
+  - detecting conflicting or overlapping tests
+  - enforcing programme standards
+  - reducing invalid or wasted tests
+  independence: Implement as a deterministic validation rules engine over a platform-neutral experiment definition, with rules
+    in YAML - sample size sufficiency, metric validity, guardrail presence, traffic allocation, targeting overlap with other
+    live tests, SRM risk, instrumentation and QA-link checks. Read live test configuration through an ExperimentConnector
+    so it works with Optimizely, VWO, Adobe Target, LaunchDarkly or your own registry. The LLM only explains findings, keeping
+    the gate auditable and CI-enforceable.
+  vendor_requirement_removed: null
+- id: experiment_summary
+  name: Experiment Summary
+  category: experimentation
+  category_label: End-to-end testing
+  opal_reference: Opal capability (marked in the slide as requiring Optimizely Experimentation) that summarises experiment
+    results - reading the test's statistical outcome and producing a readable summary of what happened, what it means and
+    what to do next.
+  use_cases:
+  - Communicating results to stakeholders
+  - documenting learnings in a knowledge base
+  - ship / iterate / abandon decisions
+  - quarterly programme reporting
+  - converting statistics into business language
+  independence: Compute the statistics yourself from raw event or exposure data in scipy/statsmodels - lift, confidence intervals,
+    p-values or Bayesian posterior probability, SRM checks and segment breakdowns - so the summary is never the model's arithmetic.
+    Ingest results through the same ExperimentConnector or directly from a warehouse table, making it testing-platform agnostic.
+    Persist every summary into your own learning repository so institutional knowledge accumulates outside any vendor.
+  vendor_requirement_removed: Optimizely Experimentation
+- id: exploration_generation
+  name: Exploration Generation
+  category: experimentation
+  category_label: End-to-end testing
+  opal_reference: Opal capability (marked in the slide as requiring Optimizely Analytics) that generates analytics explorations
+    - automatically constructing the segments, dimensions and queries needed to explore a question in the analytics data rather
+    than requiring a manual report build.
+  use_cases:
+  - Ad-hoc analysis without an analyst
+  - funnel, cohort and segment exploration
+  - investigating an anomaly or result
+  - self-service data questions from marketers
+  - generating the queries behind a report
+  independence: 'Replace the proprietary analytics engine with a text-to-query layer over your own data: a semantic layer
+    (YAML or dbt metrics) defining entities, dimensions, metrics and joins, with the LLM generating validated SQL against
+    Snowflake, BigQuery, Databricks, Synapse or Postgres. Validate and sandbox every query - read-only role, row and cost
+    limits, SQL parsing before execution - then compute and visualise results in pandas and Plotly, so the capability works
+    on any warehouse with no analytics-product licence.'
+  vendor_requirement_removed: Optimizely Analytics
+- id: chart_summary
+  name: Chart Summary
+  category: experimentation
+  category_label: End-to-end testing
+  opal_reference: Opal capability (marked in the slide as requiring Optimizely Analytics) that reads a chart or analytics
+    visualisation and produces a written summary of what it shows - trends, notable movements and the takeaway - so visual
+    reports become shareable narrative.
+  use_cases:
+  - Narrating dashboards for executives
+  - adding commentary to recurring reports
+  - explaining a chart to non-analysts
+  - generating slide notes from visuals
+  - accessibility-friendly text alternatives for charts
+  independence: 'Do not summarise pixels when you can summarise data: accept the underlying dataset (DataFrame, CSV or query
+    result) and compute trend, seasonality, change points, outliers and contributions statistically before writing anything,
+    so the narrative is provably correct. Keep a vision-model path only for image-only inputs. Render charts yourself with
+    Plotly or Matplotlib and emit the narrative as both report commentary and a WCAG-compliant long description, making it
+    reusable across every dashboard you own.'
+  vendor_requirement_removed: Optimizely Analytics

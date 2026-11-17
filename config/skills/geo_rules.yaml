@@ -1,0 +1,414 @@
+# Generative Engine Optimization (GEO) rule pack - consumed by the geo_recommendations agent.
+#
+# Five pillars, each scored 0-100 in code from the checks below (pass = 1, warn = 0.5, fail = 0,
+# weighted by `weight`; not-applicable checks are excluded). The overall score is the pillar-weighted
+# mean of the pillars that could be assessed. The model never scores - it only writes the plan.
+#
+#   action       imperative title used for the deterministic (no-model) action plan
+#   applies_to   all | article | product | home | page  (page type is detected deterministically)
+#   params       thresholds the check function reads
+#   why / recommendation   deterministic guidance (used offline and as the baseline for the model)
+version: "1.1.0"
+
+pillars:
+  crawler_access: {label: AI crawler access, weight: 0.20}
+  performance: {label: Performance, weight: 0.15}
+  structured_data: {label: Structured data, weight: 0.20}
+  eeat: {label: E-E-A-T signals, weight: 0.20}
+  citation_readiness: {label: Citation readiness, weight: 0.25}
+
+grades:
+  - {min: 90, grade: A}
+  - {min: 75, grade: B}
+  - {min: 60, grade: C}
+  - {min: 40, grade: D}
+  - {min: 0, grade: F}
+
+# Priority of an action = severity weight x pillar weight x 10 -> P1 >= 9, P2 >= 4, else P3
+severity_weights: {critical: 10, high: 6, medium: 3, low: 1}
+priority_thresholds: {P1: 9, P2: 4}
+
+# AI crawlers checked against robots.txt with urllib.robotparser.
+#   purpose: search = builds an AI search index / answer citations; user = fetches pages when a
+#   user asks; training = model training corpora. Blocking training bots is a legitimate policy
+#   choice (reported as a warning); blocking search/user agents removes the page from AI answers.
+ai_crawlers:
+  - {agent: GPTBot, vendor: OpenAI, purpose: training, weight: 1.0}
+  - {agent: OAI-SearchBot, vendor: OpenAI, purpose: search, weight: 3.0}
+  - {agent: ChatGPT-User, vendor: OpenAI, purpose: user, weight: 2.0}
+  - {agent: ClaudeBot, vendor: Anthropic, purpose: training, weight: 1.0}
+  - {agent: Claude-SearchBot, vendor: Anthropic, purpose: search, weight: 3.0}
+  - {agent: Claude-User, vendor: Anthropic, purpose: user, weight: 2.0}
+  - {agent: PerplexityBot, vendor: Perplexity, purpose: search, weight: 3.0}
+  - {agent: Google-Extended, vendor: Google, purpose: training, weight: 1.0, note: Controls Gemini training and grounding use; does not affect Googlebot or Search}
+  - {agent: Applebot-Extended, vendor: Apple, purpose: training, weight: 1.0}
+  - {agent: CCBot, vendor: Common Crawl, purpose: training, weight: 1.0, note: Common Crawl feeds many open and commercial model corpora}
+  - {agent: Bytespider, vendor: ByteDance, purpose: training, weight: 0.5}
+  - {agent: Amazonbot, vendor: Amazon, purpose: search, weight: 1.0}
+  - {agent: meta-externalagent, vendor: Meta, purpose: training, weight: 1.0}
+bot_severity: {search: high, user: high, training: medium}
+bot_status_when_blocked: {search: fail, user: fail, training: warn}
+
+# Nested entities (author, publisher, brand ...) only fail "required" for these types; for every other
+# nested type missing properties are reported as recommended.
+strict_nested_types: [Question, Answer, Offer, AggregateRating, Review, ListItem, HowToStep]
+
+# schema.org types: required / recommended properties checked by the JSON-LD parser.
+schema_types:
+  Organization: {required: [name, url], recommended: [logo, sameAs, contactPoint]}
+  InsuranceAgency: {required: [name, address], recommended: [telephone, url, logo]}
+  LocalBusiness: {required: [name, address], recommended: [telephone, openingHours, url]}
+  WebSite: {required: [name, url], recommended: [potentialAction]}
+  WebPage: {required: [name], recommended: [description, dateModified]}
+  Article: {required: [headline, author, datePublished], recommended: [dateModified, image, publisher, description]}
+  BlogPosting: {required: [headline, author, datePublished], recommended: [dateModified, image, publisher, description]}
+  NewsArticle: {required: [headline, author, datePublished], recommended: [dateModified, image, publisher]}
+  FAQPage: {required: [mainEntity], recommended: []}
+  Question: {required: [name, acceptedAnswer], recommended: []}
+  Answer: {required: [text], recommended: []}
+  HowTo: {required: [name, step], recommended: [totalTime, supply, tool]}
+  Product: {required: [name], recommended: [description, image, brand, offers, aggregateRating]}
+  Offer: {required: [price, priceCurrency], recommended: [url, availability]}
+  AggregateRating: {required: [ratingValue], recommended: [reviewCount, bestRating]}
+  Review: {required: [author, reviewRating], recommended: [datePublished]}
+  Person: {required: [name], recommended: [jobTitle, url, sameAs]}
+  BreadcrumbList: {required: [itemListElement], recommended: []}
+  Event: {required: [name, startDate, location], recommended: [endDate, offers, organizer]}
+  VideoObject: {required: [name, thumbnailUrl, uploadDate], recommended: [description, duration, contentUrl]}
+  Service: {required: [name], recommended: [provider, areaServed, description]}
+
+rules:
+  # ---------------------------------------------------------------- crawler access
+  - id: crawler.robots_txt
+    action: Publish robots.txt with an explicit AI-crawler policy
+    pillar: crawler_access
+    title: robots.txt reachable
+    severity: low
+    weight: 0.5
+    why: Without robots.txt, crawler rules default to allow-all, but you cannot express AI-crawler policy.
+    recommendation: Publish /robots.txt and state an explicit policy for AI search and training crawlers.
+  - id: crawler.ai_bot
+    action: Review robots.txt rules for AI crawlers
+    pillar: crawler_access
+    title: AI crawler allowed by robots.txt
+    severity: high
+    weight: 1.0
+    why: AI search engines can only cite pages their crawlers are allowed to fetch.
+    recommendation: Allow AI search and user-triggered agents (OAI-SearchBot, ChatGPT-User, Claude-SearchBot, Claude-User, PerplexityBot) in robots.txt; decide training-crawler access (GPTBot, CCBot, Google-Extended ...) as an explicit content-licensing policy.
+  - id: crawler.llms_txt
+    action: Publish an llms.txt site guide
+    pillar: crawler_access
+    title: llms.txt published
+    severity: low
+    weight: 1.0
+    why: llms.txt (llmstxt.org proposal) gives language models a curated, Markdown map of your most useful pages; adoption by AI vendors is still emerging, so treat it as a low-cost hint.
+    recommendation: Publish /llms.txt with an H1 site name, a one-paragraph summary and sections linking to key product, help and policy pages.
+  - id: crawler.ai_meta_directives
+    action: Remove directives that block AI snippets
+    pillar: crawler_access
+    title: No page-level directives that block AI use
+    severity: high
+    weight: 2.0
+    why: noindex, nosnippet, max-snippet:0 or noai directives stop the page being quoted in AI Overviews and assistant answers.
+    recommendation: Remove nosnippet / max-snippet:0 / noai from pages you want cited; use data-nosnippet on specific passages instead.
+  - id: crawler.server_rendered
+    action: Server-render the main content
+    pillar: crawler_access
+    title: Main content present in server HTML
+    severity: high
+    weight: 2.0
+    params: {min_words: 150}
+    why: Most AI crawlers do not execute JavaScript, so client-rendered content is invisible to them.
+    recommendation: Server-render or pre-render the main content (SSR/SSG) so it is in the initial HTML response.
+
+  # ---------------------------------------------------------------- performance
+  - id: perf.ttfb
+    action: Cut server response time
+    pillar: performance
+    title: Fast server response (TTFB proxy)
+    severity: medium
+    weight: 2.0
+    params: {good_ms: 800, poor_ms: 1800}
+    why: Slow responses cause crawler timeouts and reduce crawl frequency; AI user-agents fetch pages live while the user waits.
+    recommendation: Serve HTML from a CDN or full-page cache and profile slow backend calls.
+  - id: perf.html_weight
+    action: Slim down the HTML document
+    pillar: performance
+    title: Lean HTML document
+    severity: low
+    weight: 1.0
+    params: {warn_kb: 150, fail_kb: 500}
+    why: Heavy documents slow parsing and can be truncated by crawlers with size limits.
+    recommendation: Move inline data and SVG sprites out of the HTML and paginate long lists.
+  - id: perf.render_blocking
+    action: Remove render-blocking CSS and JavaScript
+    pillar: performance
+    title: Few render-blocking resources
+    severity: medium
+    weight: 2.0
+    params: {warn: 3, fail: 6}
+    why: Synchronous scripts and stylesheets in the head delay first render (FCP/LCP).
+    recommendation: Inline critical CSS, add defer/async to scripts and load non-critical CSS with media or preload patterns.
+  - id: perf.image_dimensions
+    action: Give every image explicit dimensions
+    pillar: performance
+    title: Images declare width and height
+    severity: low
+    weight: 1.0
+    why: Images without dimensions shift the layout as they load (CLS).
+    recommendation: Add width and height attributes (or CSS aspect-ratio) to every image.
+  - id: perf.viewport
+    action: Add a mobile viewport meta tag
+    pillar: performance
+    title: Mobile viewport declared
+    severity: medium
+    weight: 1.0
+    why: Without a viewport meta tag pages render at desktop width on phones and fail mobile usability.
+    recommendation: Add <meta name="viewport" content="width=device-width, initial-scale=1">.
+  - id: perf.psi_lcp
+    action: Speed up Largest Contentful Paint
+    pillar: performance
+    title: Largest Contentful Paint (PageSpeed Insights)
+    severity: high
+    weight: 3.0
+    params: {good_ms: 2500, poor_ms: 4000}
+    why: LCP is a Core Web Vital; slow LCP hurts rankings and user engagement.
+    recommendation: Optimise the LCP element (preload hero image, serve modern formats, cut server time).
+  - id: perf.psi_cls
+    action: Stabilise the layout (CLS)
+    pillar: performance
+    title: Cumulative Layout Shift (PageSpeed Insights)
+    severity: medium
+    weight: 2.0
+    params: {good: 0.1, poor: 0.25}
+    why: CLS is a Core Web Vital measuring visual stability.
+    recommendation: Reserve space for images, embeds and late-loading banners.
+  - id: perf.psi_tbt
+    action: Reduce main-thread blocking time
+    pillar: performance
+    title: Total Blocking Time (PageSpeed Insights, INP lab proxy)
+    severity: medium
+    weight: 2.0
+    params: {good_ms: 200, poor_ms: 600}
+    why: Long main-thread tasks delay interaction (INP).
+    recommendation: Split long JavaScript tasks, defer third-party scripts and remove unused code.
+
+  # ---------------------------------------------------------------- structured data
+  - id: schema.present
+    action: Add JSON-LD for the page's main entity
+    pillar: structured_data
+    title: JSON-LD structured data present
+    severity: high
+    weight: 2.0
+    why: Structured data states facts (entity, product, author, dates, Q&A) in a machine-readable form that AI systems and search features use.
+    recommendation: Add JSON-LD describing the page's main entity (Organization, Product, Article, FAQPage ...).
+  - id: schema.parse_errors
+    action: Fix invalid JSON-LD
+    pillar: structured_data
+    title: JSON-LD parses without errors
+    severity: high
+    weight: 2.0
+    why: A block with a syntax error is discarded entirely.
+    recommendation: Fix the JSON syntax and validate every block.
+  - id: schema.required_properties
+    action: Complete required schema.org properties
+    pillar: structured_data
+    title: Required schema.org properties present
+    severity: medium
+    weight: 2.0
+    why: Entities missing required properties are ignored for rich results and are less useful to AI systems.
+    recommendation: Add the missing required properties listed for each entity.
+  - id: schema.recommended_properties
+    action: Enrich schema.org markup with recommended properties
+    pillar: structured_data
+    title: Recommended schema.org properties present
+    severity: low
+    weight: 1.0
+    why: Recommended properties (dates, images, brand, ratings) add the specifics AI answers quote.
+    recommendation: Add the recommended properties where you have the data.
+  - id: schema.main_entity_match
+    action: Mark up the page's main entity type
+    pillar: structured_data
+    title: Schema matches the page type
+    severity: medium
+    weight: 1.5
+    why: An article without Article markup, or a product page without Product markup, leaves the main entity implicit.
+    recommendation: Mark up the page's main entity with the matching type (Article/BlogPosting for editorial, Product/Service for offers).
+  - id: schema.faq_visible
+    action: Align FAQ markup with visible content
+    pillar: structured_data
+    title: FAQ markup matches visible content
+    severity: medium
+    weight: 1.0
+    why: Marked-up questions that are not visible on the page break structured-data guidelines and erode trust.
+    recommendation: Only mark up questions and answers that are visible on the page, with the same wording.
+
+  # ---------------------------------------------------------------- E-E-A-T
+  - id: eeat.author_byline
+    action: Add an author byline
+    pillar: eeat
+    title: Author byline
+    severity: high
+    weight: 2.0
+    applies_to: [article]
+    why: Named authors with relevant expertise are a core experience/expertise signal for editorial content.
+    recommendation: Show the author's name and role near the headline and mark it up as author (Person) in Article schema.
+  - id: eeat.author_bio
+    action: Add an author bio and profile link
+    pillar: eeat
+    title: Author bio or profile
+    severity: medium
+    weight: 1.5
+    applies_to: [article]
+    why: A bio explains why the author is qualified, which AI systems use to judge expertise.
+    recommendation: Add a short bio with credentials and years of experience, linked to an author profile page.
+  - id: eeat.dates
+    action: Show published and updated dates
+    pillar: eeat
+    title: Published / updated dates
+    severity: medium
+    weight: 1.5
+    applies_to: [article]
+    why: Visible, machine-readable dates let AI answers prefer current information.
+    recommendation: Show published and last-updated dates with <time datetime> and add datePublished/dateModified to the schema.
+  - id: eeat.freshness
+    action: Review and refresh the content
+    pillar: eeat
+    title: Recently updated
+    severity: low
+    weight: 1.0
+    applies_to: [article]
+    params: {max_age_days: 365}
+    why: Stale advice is less likely to be cited for time-sensitive questions.
+    recommendation: Review and update the content at least yearly, and update dateModified when you do.
+  - id: eeat.citations
+    action: Cite primary sources
+    pillar: eeat
+    title: Cites external sources
+    severity: medium
+    weight: 1.5
+    applies_to: [article]
+    params: {min_sources: 1}
+    why: Linking to authoritative sources shows research and makes claims verifiable.
+    recommendation: Link the statistics and claims to their primary sources (regulators, studies, industry reports).
+  - id: eeat.about_contact
+    action: Link About and Contact pages site-wide
+    pillar: eeat
+    title: About and contact pages linked
+    severity: medium
+    weight: 1.5
+    why: Clear ownership and contact routes are basic trust signals.
+    recommendation: Link to About and Contact pages from the header or footer of every page.
+  - id: eeat.organization_schema
+    action: Add Organization schema
+    pillar: eeat
+    title: Organization schema (on the page or homepage)
+    severity: medium
+    weight: 1.5
+    why: Organization markup with logo and sameAs profiles ties the content to a verifiable entity.
+    recommendation: Add Organization JSON-LD (name, url, logo, sameAs, contactPoint) on the homepage and reference it as publisher.
+  - id: eeat.contact_details
+    action: Show direct contact details
+    pillar: eeat
+    title: Contact details visible
+    severity: low
+    weight: 1.0
+    why: A phone number, email or address on the page helps users and machines verify the business.
+    recommendation: Show at least one direct contact route (phone, email or address) on the page or in the footer.
+  - id: eeat.https
+    action: Serve the page over HTTPS
+    pillar: eeat
+    title: Served over HTTPS
+    severity: high
+    weight: 1.0
+    why: Insecure pages are treated as untrustworthy by browsers and search systems.
+    recommendation: Serve every page over HTTPS and redirect HTTP to HTTPS.
+  - id: eeat.reviews
+    action: Show reviews or testimonials
+    pillar: eeat
+    title: Reviews or testimonials
+    severity: low
+    weight: 1.0
+    applies_to: [product, home, page]
+    why: First-hand customer experience is the 'experience' in E-E-A-T.
+    recommendation: Show verified reviews or testimonials and mark the aggregate up as AggregateRating.
+
+  # ---------------------------------------------------------------- citation readiness
+  - id: citation.question_headings
+    action: Phrase key sections as customer questions
+    pillar: citation_readiness
+    title: Question-style headings
+    severity: medium
+    weight: 1.5
+    params: {min_questions: 2}
+    why: AI answers are built from passages that match the user's question; question headings make those passages easy to find.
+    recommendation: Phrase key section headings as the questions customers ask (What, How, Can I, Does ...).
+  - id: citation.concise_answers
+    action: Answer each question in the first 40-60 words
+    pillar: citation_readiness
+    title: Concise answer after each question
+    severity: medium
+    weight: 2.0
+    params: {min_words: 8, max_words: 90, min_share: 0.6}
+    why: A direct 40-60 word answer straight after the question is the passage most likely to be quoted.
+    recommendation: Start each question section with a direct one-to-three sentence answer, then add detail.
+  - id: citation.lists_tables
+    action: Turn steps and comparisons into lists or tables
+    pillar: citation_readiness
+    title: Lists or tables for scannable facts
+    severity: low
+    weight: 1.0
+    why: Lists and tables are easy for models to extract into step-by-step or comparison answers.
+    recommendation: Present steps, criteria and comparisons as lists or tables with header cells.
+  - id: citation.statistics_sourced
+    action: Attribute statistics to their sources
+    pillar: citation_readiness
+    title: Statistics attributed to a source
+    severity: medium
+    weight: 1.5
+    params: {min_sourced_share: 0.5}
+    why: Specific, sourced numbers are quoted far more often than vague claims - and unsourced numbers are a trust risk.
+    recommendation: Attribute each statistic (link or 'according to ...'), including first-party data with its sample and date.
+  - id: citation.faq_schema
+    action: Mark up the Q&A section as FAQPage
+    pillar: citation_readiness
+    title: FAQ content marked up as FAQPage
+    severity: medium
+    weight: 1.5
+    why: FAQPage markup makes Q&A pairs machine-readable. FAQ rich results are limited to well-known government and health sites since 2023, but the markup still helps AI systems parse the answers.
+    recommendation: Mark up visible FAQ sections with FAQPage / Question / acceptedAnswer.
+  - id: citation.summary
+    action: Open with a summary or key takeaways
+    pillar: citation_readiness
+    title: Summary or key takeaways near the top
+    severity: low
+    weight: 1.0
+    params: {max_lead_words: 70}
+    why: A short summary gives models a ready-made answer to 'what is this page about'.
+    recommendation: Open with a two-to-three sentence summary or a 'Key takeaways' list.
+  - id: citation.heading_structure
+    action: Restructure headings into one H1 and clear H2 sections
+    pillar: citation_readiness
+    title: Clear heading outline
+    severity: low
+    weight: 1.0
+    params: {min_h2: 3}
+    why: One H1 and several descriptive H2 sections let retrieval systems chunk the page cleanly.
+    recommendation: Use one H1 and descriptive H2 sections for each sub-topic.
+  - id: citation.content_depth
+    action: Add substantive, specific content
+    pillar: citation_readiness
+    title: Enough substantive content
+    severity: medium
+    weight: 1.0
+    params: {min_words: 300}
+    why: Thin pages rarely contain the specific facts AI answers need.
+    recommendation: Expand the page with specifics - numbers, examples, eligibility, steps and edge cases.
+  - id: citation.entity_named
+    action: Name the brand in the opening paragraph
+    pillar: citation_readiness
+    title: Brand named in the main content
+    severity: low
+    weight: 0.5
+    why: Answers cite entities; pages that name the brand in the body make attribution unambiguous.
+    recommendation: Name the brand and product explicitly in the opening paragraph.

@@ -1,0 +1,57 @@
+# Translation glossary + do-not-translate list (Content Translation agent).
+# Versioned and owned by the localisation lead: the agent passes it to every translation engine
+# (LLM, DeepL, Azure ...) and the deterministic QA pass enforces it on every segment.
+# DEMO BRAND: Meridian Mutual is fictional; terms reflect a mutual insurer (members, contributions).
+version: "2026.2"
+source_locale: en-US
+
+# Translation memory (TMX 1.4). Read-only: new units are written to runs/_store/tm-<run>.tmx for review,
+# never back into this file.
+translation_memory: sample_data/translation/tm.tmx
+fuzzy_threshold: 0.85
+
+# Never translated or altered (brand, product and programme names, codes). Placeholders such as {name},
+# {{var}}, %s, URLs and HTML tags are protected automatically.
+# Terms declared in the TMX header (<prop type="x-do-not-translate">) are merged in automatically.
+do_not_translate:
+  - Meridian Mutual
+  - The 2026 Home Risk Outlook
+  - Harbour View
+
+# Required target terms per target locale (source term -> approved term), aligned with the approved
+# wording in the translation memory. Matching is case- and accent-insensitive; English plurals of a source
+# term are covered and the target term may carry inflection endings (Schaden ~ Schäden, socio ~ socios).
+terms:
+  fr-FR:
+    home insurance: assurance habitation
+    claim: sinistre
+    deductible: franchise
+    flood: inondation
+    member: sociétaire
+    premium: cotisation
+    policy: contrat
+    quote: devis
+    rebuild value: valeur de reconstruction
+    water damage: dégât des eaux
+  de-DE:
+    home insurance: Hausversicherung
+    claim: Schaden
+    deductible: Selbstbeteiligung
+    flood: Hochwasser
+    member: Mitglied
+    premium: Beitrag
+    policy: Police
+    quote: Angebot
+    rebuild value: Wiederaufbauwert
+    water damage: Wasserschaden
+  es-ES:
+    home insurance: seguro de hogar
+    claim: siniestro
+    deductible: franquicia
+    flood: inundación
+    member: socio
+    premium: prima
+    policy: póliza
+    quote: presupuesto
+    rebuild value: valor de reconstrucción
+    water damage: daños por agua

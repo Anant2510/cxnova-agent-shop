@@ -1,0 +1,426 @@
+# Semantic layer for the exploration generation (text-to-SQL) agent.
+#
+# Tables are the CSV files in sample_data/warehouse/, loaded into DuckDB as tables named after the
+# file (customers, products, policies, sessions, quotes). Data describes Meridian Mutual, a fictional
+# insurer; replace this file with the client's own semantic layer when connecting a real warehouse.
+#
+# Conventions
+# - Every SQL expression uses table-qualified column names (table.column), so it stays unambiguous
+#   when tables are joined. If you alias a table, rewrite the qualifier to the alias.
+# - A metric's sql is an aggregate expression that runs as: SELECT <sql> FROM <entity table>,
+#   optionally joined to other entities through `joins` to group by their dimensions.
+# - Dimension names are unique across entities (except shared keys), so synonyms resolve to exactly
+#   one target. sessions.channel is the marketing channel of a web visit; policies.channel is the
+#   sales channel a policy was written through (dimension name: sales_channel).
+# - 0/1 flag columns (sessions.converted, quotes.purchased) are typed number.
+
+version: 1
+dialect: duckdb
+description: >-
+  Meridian Mutual web, quote and policy warehouse sample: 20,000 web sessions from server logs
+  (2026-03-01 to 2026-09-30), about 6,000 quotes, about 3,000 policies (inception dates
+  2023-01-01 to 2026-09-30), 2,000 customers and 12 products. Every purchased quote became an
+  online policy for the session's customer.
+
+entities:
+  - name: customers
+    table: customers
+    primary_key: customer_id
+    description: One row per customer (Meridian Mutual calls customers members), with acquisition details.
+    dimensions:
+      - name: customer_id
+        column: customer_id
+        type: string
+        description: Customer identifier, for example C00042.
+      - name: signup_date
+        column: signup_date
+        type: date
+        description: Date the customer joined Meridian Mutual.
+      - name: region
+        column: region
+        type: string
+        description: "US region: Northeast, Southeast, Midwest, Southwest or West."
+      - name: segment
+        column: segment
+        type: string
+        description: "Lifestyle segment: young_professional, family, empty_nester, retiree or landlord."
+      - name: acquisition_channel
+        column: acquisition_channel
+        type: string
+        description: "Channel that acquired the customer: Organic Search, Paid Search, Direct, Email, Referral, Organic Social, Paid Social, Display or Broker."
+      - name: age_band
+        column: age_band
+        type: string
+        description: "Age band of the customer: 18-24, 25-34, 35-44, 45-54, 55-64 or 65+."
+    measures:
+      - name: customer_count
+        sql: COUNT(DISTINCT customers.customer_id)
+        description: Number of distinct customers.
+
+  - name: products
+    table: products
+    primary_key: product_id
+    description: Product catalog, three tiers (basic, standard, premium) for each of four product lines.
+    dimensions:
+      - name: product_id
+        column: product_id
+        type: string
+        description: Product code, for example HOME-STANDARD.
+      - name: product_name
+        column: product_name
+        type: string
+        description: Display name, for example Home Standard.
+      - name: product_line
+        column: product_line
+        type: string
+        description: "Product line: home, car, pet or travel."
+      - name: base_premium
+        column: base_premium
+        type: number
+        description: List annual premium in USD before risk rating.
+    measures:
+      - name: product_count
+        sql: COUNT(products.product_id)
+        description: Number of products.
+      - name: avg_base_premium
+        sql: AVG(products.base_premium)
+        description: Average list annual premium in USD.
+
+  - name: policies
+    table: policies
+    primary_key: policy_id
+    description: One row per policy written, with its inception date, annual premium and current status.
+    dimensions:
+      - name: policy_id
+        column: policy_id
+        type: string
+        description: Policy identifier, for example POL000123.
+      - name: customer_id
+        column: customer_id
+        type: string
+        description: Customer who holds the policy.
+      - name: product_id
+        column: product_id
+        type: string
+        description: Product the policy was written on.
+      - name: start_date
+        column: start_date
+        type: date
+        description: Policy inception date. Use it to filter written premium to a period.
+      - name: annual_premium
+        column: annual_premium
+        type: number
+        description: Annual premium in USD after risk rating.
+      - name: status
+        column: status
+        type: string
+        description: "Current status: active, lapsed (not renewed) or cancelled."
+      - name: sales_channel
+        column: channel
+        type: string
+        description: "Channel the policy was sold through: online, broker, phone or partner."
+    measures:
+      - name: policy_count
+        sql: COUNT(policies.policy_id)
+        description: Number of policies.
+      - name: active_policy_count
+        sql: COUNT(CASE WHEN policies.status = 'active' THEN 1 END)
+        description: Number of policies currently active.
+      - name: lapsed_policy_count
+        sql: COUNT(CASE WHEN policies.status = 'lapsed' THEN 1 END)
+        description: Number of policies that were not renewed.
+      - name: cancelled_policy_count
+        sql: COUNT(CASE WHEN policies.status = 'cancelled' THEN 1 END)
+        description: Number of cancelled policies.
+      - name: total_annual_premium
+        sql: SUM(policies.annual_premium)
+        description: Sum of annual premium in USD.
+      - name: active_annual_premium
+        sql: SUM(CASE WHEN policies.status = 'active' THEN policies.annual_premium ELSE 0 END)
+        description: Sum of annual premium in USD for active policies.
+      - name: avg_annual_premium
+        sql: AVG(policies.annual_premium)
+        description: Average annual premium in USD.
+
+  - name: sessions
+    table: sessions
+    primary_key: session_id
+    description: One row per website session from server logs, with its marketing channel and outcome.
+    dimensions:
+      - name: session_id
+        column: session_id
+        type: string
+        description: Session identifier, for example S000123.
+      - name: customer_id
+        column: customer_id
+        type: string
+        description: Customer for identified sessions; NULL for anonymous visitors.
+      - name: session_date
+        column: session_date
+        type: date
+        description: Date of the session (2026-03-01 to 2026-09-30).
+      - name: channel
+        column: channel
+        type: string
+        description: "Marketing channel of the visit: Organic Search, Paid Search, Direct, Email, Referral, Organic Social, Paid Social or Display."
+      - name: device
+        column: device
+        type: string
+        description: "Device category: desktop, mobile or tablet."
+      - name: landing_page
+        column: landing_page
+        type: string
+        description: First page path of the session, for example /products/home-insurance.html or /quote.
+      - name: pageviews
+        column: pageviews
+        type: number
+        description: Pages viewed in the session.
+      - name: converted
+        column: converted
+        type: number
+        description: 1 if the session ended in a policy purchase, else 0.
+    measures:
+      - name: session_count
+        sql: COUNT(sessions.session_id)
+        description: Number of sessions.
+      - name: converted_sessions
+        sql: SUM(sessions.converted)
+        description: Number of sessions that ended in a purchase.
+      - name: total_pageviews
+        sql: SUM(sessions.pageviews)
+        description: Total pages viewed.
+      - name: identified_sessions
+        sql: COUNT(sessions.customer_id)
+        description: Number of sessions from a known customer.
+
+  - name: quotes
+    table: quotes
+    primary_key: quote_id
+    description: One row per quote produced during a web session, with the quoted price and whether it was bought.
+    dimensions:
+      - name: quote_id
+        column: quote_id
+        type: string
+        description: Quote identifier, for example Q000123.
+      - name: session_id
+        column: session_id
+        type: string
+        description: Session in which the quote was produced.
+      - name: product_id
+        column: product_id
+        type: string
+        description: Product that was quoted.
+      - name: created_at
+        column: created_at
+        type: timestamp
+        description: Date and time the quote was produced.
+      - name: quoted_premium
+        column: quoted_premium
+        type: number
+        description: Quoted annual premium in USD.
+      - name: purchased
+        column: purchased
+        type: number
+        description: 1 if the quote was bought, else 0. At most one quote per session is bought.
+    measures:
+      - name: quote_count
+        sql: COUNT(quotes.quote_id)
+        description: Number of quotes.
+      - name: purchased_quotes
+        sql: SUM(quotes.purchased)
+        description: Number of quotes that were bought.
+      - name: avg_quoted_premium
+        sql: AVG(quotes.quoted_premium)
+        description: Average quoted annual premium in USD.
+      - name: purchased_premium
+        sql: SUM(CASE WHEN quotes.purchased = 1 THEN quotes.quoted_premium ELSE 0 END)
+        description: Annual premium in USD of quotes that were bought.
+
+joins:
+  - left: policies
+    right: customers
+    "on": policies.customer_id = customers.customer_id
+    type: inner
+    description: Many policies to one customer.
+  - left: policies
+    right: products
+    "on": policies.product_id = products.product_id
+    type: inner
+    description: Many policies to one product.
+  - left: quotes
+    right: products
+    "on": quotes.product_id = products.product_id
+    type: inner
+    description: Many quotes to one product.
+  - left: quotes
+    right: sessions
+    "on": quotes.session_id = sessions.session_id
+    type: inner
+    description: Many quotes to one session.
+  - left: sessions
+    right: customers
+    "on": sessions.customer_id = customers.customer_id
+    type: left
+    description: Many sessions to one customer. Anonymous sessions have no customer, so a LEFT JOIN keeps them.
+  - left: sessions
+    right: quotes
+    "on": sessions.session_id = quotes.session_id
+    type: left
+    description: One session to zero or more quotes. This join repeats session rows, so count sessions with COUNT(DISTINCT sessions.session_id).
+
+metrics:
+  - name: session_count
+    description: Number of website sessions. Group by channel or device for sessions by channel or device.
+    sql: COUNT(sessions.session_id)
+    entity: sessions
+  - name: conversion_rate
+    description: Share of website sessions that ended in a policy purchase.
+    sql: SUM(sessions.converted) * 1.0 / NULLIF(COUNT(sessions.session_id), 0)
+    entity: sessions
+  - name: pageviews_per_session
+    description: Average pages viewed per session.
+    sql: AVG(sessions.pageviews)
+    entity: sessions
+  - name: identified_session_rate
+    description: Share of sessions from a known customer.
+    sql: COUNT(sessions.customer_id) * 1.0 / NULLIF(COUNT(sessions.session_id), 0)
+    entity: sessions
+  - name: quote_count
+    description: Number of quotes produced.
+    sql: COUNT(quotes.quote_id)
+    entity: quotes
+  - name: purchases
+    description: Number of quotes that were bought (online policy sales).
+    sql: SUM(quotes.purchased)
+    entity: quotes
+  - name: quote_to_purchase_rate
+    description: Share of quotes that were bought.
+    sql: SUM(quotes.purchased) * 1.0 / NULLIF(COUNT(quotes.quote_id), 0)
+    entity: quotes
+  - name: avg_quoted_premium
+    description: Average quoted annual premium in USD.
+    sql: AVG(quotes.quoted_premium)
+    entity: quotes
+  - name: gross_written_premium
+    description: Total annual premium in USD of policies written; filter on start_date for a period. Includes policies that later lapsed or were cancelled.
+    sql: SUM(policies.annual_premium)
+    entity: policies
+  - name: active_policies
+    description: Number of policies currently active (in force).
+    sql: COUNT(CASE WHEN policies.status = 'active' THEN 1 END)
+    entity: policies
+  - name: in_force_premium
+    description: Annual premium in USD of currently active policies.
+    sql: SUM(CASE WHEN policies.status = 'active' THEN policies.annual_premium ELSE 0 END)
+    entity: policies
+  - name: avg_premium
+    description: Average annual premium in USD per policy.
+    sql: AVG(policies.annual_premium)
+    entity: policies
+  - name: lapse_rate
+    description: Share of policies that were not renewed.
+    sql: COUNT(CASE WHEN policies.status = 'lapsed' THEN 1 END) * 1.0 / NULLIF(COUNT(policies.policy_id), 0)
+    entity: policies
+  - name: cancellation_rate
+    description: Share of policies that were cancelled.
+    sql: COUNT(CASE WHEN policies.status = 'cancelled' THEN 1 END) * 1.0 / NULLIF(COUNT(policies.policy_id), 0)
+    entity: policies
+  - name: policies_per_customer
+    description: Average number of policies per customer who holds at least one policy.
+    sql: COUNT(policies.policy_id) * 1.0 / NULLIF(COUNT(DISTINCT policies.customer_id), 0)
+    entity: policies
+  - name: new_customers
+    description: Number of customers who joined; filter on signup_date for a period.
+    sql: COUNT(customers.customer_id)
+    entity: customers
+
+synonyms:
+  gwp: gross_written_premium
+  written premium: gross_written_premium
+  premium volume: gross_written_premium
+  cvr: conversion_rate
+  conversion: conversion_rate
+  site conversion rate: conversion_rate
+  bind rate: quote_to_purchase_rate
+  close rate: quote_to_purchase_rate
+  quote conversion: quote_to_purchase_rate
+  quote to bind: quote_to_purchase_rate
+  in-force policies: active_policies
+  live policies: active_policies
+  in-force premium: in_force_premium
+  average premium: avg_premium
+  premium per policy: avg_premium
+  average quote: avg_quoted_premium
+  policy sales: purchases
+  sales: purchases
+  quotes: quote_count
+  number of quotes: quote_count
+  traffic: session_count
+  visits: session_count
+  sessions: session_count
+  lapse: lapse_rate
+  non-renewal rate: lapse_rate
+  new members: new_customers
+  marketing channel: channel
+  traffic source: channel
+  source: channel
+  sales channel: sales_channel
+  distribution channel: sales_channel
+  device type: device
+  platform: device
+  landing page: landing_page
+  entry page: landing_page
+  line of business: product_line
+  lob: product_line
+  product type: product_line
+  plan: product_name
+  tier: product_name
+  members: customers
+  policyholders: customers
+  clients: customers
+  join date: signup_date
+  inception date: start_date
+  policy start: start_date
+  age: age_band
+
+examples:
+  - question: Sessions and conversion rate by channel
+    sql: |
+      SELECT sessions.channel,
+             COUNT(sessions.session_id) AS session_count,
+             SUM(sessions.converted) * 1.0 / NULLIF(COUNT(sessions.session_id), 0) AS conversion_rate
+      FROM sessions
+      GROUP BY sessions.channel
+      ORDER BY session_count DESC
+  - question: Sessions by device per month
+    sql: |
+      SELECT date_trunc('month', sessions.session_date) AS month, sessions.device,
+             COUNT(sessions.session_id) AS session_count
+      FROM sessions
+      GROUP BY 1, 2
+      ORDER BY 1, 2
+  - question: Quote-to-purchase rate by product line
+    sql: |
+      SELECT products.product_line,
+             SUM(quotes.purchased) * 1.0 / NULLIF(COUNT(quotes.quote_id), 0) AS quote_to_purchase_rate
+      FROM quotes
+      INNER JOIN products ON quotes.product_id = products.product_id
+      GROUP BY products.product_line
+      ORDER BY quote_to_purchase_rate DESC
+  - question: Gross written premium by product line in 2026
+    sql: |
+      SELECT products.product_line, SUM(policies.annual_premium) AS gross_written_premium
+      FROM policies
+      INNER JOIN products ON policies.product_id = products.product_id
+      WHERE policies.start_date >= DATE '2026-01-01'
+      GROUP BY products.product_line
+      ORDER BY gross_written_premium DESC
+  - question: Active policies and average premium by customer region
+    sql: |
+      SELECT customers.region,
+             COUNT(CASE WHEN policies.status = 'active' THEN 1 END) AS active_policies,
+             AVG(policies.annual_premium) AS avg_premium
+      FROM policies
+      INNER JOIN customers ON policies.customer_id = customers.customer_id
+      GROUP BY customers.region
+      ORDER BY active_policies DESC

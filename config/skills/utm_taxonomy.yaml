@@ -1,0 +1,28 @@
+# Organisation UTM naming convention (UTM Generation agent). Version-control this file;
+# the agent enforces it deterministically - no LLM is involved in link building.
+version: "2026.1"
+case: lower
+value_pattern: "^[a-z0-9]+(?:[_-][a-z0-9]+)*$"
+max_value_length: 60
+campaign_pattern: "{year}{quarter}_{market}_{product}_{objective}"   # e.g. 2026q4_us_home_acquisition
+campaign_parts:
+  year: "^20[2-9][0-9]$"
+  quarter: "^q[1-4]$"
+  market: "^[a-z]{2,6}$"
+  product: "^[a-z0-9-]{2,20}$"
+  objective: "^(awareness|acquisition|retention|winback|engagement|launch|event)$"
+channels:
+  email:          {source: newsletter, medium: email}
+  paid_search:    {source: google, medium: cpc}
+  paid_social:    {source: linkedin, medium: paid_social}
+  organic_social: {source: linkedin, medium: social}
+  display:        {source: dv360, medium: display}
+  partner:        {source: partner, medium: referral}
+  affiliate:      {source: affiliate, medium: affiliate}
+  sms:            {source: sms, medium: sms}
+  push:           {source: app, medium: push}
+  qr:             {source: print, medium: qr}
+  event:          {source: event, medium: offline}
+allowed_sources: [newsletter, braze, sfmc, ajo, mailchimp, google, bing, linkedin, meta, x, instagram, facebook, youtube, tiktok, dv360, ttd, partner, affiliate, sms, app, print, event, packaging, direct_mail]
+allowed_mediums: [email, cpc, paid_social, social, display, referral, affiliate, sms, push, qr, offline, video]
+required: [utm_source, utm_medium, utm_campaign]

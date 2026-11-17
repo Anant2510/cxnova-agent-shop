@@ -1,0 +1,475 @@
+# Technical SEO rule pack - consumed by the technical_seo_recommendations agent.
+#
+# Detection is code (a small library of check functions keyed by `check`); this file decides
+# WHICH checks run, their thresholds, severity, wording and fix guidance. A business user can
+# disable a rule, change a threshold or reword a recommendation without touching Python.
+#
+#   id              stable rule id (used in CSV/HTML reports, findings and CI baselines)
+#   check           name of the check function in technical_seo_recommendations.CHECKS
+#   severity        critical | high | medium | low  (drives priority together with traffic)
+#   scope           page (evaluated per crawled HTML page) | url (per fetched URL) | site
+#   params          optional thresholds passed to the check
+#   why / recommendation   deterministic explanation + fix text (used offline and as the
+#                   baseline the model may expand on - the model never decides what is broken)
+#   effort / owner  default remediation effort and owning role
+#   enabled         false switches a rule off
+version: "1.2.0"
+
+# Priority = severity weight x (1 + traffic_weight x page importance [0..1]) + breadth bonus.
+# Importance comes from first-party search data (keyword_data connector: clicks, impressions);
+# without it, internal in-link share is used as a clearly-labelled proxy.
+severity_weights: {critical: 10, high: 6, medium: 3, low: 1}
+traffic_weight: 1.5
+breadth_bonus_per_doubling: 0.5     # +0.5 per doubling of affected URLs
+priority_thresholds: {P1: 9, P2: 4}  # score >= P1 -> P1, >= P2 -> P2, else P3
+
+rules:
+  # ---------------------------------------------------------------- status codes / redirects
+  - id: status.client_error
+    title: URL returns a 4xx error
+    category: status
+    check: status_client_error
+    scope: url
+    severity: high
+    why: Linked or listed URLs that return 4xx waste crawl budget, leak link equity and send visitors to a dead end.
+    recommendation: Restore the page, or 301-redirect it to the closest live equivalent and update every internal link and sitemap entry that points to it.
+    effort: low
+    owner: Web developer
+  - id: status.server_error
+    title: URL returns a 5xx error
+    category: status
+    check: status_server_error
+    scope: url
+    severity: critical
+    why: Server errors stop crawling and, if persistent, cause pages to drop out of the index.
+    recommendation: Fix the server-side error (check application logs and timeouts) and monitor the URL until it returns 200.
+    effort: medium
+    owner: Platform engineer
+  - id: status.redirect
+    title: Internal URL redirects
+    category: status
+    check: status_redirect
+    scope: url
+    severity: low
+    why: Every redirect adds latency and an extra crawl request; redirected URLs should not be linked or listed.
+    recommendation: Keep the redirect for old inbound links, but link and list the final destination URL directly.
+    effort: low
+    owner: Content editor
+  - id: redirect.chain
+    title: Redirect chain (more than one hop)
+    category: status
+    check: redirect_chain
+    scope: url
+    params: {max_hops: 1}
+    severity: medium
+    why: Search engines may stop following long chains and each hop dilutes signals and slows users down.
+    recommendation: Point the first URL straight at the final destination with a single 301.
+    effort: low
+    owner: Web developer
+  - id: links.to_redirect
+    title: Internal links point to a redirect
+    category: links
+    check: links_to_redirect
+    scope: page
+    severity: low
+    why: Links to redirects waste crawl requests and add a hop for every visitor.
+    recommendation: Update the links to the final destination URL.
+    effort: low
+    owner: Content editor
+  - id: links.broken_internal
+    title: Broken internal links
+    category: links
+    check: broken_internal_links
+    scope: page
+    severity: high
+    why: Broken links frustrate visitors, waste crawl budget and stop link equity flowing to important pages.
+    recommendation: Fix or remove each broken link, or redirect the dead target to a relevant live page.
+    effort: low
+    owner: Content editor
+
+  # ---------------------------------------------------------------- canonicals
+  - id: canonical.missing
+    title: Missing canonical tag
+    category: canonical
+    check: canonical_missing
+    scope: page
+    severity: medium
+    why: Without a canonical, parameter and duplicate variants compete with each other and signals are split.
+    recommendation: Add a self-referencing <link rel="canonical" href="..."> with the absolute preferred URL.
+    effort: low
+    owner: Web developer
+  - id: canonical.multiple
+    title: More than one canonical tag
+    category: canonical
+    check: canonical_multiple
+    scope: page
+    severity: medium
+    why: Conflicting canonicals are ignored, so the search engine picks the canonical itself.
+    recommendation: Keep exactly one canonical link element in the <head>.
+    effort: low
+    owner: Web developer
+  - id: canonical.non_self
+    title: Canonical points to a different page
+    category: canonical
+    check: canonical_non_self
+    scope: page
+    severity: low
+    why: A non-self canonical asks search engines to index another URL instead; it is correct for variants but harmful when accidental.
+    recommendation: Confirm the consolidation is intended; otherwise make the canonical self-referencing.
+    effort: low
+    owner: SEO specialist
+  - id: canonical.target_error
+    title: Canonical target is broken or redirects
+    category: canonical
+    check: canonical_target_status
+    scope: page
+    severity: high
+    why: A canonical that points at a 404 or a redirect is an invalid hint and the page may be indexed under the wrong URL - or not at all.
+    recommendation: Point the canonical at the final, 200-status, indexable URL.
+    effort: low
+    owner: Web developer
+
+  # ---------------------------------------------------------------- hreflang
+  - id: hreflang.target_error
+    title: hreflang target does not resolve
+    category: hreflang
+    check: hreflang_target_status
+    scope: page
+    severity: high
+    why: Search engines ignore hreflang annotations whose targets are broken or redirect, so the wrong language version is shown to users.
+    recommendation: Publish the alternate page or remove the annotation; every hreflang href must return 200 and be canonical.
+    effort: medium
+    owner: Web developer
+  - id: hreflang.reciprocity
+    title: hreflang annotation is not reciprocal
+    category: hreflang
+    check: hreflang_reciprocity
+    scope: page
+    severity: medium
+    why: hreflang only works when each alternate links back (return tags); one-way annotations are ignored.
+    recommendation: Add matching return hreflang tags on every alternate page, including a self-reference.
+    effort: medium
+    owner: Web developer
+  - id: hreflang.x_default
+    title: hreflang set without x-default
+    category: hreflang
+    check: hreflang_x_default
+    scope: page
+    severity: low
+    why: x-default tells search engines which version to show users whose language or region has no dedicated page.
+    recommendation: Add <link rel="alternate" hreflang="x-default" href="..."> pointing at the language selector or default page.
+    effort: low
+    owner: Web developer
+  - id: hreflang.self_reference
+    title: hreflang set without a self-reference
+    category: hreflang
+    check: hreflang_self_reference
+    scope: page
+    severity: low
+    why: Each page in an hreflang cluster should list itself so the cluster is complete.
+    recommendation: Add an hreflang entry for the page's own language pointing at its own URL.
+    effort: low
+    owner: Web developer
+  - id: hreflang.invalid_code
+    title: Invalid hreflang language code
+    category: hreflang
+    check: hreflang_invalid_code
+    scope: page
+    severity: medium
+    why: Codes must be ISO 639-1 language (optionally with ISO 3166-1 region), otherwise the annotation is ignored.
+    recommendation: Use codes such as en, en-GB, fr-CA or x-default.
+    effort: low
+    owner: Web developer
+
+  # ---------------------------------------------------------------- sitemaps
+  - id: sitemap.missing
+    title: XML sitemap not found
+    category: sitemap
+    check: sitemap_missing
+    scope: site
+    severity: medium
+    why: A sitemap helps discovery of new and deep pages and is the main way to signal lastmod dates.
+    recommendation: Publish /sitemap.xml listing every canonical, indexable 200 URL and reference it from robots.txt.
+    effort: low
+    owner: Web developer
+  - id: sitemap.non_200
+    title: Sitemap lists a non-200 URL
+    category: sitemap
+    check: sitemap_non_200
+    scope: url
+    severity: high
+    why: Sitemaps should only list final, indexable URLs; errors and redirects erode trust in the whole sitemap.
+    recommendation: Remove 4xx/5xx URLs and replace redirected URLs with their destinations.
+    effort: low
+    owner: Web developer
+  - id: sitemap.non_canonical
+    title: Sitemap lists a non-canonical URL
+    category: sitemap
+    check: sitemap_non_canonical
+    scope: url
+    severity: medium
+    why: Listing a URL whose canonical points elsewhere sends contradictory signals.
+    recommendation: List only the canonical version of each page.
+    effort: low
+    owner: Web developer
+  - id: sitemap.noindex
+    title: Sitemap lists a noindex URL
+    category: sitemap
+    check: sitemap_noindex
+    scope: url
+    severity: high
+    why: Asking for a URL to be crawled while telling search engines not to index it wastes crawl budget and confuses reporting.
+    recommendation: Remove noindex pages from the sitemap, or remove the noindex if the page should rank.
+    effort: low
+    owner: SEO specialist
+  - id: sitemap.orphan
+    title: Orphan page (in sitemap, no internal links)
+    category: sitemap
+    check: sitemap_orphan
+    scope: url
+    severity: medium
+    why: Pages without internal links receive little link equity and are rarely crawled or ranked well.
+    recommendation: Link to the page from relevant navigation, hub or related-content modules, or drop it from the sitemap if it is obsolete.
+    effort: medium
+    owner: Content editor
+  - id: sitemap.blocked_by_robots
+    title: Sitemap URL blocked by robots.txt
+    category: sitemap
+    check: sitemap_blocked
+    scope: url
+    severity: high
+    why: Listing URLs that robots.txt disallows is contradictory; the pages cannot be crawled.
+    recommendation: Either allow the URL in robots.txt or remove it from the sitemap.
+    effort: low
+    owner: SEO specialist
+
+  # ---------------------------------------------------------------- robots.txt
+  - id: robots.missing
+    title: robots.txt not found
+    category: robots
+    check: robots_missing
+    scope: site
+    severity: low
+    why: robots.txt is where crawl rules and the sitemap location are declared.
+    recommendation: 'Publish /robots.txt with crawl rules and a Sitemap: directive.'
+    effort: low
+    owner: Web developer
+  - id: robots.blocks_all
+    title: robots.txt blocks the whole site
+    category: robots
+    check: robots_blocks_all
+    scope: site
+    params: {user_agents: ["*", "Googlebot", "Bingbot"]}
+    severity: critical
+    why: Disallow / for the main search crawlers removes the site from organic search over time.
+    recommendation: Remove the site-wide Disallow (keep it only on staging environments).
+    effort: low
+    owner: SEO specialist
+  - id: robots.no_sitemap_directive
+    title: robots.txt has no Sitemap directive
+    category: robots
+    check: robots_no_sitemap
+    scope: site
+    severity: low
+    why: 'The Sitemap: directive lets every crawler discover the sitemap without manual submission.'
+    recommendation: 'Add "Sitemap: https://<host>/sitemap.xml" to robots.txt.'
+    effort: low
+    owner: Web developer
+  - id: robots.blocks_resources
+    title: robots.txt blocks CSS or JavaScript
+    category: robots
+    check: robots_blocks_resources
+    scope: site
+    severity: medium
+    why: Search engines render pages; blocked CSS/JS can make pages look broken or empty to them.
+    recommendation: Allow crawling of the CSS and JavaScript needed to render pages.
+    effort: low
+    owner: Web developer
+
+  # ---------------------------------------------------------------- metadata
+  - id: title.missing
+    title: Missing title tag
+    category: metadata
+    check: missing
+    params: {field: title}
+    scope: page
+    severity: high
+    why: The title is the strongest on-page relevance signal and usually becomes the search result headline.
+    recommendation: Write a unique, descriptive title of 30-60 characters with the primary topic first.
+    effort: low
+    owner: Content editor
+  - id: title.duplicate
+    title: Duplicate title tag
+    category: metadata
+    check: duplicate
+    params: {field: title}
+    scope: page
+    severity: medium
+    why: Identical titles make pages compete with each other and give searchers no reason to choose one.
+    recommendation: Give every indexable page a unique title that names its specific topic.
+    effort: low
+    owner: Content editor
+  - id: title.length
+    title: Title length outside 30-60 characters
+    category: metadata
+    check: length
+    params: {field: title, min: 30, max: 60}
+    scope: page
+    severity: low
+    why: Very short titles under-describe the page; long titles are truncated in search results.
+    recommendation: Keep titles between 30 and 60 characters.
+    effort: low
+    owner: Content editor
+  - id: meta_description.missing
+    title: Missing meta description
+    category: metadata
+    check: missing
+    params: {field: meta_description}
+    scope: page
+    severity: medium
+    why: Without a description the search engine builds a snippet from page text, which often lowers click-through.
+    recommendation: Write a unique 70-160 character description that summarises the page and invites the click.
+    effort: low
+    owner: Content editor
+  - id: meta_description.duplicate
+    title: Duplicate meta description
+    category: metadata
+    check: duplicate
+    params: {field: meta_description}
+    scope: page
+    severity: low
+    why: Repeated descriptions make results look interchangeable.
+    recommendation: Write a unique description for each indexable page.
+    effort: low
+    owner: Content editor
+  - id: meta_description.length
+    title: Meta description length outside 70-160 characters
+    category: metadata
+    check: length
+    params: {field: meta_description, min: 70, max: 160}
+    scope: page
+    severity: low
+    why: Short descriptions waste the snippet; long ones are truncated.
+    recommendation: Keep descriptions between 70 and 160 characters.
+    effort: low
+    owner: Content editor
+
+  # ---------------------------------------------------------------- headings and structure
+  - id: h1.missing
+    title: Missing H1
+    category: headings
+    check: count_below
+    params: {field: h1, min: 1}
+    scope: page
+    severity: medium
+    why: The H1 tells users and search engines what the page is about.
+    recommendation: Add exactly one H1 that states the page topic.
+    effort: low
+    owner: Content editor
+  - id: h1.multiple
+    title: More than one H1
+    category: headings
+    check: count_above
+    params: {field: h1, max: 1}
+    scope: page
+    severity: medium
+    why: Several H1s dilute the main topic signal and usually indicate a template or styling shortcut.
+    recommendation: Keep one H1; demote the others to H2 and style them with CSS classes instead.
+    effort: low
+    owner: Web developer
+  - id: headings.skip
+    title: Heading level skipped
+    category: headings
+    check: heading_skip
+    scope: page
+    severity: low
+    why: Skipped levels (for example H2 to H4) break the document outline used by search engines and assistive technology.
+    recommendation: Use consecutive heading levels; change the heading tag and keep the visual style with CSS.
+    effort: low
+    owner: Web developer
+  - id: lang.missing
+    title: Missing lang attribute on <html>
+    category: international
+    check: lang_missing
+    scope: page
+    severity: medium
+    why: The lang attribute declares the page language for search engines, translation tools and screen readers.
+    recommendation: Add lang="en" (or the correct BCP 47 code) to the <html> element.
+    effort: low
+    owner: Web developer
+  - id: lang.invalid
+    title: Invalid lang attribute value
+    category: international
+    check: lang_invalid
+    scope: page
+    severity: low
+    why: An invalid language code is ignored.
+    recommendation: Use a valid BCP 47 code such as en, en-US or fr-CA.
+    effort: low
+    owner: Web developer
+
+  # ---------------------------------------------------------------- indexability, structured data, media
+  - id: indexability.noindex
+    title: Page is set to noindex
+    category: indexability
+    check: noindex
+    scope: page
+    severity: low
+    why: noindex removes the page from search results; it is correct for utility pages but costly when accidental.
+    recommendation: Confirm the page should be excluded; otherwise remove the noindex directive (meta robots or X-Robots-Tag).
+    effort: low
+    owner: SEO specialist
+  - id: jsonld.parse_error
+    title: JSON-LD block does not parse
+    category: structured_data
+    check: jsonld_parse_error
+    scope: page
+    severity: high
+    why: Invalid JSON-LD is discarded entirely, so the page loses rich-result eligibility.
+    recommendation: Fix the JSON syntax (trailing commas, unescaped quotes, comments) and validate with a structured-data validator.
+    effort: low
+    owner: Web developer
+  - id: jsonld.missing_type
+    title: JSON-LD block without @context or @type
+    category: structured_data
+    check: jsonld_missing_type
+    scope: page
+    severity: low
+    why: Without @context and @type the data cannot be interpreted as schema.org.
+    recommendation: 'Add "@context": "https://schema.org" and an explicit "@type" to every top-level entity.'
+    effort: low
+    owner: Web developer
+  - id: images.alt_missing
+    title: Images without an alt attribute
+    category: media
+    check: image_alt_missing
+    scope: page
+    severity: low
+    why: Alt text is how search engines understand images, and it is required for accessibility.
+    recommendation: Add descriptive alt text to informative images and alt="" to purely decorative ones.
+    effort: low
+    owner: Content editor
+
+  # ---------------------------------------------------------------- performance proxies
+  - id: perf.slow_response
+    title: Slow server response
+    category: performance
+    check: slow_response
+    params: {max_ms: 800}
+    scope: url
+    severity: medium
+    why: Slow time-to-first-byte delays every other loading milestone and reduces crawl rate.
+    recommendation: Add caching (CDN or full-page cache) and profile slow backend calls.
+    effort: medium
+    owner: Platform engineer
+  - id: perf.large_html
+    title: Very large HTML document
+    category: performance
+    check: large_html
+    params: {max_kb: 500}
+    scope: page
+    severity: low
+    why: Very large documents slow parsing and may be truncated by crawlers.
+    recommendation: Remove inline data blobs, lazy-load below-the-fold markup and paginate long lists.
+    effort: medium
+    owner: Web developer

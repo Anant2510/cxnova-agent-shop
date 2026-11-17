@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin · {{PRODUCT}}</title>
+<link rel="icon" href="{{BASE}}/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="{{BASE}}/shop/static/shop.css">
+</head>
+<body data-product="{{PRODUCT}}" data-company="{{COMPANY}}">
+<div id="top"></div>
+<main class="wrap" id="main"></main>
+<div id="foot"></div>
+<dialog id="dlg"></dialog>
+<script src="{{BASE}}/shop/static/shop.js"></script>
+<script>
+(function () {
+  const { h, $, $$, clear, toast, num, when, topbar, footer, copy, BASE } = Shop;
+  $("#top").replaceWith(topbar("admin"));
+  $("#foot").replaceWith(footer());
+  const main = $("#main"), KEY = "cxnova.shop.admin";
+  const getTok = () => { try { return localStorage.getItem(KEY) || ""; } catch (e) { return ""; } };
+  const setTok = (t) => { try { t ? localStorage.setItem(KEY, t) : localStorage.removeItem(KEY); } catch (e) {} };
+  const api = (path, opts) => Shop.api(path, Object.assign({ token: getTok() }, opts || {}));
+  let catalog = null, customers = [], selected = null, tab = "subscriptions";
+
+  const POLICIES = {
+    "Coforge model (mode 1)": { version: 1, models: { provider: "coforge" }, data: { mask_before_model: [] }, reach: { websites: [] }, actions: { need_approval: ["*"] }, limits: { runs_per_day: 200 } },
+    "Customer's Azure OpenAI (mode 2)": { version: 1, signed_by: "ciso@customer.example", models: { provider: "azure_openai", endpoint: "https://<resource>.openai.azure.com/", api_version: "2025-04-01-preview", region: "westeurope", api_key_env: "CUSTOMER_X_AZURE_OPENAI_KEY", tiers: { fast: "gpt-5-mini", balanced: "gpt-5", pro: "gpt-5", complex: "gpt-5" }, images_allowed: false }, data: { mask_before_model: ["email", "phone", "policy_number"], keep_run_records_days: 30, provider_training: "forbidden" }, reach: { websites: ["*.customer.example"], systems: { cms: "read_write", ga4: "read" } }, actions: { need_approval: ["cms.publish", "email.send", "experiment.start"] }, limits: { runs_per_day: 500, tokens_per_month: 20000000 } },
+    "Customer's Claude on Foundry (mode 2)": { version: 1, models: { provider: "anthropic_foundry", base_url: "https://<resource>.services.ai.azure.com/anthropic/", api_key_env: "CUSTOMER_X_FOUNDRY_KEY", tiers: { fast: "claude-sonnet-5-5", balanced: "claude-sonnet-5-5", pro: "claude-opus-5", complex: "claude-opus-5" } }, data: { mask_before_model: ["email", "phone"] }, reach: { websites: [] }, actions: { need_approval: ["*"] }, limits: {} },
+    "Customer's Bedrock (mode 2)": { version: 1, models: { provider: "bedrock", region: "eu-central-1", tiers: { fast: "anthropic.claude-sonnet-5-5-v1:0", balanced: "anthropic.claude-sonnet-5-5-v1:0", pro: "anthropic.claude-opus-5-v1:0", complex: "anthropic.claude-opus-5-v1:0" } }, data: { mask_before_model: ["email"] }, reach: { websites: [] }, actions: { need_approval: ["*"] }, limits: {} },
+  };
+
+  function gate(message) {
+    clear(main).append(h("section", { class: "panel gate stack" },
+      h("h1", { style: "font-size:20px" }, "Shop admin"),
+      h("p", { class: "muted small" }, "The operator token of this server (CAF_API_TOKEN). On the server itself, with no token configured, press Open."),
+      message ? h("div", { class: "notice warn" }, message) : null,
+      h("form", { class: "stack", onsubmit: (e) => { e.preventDefault(); setTok($("#tok").value.trim()); load(); } },
+        h("label", { class: "f" }, "Operator token", h("input", { type: "password", id: "tok", autocomplete: "off" })),
+        h("button", { class: "btn primary", type: "submit" }, "Open"))));
+  }
+  function dialog(title, body) {
+    const d = $("#dlg"); clear(d).append(h("div", { class: "stack" }, h("div", { class: "row" }, h("h2", null, title), h("button", { class: "btn sm ghost right", type: "button", onclick: () => d.close() }, "Close")), body));
+    d.showModal();
+  }
+  function stat(v, l) { return h("div", { class: "stat" }, h("span", { class: "v" }, v), h("span", { class: "l" }, l)); }
+  function statusChip(s) { return h("span", { class: "chip " + (["ok", "active", "converted"].includes(s) ? "good" : ["degraded", "needs_approval", "suspended", "contacted"].includes(s) ? "warn" : ["new"].includes(s) ? "ai" : "bad") }, s); }
+
+  async function load() {
+    try {
+      const [ov, cs, cat] = await Promise.all([api("/shop/admin/api/overview"), api("/shop/admin/api/customers"), Shop.api("/shop/catalog", { token: "" })]);
+      customers = cs; catalog = cat;
+      render(ov);
+    } catch (e) { setTok(""); gate(e.status === 401 || e.status === 403 ? "Not accepted: " + e.message : "Could not load: " + e.message); }
+  }
+  function render(ov) {
+    clear(main).append(
+      h("div", { class: "row", style: "margin-bottom:14px" }, h("div", null, h("h1", null, "Shop admin"), h("p", { class: "muted small" }, "Model provider on this server: ", h("strong", null, ov.provider), " · " + ov.customers + " customers, " + ov.active + " active")),
+        h("button", { class: "btn sm ghost right", type: "button", onclick: () => { setTok(""); gate(); } }, "Sign out")),
+      h("div", { class: "stats", style: "margin-bottom:16px" }, stat(num(ov.usage.totals.runs), "agent runs this month"), stat(num(ov.usage.totals.llm_calls), "model calls"), stat(num(ov.usage.totals.input_tokens + ov.usage.totals.output_tokens), "tokens"), stat(num(ov.requests_new), "new access requests")),
+      h("div", { class: "two" },
+        h("div", { class: "stack-lg" }, customersPanel(), selected ? detailPanel() : h("section", { class: "panel" }, h("p", { class: "muted" }, "Pick a customer to manage subscriptions, keys, policy, checks and usage.")), requestsPanel()),
+        h("aside", { class: "stack" }, newCustomerPanel(), usagePanel(ov))));
+  }
+  function customersPanel() {
+    return h("section", { class: "panel" }, h("div", { class: "panel-head" }, h("h2", null, "Customers")),
+      customers.length ? h("table", null, h("thead", null, h("tr", null, h("th", null, "Customer"), h("th", null, "Mode"), h("th", null, "Agents"), h("th", null, "Keys"), h("th", null, "Status"), h("th", null, ""))),
+        h("tbody", null, customers.map(c => h("tr", null, h("td", null, h("strong", null, c.name), h("div", { class: "xs muted mono" }, c.id)), h("td", null, c.run_mode_number + " · " + c.run_mode.replace(/_/g, " ")),
+          h("td", null, String(c.entitled_agents.length)), h("td", null, String(c.keys.filter(k => !k.revoked_at).length)), h("td", null, statusChip(c.status)),
+          h("td", null, h("button", { class: "btn sm", type: "button", onclick: () => select(c.id) }, selected && selected.id === c.id ? "Selected" : "Manage")))))) : h("p", { class: "muted" }, "No customers yet. Add the first one on the right."));
+  }
+  function newCustomerPanel() {
+    return h("section", { class: "panel" }, h("div", { class: "panel-head" }, h("h2", null, "New customer")),
+      h("form", { class: "stack", onsubmit: async (e) => { e.preventDefault(); const f = new FormData(e.target);
+        try { await api("/shop/admin/api/customers", { body: { id: f.get("id"), name: f.get("name"), run_mode: f.get("run_mode"), contact: f.get("contact") } }); toast("Customer created"); e.target.reset(); await load(); select(f.get("id")); }
+        catch (err) { toast(err.message, 4000); } } },
+        h("label", { class: "f" }, "Name", h("input", { type: "text", name: "name", required: true, placeholder: "Meridian Mutual" })),
+        h("label", { class: "f" }, "Id (lowercase, dashes)", h("input", { type: "text", name: "id", required: true, pattern: "[a-z0-9][a-z0-9\\-]{1,62}", placeholder: "meridian-mutual" })),
+        h("label", { class: "f" }, "Run mode", h("select", { name: "run_mode" }, Object.entries(catalog.run_modes).map(([k, m]) => h("option", { value: k }, m.name)))),
+        h("label", { class: "f" }, "Contact", h("input", { type: "text", name: "contact", placeholder: "name@customer.example" })),
+        h("button", { class: "btn primary", type: "submit" }, "Create")));
+  }
+  function usagePanel(ov) {
+    const lines = ov.usage.lines.slice(0, 12);
+    return h("section", { class: "panel" }, h("div", { class: "panel-head" }, h("h2", null, "Usage " + ov.usage.month)),
+      lines.length ? h("table", null, h("thead", null, h("tr", null, h("th", null, "Customer"), h("th", null, "Agent"), h("th", { class: "num" }, "Runs"), h("th", { class: "num" }, "Tokens"))),
+        h("tbody", null, lines.map(l => h("tr", null, h("td", { class: "xs" }, l.customer_id), h("td", { class: "xs" }, l.agent_id), h("td", { class: "num" }, num(l.runs)), h("td", { class: "num" }, num((l.input_tokens || 0) + (l.output_tokens || 0))))))) : h("p", { class: "muted small" }, "No runs this month."));
+  }
+  async function select(id) {
+    try {
+      const [detail, ov, cs] = await Promise.all([api("/shop/admin/api/customers/" + id), api("/shop/admin/api/overview"), api("/shop/admin/api/customers")]);
+      selected = detail; customers = cs; render(ov);
+    } catch (e) { toast(e.message, 4000); }
+  }
+  function detailPanel() {
+    const c = selected;
+    const tabs = [["subscriptions", "Subscriptions"], ["keys", "Keys"], ["policy", "Policy"], ["check", "Agent check"], ["usage", "Usage"], ["connect", "Connection"]];
+    return h("section", { class: "panel" },
+      h("div", { class: "panel-head" }, h("h2", null, c.name), h("span", { class: "muted small mono" }, c.id), statusChip(c.status),
+        h("span", { class: "right row" },
+          h("select", { class: "sm", onchange: async (e) => { await api("/shop/admin/api/customers/" + c.id, { method: "PATCH", body: { run_mode: e.target.value } }); toast("Run mode updated"); select(c.id); } },
+            Object.entries(catalog.run_modes).map(([k, m]) => h("option", { value: k, selected: k === c.run_mode }, m.name))),
+          h("button", { class: "btn sm " + (c.status === "active" ? "danger" : ""), type: "button", onclick: async () => { await api("/shop/admin/api/customers/" + c.id, { method: "PATCH", body: { status: c.status === "active" ? "suspended" : "active" } }); select(c.id); } }, c.status === "active" ? "Suspend" : "Activate"))),
+      h("div", { class: "tabs", role: "tablist" }, tabs.map(([id, label]) => h("button", { role: "tab", "aria-selected": id === tab, type: "button", onclick: () => { tab = id; select(c.id); } }, label))),
+      { subscriptions: subsTab, keys: keysTab, policy: policyTab, check: checkTab, usage: usageTab, connect: connectTab }[tab](c));
+  }
+  function subsTab(c) {
+    const current = new Map(c.subscriptions.map(s => [s.kind + ":" + s.item_id, s]));
+    const all = current.has("all:*");
+    const ends = (c.subscriptions[0] || {}).ends_at || "";
+    const box = (kind, id, label, extra) => h("label", null, h("input", { type: "checkbox", name: kind + ":" + id, checked: current.has(kind + ":" + id) }), h("span", null, label), extra ? h("span", { class: "xs muted" }, " " + extra) : null);
+    return h("form", { class: "stack", onsubmit: async (e) => { e.preventDefault(); const f = new FormData(e.target);
+      const items = []; for (const [k] of f.entries()) { if (!k.includes(":")) continue; const [kind, item_id] = k.split(":"); items.push({ kind, item_id, ends_at: f.get("ends_at") || null }); }
+      try { const r = await api("/shop/admin/api/customers/" + c.id + "/subscriptions", { method: "PUT", body: items }); toast(r.entitled_agents.length + " agents entitled"); select(c.id); } catch (err) { toast(err.message, 4000); } } },
+      h("div", { class: "row" }, h("label", { class: "row" }, h("input", { type: "checkbox", name: "all:*", checked: all }), h("strong", null, "Everything: all 28 agents and 8 playbooks")), h("label", { class: "f right" }, "Ends on (optional)", h("input", { type: "date", name: "ends_at", value: ends }))),
+      h("h4", null, "Bundles (playbooks)"), h("div", { class: "checkgrid" }, catalog.bundles.map(b => box("playbook", b.id, b.name, b.agents.length + " agents"))),
+      h("h4", null, "Single agents"), h("div", { class: "checkgrid" }, catalog.agents.map(a => box("agent", a.id, a.name))),
+      h("div", { class: "row" }, h("button", { class: "btn primary", type: "submit" }, "Save subscriptions"), h("span", { class: "muted small" }, "Entitled now: " + c.entitled_agents.length + " agents, " + c.entitled_playbooks.length + " playbooks")));
+  }
+  function keysTab(c) {
+    return h("div", { class: "stack" },
+      h("form", { class: "row", onsubmit: async (e) => { e.preventDefault(); const label = new FormData(e.target).get("label");
+        try { const r = await api("/shop/admin/api/customers/" + c.id + "/keys", { body: { label } });
+          dialog("New key for " + c.name, h("div", { class: "stack" }, h("div", { class: "notice warn" }, "Copy it now. It is shown once and stored only as a hash."), h("pre", null, r.key), h("button", { class: "btn primary", type: "button", onclick: () => copy(r.key) }, "Copy key")));
+          select(c.id); } catch (err) { toast(err.message, 4000); } } },
+        h("input", { type: "text", name: "label", placeholder: "label, e.g. marketing-ops laptop", style: "max-width:320px" }), h("button", { class: "btn primary", type: "submit" }, "Issue key")),
+      h("table", null, h("thead", null, h("tr", null, h("th", null, "Prefix"), h("th", null, "Label"), h("th", null, "Created"), h("th", null, "Last used"), h("th", null, ""))),
+        h("tbody", null, c.keys.map(k => h("tr", null, h("td", null, h("code", null, k.prefix + "…")), h("td", null, k.label), h("td", { class: "xs" }, when(k.created_at)), h("td", { class: "xs" }, k.revoked_at ? "revoked " + when(k.revoked_at) : (when(k.last_used_at) || "never")),
+          h("td", null, k.revoked_at ? null : h("button", { class: "btn sm danger", type: "button", onclick: async () => { if (!confirm("Revoke this key?")) return; await api("/shop/admin/api/customers/" + c.id + "/keys/" + k.id, { method: "DELETE" }); select(c.id); } }, "Revoke")))))));
+  }
+  function policyTab(c) {
+    const ta = h("textarea", { style: "min-height:320px" }, JSON.stringify(c.policy, null, 2));
+    return h("div", { class: "stack" },
+      h("div", { class: "row" }, h("span", { class: "small muted" }, "Templates:"), Object.keys(POLICIES).map(name => h("button", { class: "btn sm", type: "button", onclick: () => { ta.value = JSON.stringify(POLICIES[name], null, 2); } }, name))),
+      ta,
+      h("p", { class: "xs muted" }, "api_key_env names an environment variable on this server (preferred). An inline api_key is encrypted with CAF_SECRET_KEY. Saving a policy with a customer model switches the run mode to 2."),
+      h("div", { class: "row" }, h("button", { class: "btn primary", type: "button", onclick: async () => { let body; try { body = JSON.parse(ta.value); } catch (e) { return toast("Not valid JSON: " + e.message, 4000); }
+        try { const r = await api("/shop/admin/api/customers/" + c.id + "/policy", { method: "PUT", body }); toast("Policy saved · run mode " + r.run_mode); select(c.id); } catch (err) { toast(err.message, 6000); } } }, "Save policy")));
+  }
+  function checkTab(c) {
+    const out = h("div", { class: "stack" });
+    const showReport = (r) => { clear(out).append(h("p", { class: "small" }, h("strong", null, r.passed + " of " + r.total), " agents passed on " + r.provider + " (" + Object.values(r.models || {}).filter((v, i, a) => a.indexOf(v) === i).join(", ") + "), " + when(r.checked_at)),
+      h("table", null, h("thead", null, h("tr", null, h("th", null, "Agent"), h("th", null, "Status"), h("th", { class: "num" }, "Model calls"), h("th", { class: "num" }, "Seconds"), h("th", null, "Note"))),
+        h("tbody", null, r.agents.map(a => h("tr", null, h("td", null, a.name || a.agent_id), h("td", null, statusChip(a.status)), h("td", { class: "num" }, String(a.llm_calls || 0)), h("td", { class: "num" }, (a.duration_ms / 1000).toFixed(1)), h("td", { class: "xs muted" }, a.error || (a.degraded_reasons || []).join("; "))))))); };
+    if (c.last_check) showReport(c.last_check);
+    const fast = h("input", { type: "checkbox", id: "chk-fast" });
+    return h("div", { class: "stack" },
+      h("p", { class: "small muted" }, "Runs the self-test of every subscribed agent on this customer's model (its policy), records the usage and keeps the result on the customer. Live model cost applies."),
+      h("div", { class: "row" }, h("button", { class: "btn primary", type: "button", onclick: async (e) => { e.target.disabled = true; e.target.textContent = "Checking… this takes a few minutes";
+        try { showReport(await api("/shop/admin/api/customers/" + c.id + "/check" + (fast.checked ? "?tier=fast" : ""), { method: "POST" })); toast("Check finished"); } catch (err) { toast(err.message, 6000); }
+        e.target.disabled = false; e.target.textContent = "Run the agent check"; } }, "Run the agent check"), h("label", { class: "row small" }, fast, "fast tier only (cheaper)")),
+      out);
+  }
+  function usageTab(c) {
+    const u = c.usage;
+    return h("div", { class: "stack" },
+      h("div", { class: "stats" }, stat(num(u.totals.runs), "runs " + u.month), stat(num(u.totals.llm_calls), "model calls"), stat(num(u.totals.input_tokens), "tokens in"), stat(num(u.totals.output_tokens), "tokens out")),
+      u.lines.length ? h("table", null, h("thead", null, h("tr", null, h("th", null, "Agent"), h("th", null, "Mode"), h("th", { class: "num" }, "Runs"), h("th", { class: "num" }, "OK"), h("th", { class: "num" }, "Tokens in"), h("th", { class: "num" }, "Tokens out"), h("th", { class: "num" }, "Avg s"))),
+        h("tbody", null, u.lines.map(l => h("tr", null, h("td", null, l.agent_id), h("td", { class: "xs" }, l.run_mode), h("td", { class: "num" }, num(l.runs)), h("td", { class: "num" }, num(l.ok_runs)), h("td", { class: "num" }, num(l.input_tokens)), h("td", { class: "num" }, num(l.output_tokens)), h("td", { class: "num" }, (l.duration_ms / l.runs / 1000).toFixed(1)))))) : h("p", { class: "muted small" }, "No runs this month."),
+      h("h4", null, "Recent"), h("table", null, h("tbody", null, c.recent.slice(0, 15).map(r => h("tr", null, h("td", { class: "xs" }, when(r.ts)), h("td", null, r.agent_id), h("td", { class: "xs" }, r.surface), h("td", null, statusChip(r.status)), h("td", { class: "num xs" }, num(r.input_tokens + r.output_tokens) + " tok"))))));
+  }
+  function connectTab(c) {
+    const conn = c.connection;
+    const block = (title, code) => h("div", { class: "stack", style: "gap:4px" }, h("div", { class: "row" }, h("h4", null, title), h("button", { class: "btn sm ghost right", type: "button", onclick: () => copy(code) }, "Copy")), h("pre", null, code));
+    return h("div", { class: "stack" }, h("p", { class: "small muted" }, "What the customer sees on its account page. Send with the key you issued."),
+      block("REST", conn.rest.base_url + "\nPOST " + conn.rest.run_agent + "\nPOST " + conn.rest.orchestrate + "\n" + conn.rest.header),
+      block("MCP client configuration", JSON.stringify(conn.mcp.client_config, null, 2)),
+      block("A2A", "Agent card: " + conn.a2a.agent_card + "\nEndpoint: " + conn.a2a.endpoint));
+  }
+  function requestsPanel() {
+    const box = h("section", { class: "panel" }, h("div", { class: "panel-head" }, h("h2", null, "Access requests")), h("p", { class: "muted small" }, "Loading…"));
+    api("/shop/admin/api/requests").then(rows => { clear(box).append(h("div", { class: "panel-head" }, h("h2", null, "Access requests"), h("span", { class: "muted small" }, rows.length + " total")),
+      rows.length ? h("table", null, h("thead", null, h("tr", null, h("th", null, "When"), h("th", null, "Who"), h("th", null, "Wants"), h("th", null, "Mode"), h("th", null, "Status"))),
+        h("tbody", null, rows.slice(0, 30).map(r => h("tr", null, h("td", { class: "xs" }, when(r.created_at)), h("td", null, h("strong", null, r.name), h("div", { class: "xs muted" }, [r.company, r.email].filter(Boolean).join(" · ")), r.message ? h("div", { class: "xs" }, r.message) : null),
+          h("td", { class: "xs" }, (r.items || []).join(", ")), h("td", { class: "xs" }, r.run_mode), h("td", null, h("select", { onchange: async (e) => { await api("/shop/admin/api/requests/" + r.id, { method: "PATCH", body: { status: e.target.value } }); toast("Updated"); } }, ["new", "contacted", "converted", "closed"].map(s => h("option", { value: s, selected: s === r.status }, s)))))))) : h("p", { class: "muted small" }, "None yet.")); }).catch(e => { clear(box).append(h("div", { class: "notice bad" }, e.message)); });
+    return box;
+  }
+  if (!getTok() && location.hostname !== "127.0.0.1" && location.hostname !== "localhost") gate(); else load();
+})();
+</script>
+</body>
+</html>

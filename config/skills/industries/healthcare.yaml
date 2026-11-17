@@ -1,0 +1,65 @@
+# Industry profile - Healthcare (Industry Marketing agent).
+# `compliance.never` and `compliance.required_disclaimers` are enforced deterministically.
+version: "1.0"
+id: healthcare
+name: Healthcare
+aliases: [healthcare, health care, health, hospital, hospitals, health system, provider, providers, payer, payers, life sciences, pharma, medtech]
+summary: Providers, health systems, payers and life-sciences companies.
+terminology:
+  preferred:
+    - patient experience
+    - care pathway
+    - clinical outcomes
+    - patient engagement
+    - care coordination
+    - population health
+    - readmissions
+    - interoperability
+    - EHR
+    - HIPAA
+    - value-based care
+    - member experience
+    - prior authorization
+  avoid:
+    - {term: customers, use: patients or members}
+    - {term: users, use: clinicians or patients}
+personas:
+  - name: Chief Medical Information Officer
+    priorities: [clinician adoption, interoperability, patient safety]
+    pains: [EHR alert fatigue, fragmented records]
+  - name: VP Patient Experience
+    priorities: [patient satisfaction, access to care, engagement between visits]
+    pains: [no-shows, long wait times, low portal adoption]
+  - name: Chief Financial Officer
+    priorities: [operating margin, revenue cycle performance, value-based contracts]
+    pains: [denials, staffing costs]
+  - name: Head of Member Engagement
+    priorities: [member retention, preventive care uptake, star ratings]
+    pains: [low engagement, siloed member data]
+buyer_priorities:
+  - Improve clinical and patient-experience outcomes
+  - Protect patient data and stay compliant
+  - Reduce administrative burden on clinicians
+  - Succeed under value-based care contracts
+  - Lower readmissions and avoidable cost
+compliance:
+  regulators: [HIPAA and HHS OCR, FTC Health Breach Notification Rule, FDA promotional rules (US), GDPR special-category data (EU), MHRA and ASA (UK)]
+  must:
+    - Never use identifiable patient information or testimonials without documented consent.
+    - Do not make diagnostic or treatment claims; describe operational and experience outcomes.
+    - Attribute every clinical or outcome statistic to a named source.
+  never:
+    - cure
+    - cures
+    - miracle
+    - guaranteed results
+    - 100% safe
+    - no side effects
+    - HIPAA certified
+    - clinically proven
+  required_disclaimers:
+    - This content is for information only and is not medical advice.
+proof_points:
+  guidance: Use operational or experience outcomes from retrieved case studies (readmissions, no-show rates, portal adoption, time to care) with the document id; never invent clinical claims.
+  metrics: [readmission rate, no-show rate, patient satisfaction, portal adoption, time to appointment, denial rate]
+tone: Empathetic, evidence-led and careful; never sensational.

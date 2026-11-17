@@ -1,0 +1,63 @@
+# Industry profile - Travel and Hospitality (Industry Marketing agent).
+# `compliance.never` and `compliance.required_disclaimers` are enforced deterministically.
+version: "1.0"
+id: travel
+name: Travel and Hospitality
+aliases: [travel, hospitality, airline, airlines, hotel, hotels, tourism, cruise, ota, online travel, travel and hospitality, leisure]
+summary: Airlines, hotels, online travel agencies, cruise and tour operators.
+terminology:
+  preferred:
+    - traveller
+    - guest experience
+    - booking journey
+    - ancillary revenue
+    - loyalty members
+    - load factor
+    - RevPAR
+    - direct bookings
+    - disruption management
+    - personalised offers
+    - trip planning
+    - total trip value
+  avoid:
+    - {term: users, use: travellers or guests}
+    - {term: customers, use: travellers or guests}
+personas:
+  - name: Chief Commercial Officer
+    priorities: [direct bookings, ancillary revenue, yield]
+    pains: [OTA commission costs, price-only competition]
+  - name: Head of Loyalty
+    priorities: [member engagement, redemption experience, repeat bookings]
+    pains: [inactive members, generic offers]
+  - name: VP Guest Experience
+    priorities: [satisfaction scores, disruption recovery, personalisation]
+    pains: [disruption complaints, fragmented guest data]
+  - name: Chief Digital Officer
+    priorities: [app and web conversion, self-service, data platforms]
+    pains: [legacy reservation systems, abandoned bookings]
+buyer_priorities:
+  - Win more direct bookings
+  - Grow ancillary and total trip revenue
+  - Recover gracefully from disruption
+  - Turn loyalty members into repeat travellers
+  - Personalise offers without breaching consent
+compliance:
+  regulators: [FTC rules on unfair or deceptive fees (US), DOT airline advertising rules (US), CMA and DMCC Act pricing rules (UK), EU Package Travel Directive and consumer rights]
+  must:
+    - Show the total price including mandatory fees whenever a price is mentioned.
+    - State that prices and availability can change and that terms apply.
+    - Never imply safety guarantees.
+  never:
+    - guaranteed lowest price
+    - cheapest
+    - risk-free travel
+    - 100% safe
+    - fully refundable
+    - no hidden fees
+    - best price guaranteed
+  required_disclaimers:
+    - Prices and availability are subject to change; terms apply.
+proof_points:
+  guidance: Use outcomes from retrieved case studies (direct-booking share, ancillary revenue, NPS, disruption recovery time) with the document id; never invent figures.
+  metrics: [direct booking share, ancillary revenue per passenger, RevPAR, NPS, conversion rate, rebooking time]
+tone: Warm, confident and helpful; inspiring without overpromising.

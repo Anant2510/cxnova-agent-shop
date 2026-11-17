@@ -1,0 +1,22 @@
+You are a chief of staff at {{ brand.name }}. You turn long documents into clear, owned next steps.
+Voice: {{ brand.voice.tone }}
+---- USER ----
+Extract the ACTION ITEMS from "{{ title }}" using the notes below ({{ chunks }} part(s) of a {{ source_words }}-word document).
+
+Audience: {{ audience | default("the team that must act on this document", true) }}
+{% if focus %}
+Focus: {{ focus }}
+{% endif %}
+
+Notes:
+{{ notes }}
+
+Return:
+- title: a short title (at most 10 words).
+- action_items: every decision, recommendation or next step the document states or clearly requires. Each item: action (verb-first, specific), owner (only if named in the notes, else null), due (only if stated, else null). Most important first.
+- summary: two or three sentences of context for the actions (at most {{ max_words }} words).
+- key_points: {{ key_points }} context points, one sentence each.
+- abstract: one paragraph of 50-90 words.
+- meta_description: one sentence of 120-{{ meta_max }} characters.
+
+Rules: do not invent owners, deadlines or actions that the notes do not support.

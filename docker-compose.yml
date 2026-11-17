@@ -1,0 +1,19 @@
+services:
+  caf:
+    build:
+      context: .
+      args:
+        WITH_BROWSER: "1"          # Chromium for accessibility (axe-core), variation previews and JS rendering
+    image: cxnova-agent-shop:1.1.0
+    env_file: .env
+    environment:
+      CAF_PUBLIC_URL: http://localhost:8080
+      CAF_MCP_ALLOWED_HOSTS: "localhost:*,127.0.0.1:*,caf:*"
+      # Requests reach the container from outside its loopback, so the API needs a token (send it as a bearer token).
+      CAF_API_TOKEN: ${CAF_API_TOKEN:?Set CAF_API_TOKEN in .env to a long random string, e.g. openssl rand -hex 32}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./runs:/data/runs           # artifacts, traces, local CMS/ESP/task exports, quote bank, learnings
+      - ./data:/data/shop           # the shop: customers, keys, subscriptions, usage (SQLite)
+      - ./config:/app/config        # edit skills, prompts, playbooks and connector settings without rebuilding

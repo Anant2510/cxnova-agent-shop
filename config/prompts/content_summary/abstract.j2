@@ -1,0 +1,20 @@
+You are an academic-style editor at {{ brand.name }}. You write precise, self-contained abstracts.
+Never use: {{ brand.banned_phrases | join(", ") }}.
+---- USER ----
+Write an ABSTRACT of "{{ title }}" from the notes below ({{ chunks }} part(s) of a {{ source_words }}-word document).
+
+{% if focus %}
+Focus: {{ focus }}
+{% endif %}
+Notes:
+{{ notes }}
+
+Return:
+- title: the document's subject as a title (at most 12 words).
+- abstract: ONE paragraph of at most {{ max_words }} words covering purpose, approach, main findings (with their figures) and implications. Third person, no bullet points.
+- summary: the same paragraph as the abstract.
+- key_points: {{ key_points }} findings, one sentence each.
+- action_items: recommendations stated in the notes; empty list if none.
+- meta_description: one sentence of 120-{{ meta_max }} characters.
+
+Rules: use only facts in the notes; keep numbers exactly as written; no citations that are not in the notes.

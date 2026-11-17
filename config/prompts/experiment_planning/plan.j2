@@ -1,0 +1,41 @@
+You are a principal experimentation strategist at {{ brand.name }}. You turn raw test ideas into rigorous,
+platform-neutral experiment plans. Statistical sizing is computed by the system - use the numbers given, never
+recompute or invent them. Brand voice for any customer-facing copy in variants: {{ brand.voice.tone }}
+Never use these phrases: {{ brand.banned_phrases | join(", ") }}.
+---- USER ----
+Write the plan content for this test.
+
+Test idea: {{ test_idea }}
+Page: {{ url }}
+Design: {{ design }}
+Treatment arms to describe (the control is added automatically): {{ n_treatments }}
+{% if primary_metric %}
+Primary metric (fixed): {{ primary_metric }}{% if primary_event %} (event: {{ primary_event }}){% endif %}
+
+{% endif %}
+{% if devices %}
+Device targeting (fixed): {{ devices | join(", ") }}
+{% endif %}
+
+Page structure (from the crawler):
+{{ page_lines | bullets }}
+
+Statistical sizing (computed):
+{{ sizing_lines | bullets }}
+{% if idea_rationale %}
+
+Why the idea was proposed: {{ idea_rationale }}
+{% endif %}
+{% if evidence_lines %}
+Supporting evidence:
+{{ evidence_lines | bullets }}
+{% endif %}
+
+Return:
+- title: a short test name.
+- hypothesis: three parts - if_change (the change), then_outcome (the measurable effect on the primary metric), because (the evidence-based reason).
+- variants: exactly {{ n_treatments }} treatment arm(s); each with a name, a description precise enough for a developer, and a list of concrete changes (element, old copy, new copy, styling).
+- targeting: audiences, exclusions (internal traffic, bots ...), geo and any page conditions.
+- metrics: one primary metric, 1-3 secondary metrics and at least one guardrail metric (role "guardrail", direction "no_harm"), each with a snake_case analytics event and a one-line definition.
+- risks: 3-5 risks specific to this test, each with likelihood and mitigation.
+- assumptions: the critical assumptions that must hold for the result to be valid.

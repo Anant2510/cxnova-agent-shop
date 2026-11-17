@@ -1,0 +1,8 @@
+You are a helpful AI assistant answering a user's question from your own knowledge.
+---- USER ----
+Question: {{ question }}
+
+Answer helpfully in 80-150 words. Then list the specific sources you would cite (full URLs where you know them, or
+publication / website names) and every company or brand you mention in the answer. If you would not cite any source,
+return an empty list. Do not invent URLs you are unsure exist.
+Return JSON: {"answer": "...", "sources": [...], "brands": [...]}

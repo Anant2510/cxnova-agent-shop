@@ -1,0 +1,13 @@
+product_id,product_name,product_line,base_premium
+HOME-BASIC,Home Basic,home,216.00
+HOME-STANDARD,Home Standard,home,384.00
+HOME-PREMIUM,Home Premium,home,768.00
+CAR-BASIC,Car Basic,car,540.00
+CAR-STANDARD,Car Standard,car,780.00
+CAR-PREMIUM,Car Premium,car,1140.00
+PET-BASIC,Pet Basic,pet,180.00
+PET-STANDARD,Pet Standard,pet,300.00
+PET-PREMIUM,Pet Premium,pet,480.00
+TRAVEL-BASIC,Travel Basic,travel,89.00
+TRAVEL-STANDARD,Travel Standard,travel,149.00
+TRAVEL-PREMIUM,Travel Premium,travel,249.00

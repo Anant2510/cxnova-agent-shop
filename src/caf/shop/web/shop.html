@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{PRODUCT}}</title>
+<link rel="icon" href="{{BASE}}/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="{{BASE}}/shop/static/shop.css">
+</head>
+<body data-product="{{PRODUCT}}" data-company="{{COMPANY}}">
+<div id="top"></div>
+<main class="wrap">
+  <section class="hero">
+    <div class="stack">
+      <h1>Rent the agent. Run it from your tools, on the model your policy allows.</h1>
+      <p class="lead" id="tagline">Twenty-eight marketing and experimentation agents and eight playbooks, each with a typed contract, approvals before anything publishes, and a full audit trail. Call them over REST, MCP or A2A, or drive them from the console.</p>
+      <div class="row">
+        <a class="btn primary" href="#catalog">Browse the agents</a>
+        <a class="btn" id="try-console" href="{{BASE}}/console">Try in the console</a>
+        <a class="btn ghost" href="#request">Request access</a>
+      </div>
+    </div>
+    <div class="modes" id="modes"></div>
+  </section>
+
+  <div class="filters" id="filters">
+    <div class="seg" id="cat-seg" role="group" aria-label="Category"></div>
+    <input type="text" id="q" placeholder="Search the agents" aria-label="Search the agents">
+    <span class="muted small right" id="count"></span>
+  </div>
+
+  <section id="catalog" aria-label="Agents">
+    <div class="grid" id="agents"></div>
+  </section>
+
+  <div class="section-title"><h2>Bundles</h2><span class="muted">one price for a playbook's agents, run one by one or as the playbook</span></div>
+  <section class="grid" id="bundles" aria-label="Bundles"></section>
+
+  <div class="section-title" id="request"><h2>Request access</h2><span class="muted">we set up your account, keys and policy, usually within a day</span></div>
+  <section class="panel">
+    <form id="request-form" class="stack" autocomplete="on">
+      <div class="row" style="align-items:stretch">
+        <label class="f grow">Your name<input type="text" name="name" required></label>
+        <label class="f grow">Work email<input type="email" name="email" required></label>
+        <label class="f grow">Company<input type="text" name="company"></label>
+      </div>
+      <div class="row" style="align-items:stretch">
+        <label class="f grow">How you want to run the agents
+          <select name="run_mode" id="req-mode"></select>
+        </label>
+        <label class="f grow">Agents or bundles you are interested in<input type="text" name="items" id="req-items" placeholder="pick cards above, or type ids"></label>
+      </div>
+      <label class="f">Anything else<textarea name="message" style="min-height:70px;font-family:var(--font)"></textarea></label>
+      <div class="row"><button class="btn primary" type="submit">Send request</button><span class="muted small" id="pricing-note"></span></div>
+    </form>
+  </section>
+</main>
+<div id="foot"></div>
+<script src="{{BASE}}/shop/static/shop.js"></script>
+<script>
+(function () {
+  const { api, h, $, clear, toast, money, catClass, tierLabel, topbar, footer, BASE } = Shop;
+  $("#top").replaceWith(topbar("shop"));
+  $("#foot").replaceWith(footer());
+  $("#try-console").href = BASE + "/console";
+  const picked = new Set();
+  let data = null, cat = "all", q = "";
+
+  function modeCards(modes) {
+    const order = ["coforge_cloud", "coforge_cloud_customer_model", "customer_cloud"];
+    return order.filter(k => modes[k]).map((k, i) => h("div", { class: "mode" },
+      h("div", { class: "row" }, h("span", { class: "n" }, i + 1), h("strong", null, modes[k].name)),
+      h("p", { class: "small", style: "margin-top:6px" }, modes[k].short),
+      h("p", { class: "xs muted" }, modes[k].detail)));
+  }
+  function agentCard(a) {
+    const p = a.price || {};
+    const card = h("article", { class: "card" },
+      h("div", { class: "row" }, h("span", { class: "cat " + catClass(a.category) }, a.category_label), h("span", { class: "chip right" }, a.kind)),
+      h("h3", null, h("a", { href: BASE + "/shop/agents/" + a.id }, a.name)),
+      h("p", { class: "summary" }, a.summary),
+      h("div", { class: "row" }, h("span", { class: "chip ai" }, tierLabel(a.model_tiers)),
+        (a.connectors || []).slice(0, 3).map(c => h("span", { class: "chip" }, c))),
+      h("div", { class: "foot" },
+        h("span", { class: "price" }, money(p.monthly, p.currency), h("small", null, " /month · " + (p.included_runs || 0) + " runs, then " + money(p.per_run, p.currency) + (p.outcome ? " per " + p.outcome : " per run"))),
+        h("button", { class: "btn sm right", type: "button", onclick: () => pick(a.id, card) }, picked.has(a.id) ? "Picked" : "Pick")));
+    return card;
+  }
+  function bundleCard(b) {
+    const p = b.price || {};
+    const card = h("article", { class: "card" },
+      h("div", { class: "row" }, h("span", { class: "cat" }, "Bundle · " + b.agents.length + " agents")),
+      h("h3", null, b.name), h("p", { class: "summary" }, p.tagline || b.description),
+      h("div", { class: "row" }, b.agents.map(id => h("a", { class: "chip", href: BASE + "/shop/agents/" + id }, id.replace(/_/g, " ")))),
+      h("div", { class: "foot" },
+        h("span", { class: "price" }, money(p.monthly, p.currency), h("small", null, " /month · " + (p.included_runs || 0) + " playbook runs, then " + money(p.per_run, p.currency) + " each")),
+        h("button", { class: "btn sm right", type: "button", onclick: () => pick("bundle:" + b.id, card) }, picked.has("bundle:" + b.id) ? "Picked" : "Pick")));
+    return card;
+  }
+  function pick(id, card) {
+    picked.has(id) ? picked.delete(id) : picked.add(id);
+    $("button.btn", card.querySelector(".foot")).textContent = picked.has(id) ? "Picked" : "Pick";
+    $("#req-items").value = Array.from(picked).join(", ");
+  }
+  function render() {
+    const agents = data.agents.filter(a => (cat === "all" || a.category === cat) &&
+      (!q || (a.name + " " + a.summary + " " + a.id + " " + (a.keywords || []).join(" ")).toLowerCase().includes(q)));
+    const grid = clear($("#agents"));
+    agents.forEach(a => grid.append(agentCard(a)));
+    $("#count").textContent = agents.length + " of " + data.agents.length + " agents";
+  }
+  api("/shop/catalog").then(d => {
+    data = d;
+    if (d.product && d.product.tagline) $("#tagline").textContent = d.product.tagline + " Each agent has a typed contract, approvals before anything publishes, and a full audit trail.";
+    $("#modes").append(...modeCards(d.run_modes || {}));
+    const cats = [["all", "All"], ...Array.from(new Map(d.agents.map(a => [a.category, a.category_label])).entries())];
+    const seg = $("#cat-seg");
+    cats.forEach(([id, label]) => seg.append(h("button", { type: "button", "aria-pressed": id === cat, onclick: (e) => { cat = id; seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b === e.currentTarget)); render(); } }, label)));
+    const bundles = clear($("#bundles"));
+    d.bundles.forEach(b => bundles.append(bundleCard(b)));
+    const sel = $("#req-mode");
+    Object.entries(d.run_modes || {}).forEach(([k, m]) => sel.append(h("option", { value: k }, m.name + " · " + m.short)));
+    $("#pricing-note").textContent = d.pricing_note || "";
+    render();
+  }).catch(e => { $("#agents").append(h("div", { class: "notice bad" }, "Could not load the catalog: " + e.message)); });
+  $("#q").addEventListener("input", e => { q = e.target.value.trim().toLowerCase(); render(); });
+  $("#request-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const body = { name: f.get("name"), email: f.get("email"), company: f.get("company"), run_mode: f.get("run_mode"), message: f.get("message"),
+      items: String(f.get("items") || "").split(",").map(s => s.trim()).filter(Boolean) };
+    try { const r = await api("/shop/requests", { body, token: "" }); toast(r.message); e.target.reset(); picked.clear(); }
+    catch (err) { toast("Could not send: " + err.message, 4000); }
+  });
+})();
+</script>
+</body>
+</html>

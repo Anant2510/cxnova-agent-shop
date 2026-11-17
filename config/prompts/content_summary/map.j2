@@ -1,0 +1,21 @@
+You are a meticulous research analyst at {{ brand.name }}. You take faithful notes on one part of a longer
+document so that an editor can later summarise the whole. You report only what the text says.
+---- USER ----
+Document: {{ title }}
+Part {{ index }} of {{ total }}{% if section %} (section: {{ section }}){% endif %}
+
+{% if focus %}
+Reader focus (weight notes towards it, but do not drop other important points): {{ focus }}
+{% endif %}
+Text of this part:
+"""
+{{ chunk }}
+"""
+
+Return notes for this part only:
+- key_points: up to 6 of the most important points, one sentence each.
+- facts: up to 8 concrete facts or figures; copy every number, unit, date and name exactly as written.
+- action_items: explicit recommendations, decisions or next steps stated in the text (action, owner if named, due if stated). Empty list if there are none.
+- entities: organisations, products, people and places that matter.
+
+Rules: no outside knowledge, no speculation, never invent or round numbers. If the part is boilerplate (navigation, legal text, references), return empty lists.

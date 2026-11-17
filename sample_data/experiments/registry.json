@@ -1,0 +1,340 @@
+{
+  "experiments": [
+    {
+      "id": "exp-hero-cta",
+      "name": "Home insurance hero CTA copy",
+      "status": "completed",
+      "platform": "optimizely",
+      "page_url": "https://www.meridian-mutual.example/products/home-insurance.html",
+      "hypothesis": "If we change the hero call to action from 'Get a quote' to 'See my price in 2 minutes', then quote starts will increase, because the new copy sets a clear time expectation and promises a personal price instead of a sales conversation.",
+      "primary_metric": {
+        "id": "quote_start",
+        "name": "Quote start rate",
+        "type": "conversion",
+        "event": "quote_start"
+      },
+      "secondary_metrics": [
+        {
+          "id": "quote_complete",
+          "name": "Quote completion rate",
+          "type": "conversion",
+          "event": "quote_complete"
+        },
+        {
+          "id": "revenue_per_visitor",
+          "name": "Revenue per visitor",
+          "type": "revenue",
+          "event": "policy_purchase"
+        }
+      ],
+      "guardrail_metrics": [
+        {
+          "id": "bounce_rate",
+          "name": "Bounce rate",
+          "type": "conversion",
+          "event": "bounce"
+        },
+        {
+          "id": "form_error_rate",
+          "name": "Quote form error rate",
+          "type": "conversion",
+          "event": "form_error"
+        }
+      ],
+      "variants": [
+        {
+          "id": "control",
+          "name": "Get a quote",
+          "allocation": 50,
+          "is_control": true,
+          "description": "Existing hero button: 'Get a quote'."
+        },
+        {
+          "id": "treatment",
+          "name": "See my price in 2 minutes",
+          "allocation": 50,
+          "is_control": false,
+          "description": "Hero button copy changed to 'See my price in 2 minutes'; styling unchanged."
+        }
+      ],
+      "traffic_allocation": 100,
+      "audience": {
+        "devices": [
+          "desktop",
+          "mobile"
+        ],
+        "geo": [
+          "US"
+        ],
+        "conditions": [
+          "All visitors to the home insurance product page",
+          "Exclude logged-in members"
+        ]
+      },
+      "start_date": "2026-08-01",
+      "end_date": "2026-08-28",
+      "planned_duration_days": 28,
+      "baseline_rate": 0.039,
+      "mde": 0.13,
+      "expected_daily_visitors": 1800,
+      "qa_links": [
+        "https://www.meridian-mutual.example/products/home-insurance.html?caf_preview=exp-hero-cta&variant=control",
+        "https://www.meridian-mutual.example/products/home-insurance.html?caf_preview=exp-hero-cta&variant=treatment"
+      ],
+      "instrumentation": {
+        "events": [
+          "quote_start",
+          "quote_complete",
+          "policy_purchase",
+          "bounce",
+          "form_error"
+        ]
+      },
+      "owner": "Jordan Pike"
+    },
+    {
+      "id": "exp-pricing-table",
+      "name": "Home insurance pricing table layout",
+      "status": "running",
+      "platform": "optimizely",
+      "page_url": "https://www.meridian-mutual.example/products/home-insurance.html",
+      "hypothesis": "If we replace the pricing table with three side-by-side plan cards that highlight the Standard plan, then quote starts will increase, because visitors can compare plans without reading across a dense table.",
+      "primary_metric": {
+        "id": "quote_start",
+        "name": "Quote start rate",
+        "type": "conversion",
+        "event": "quote_start"
+      },
+      "secondary_metrics": [
+        {
+          "id": "premium_plan_share",
+          "name": "Share of quotes for the Premium plan",
+          "type": "conversion",
+          "event": "quote_start_premium"
+        },
+        {
+          "id": "revenue_per_visitor",
+          "name": "Revenue per visitor",
+          "type": "revenue",
+          "event": "policy_purchase"
+        }
+      ],
+      "guardrail_metrics": [
+        {
+          "id": "bounce_rate",
+          "name": "Bounce rate",
+          "type": "conversion",
+          "event": "bounce"
+        },
+        {
+          "id": "advisor_contacts",
+          "name": "Advisor contact requests",
+          "type": "count",
+          "event": "advisor_contact"
+        }
+      ],
+      "variants": [
+        {
+          "id": "control",
+          "name": "Pricing table",
+          "allocation": 50,
+          "is_control": true,
+          "description": "Existing table#pricing with seven rows."
+        },
+        {
+          "id": "treatment",
+          "name": "Plan cards",
+          "allocation": 50,
+          "is_control": false,
+          "description": "Three plan cards with the Standard plan highlighted and a quote button on each card."
+        }
+      ],
+      "traffic_allocation": 50,
+      "audience": {
+        "devices": [
+          "desktop",
+          "mobile"
+        ],
+        "geo": [
+          "US"
+        ],
+        "conditions": [
+          "All visitors to the home insurance product page"
+        ]
+      },
+      "start_date": "2026-09-20",
+      "end_date": "2026-11-08",
+      "planned_duration_days": 49,
+      "baseline_rate": 0.042,
+      "mde": 0.15,
+      "expected_daily_visitors": 1500,
+      "qa_links": [
+        "https://www.meridian-mutual.example/products/home-insurance.html?caf_preview=exp-pricing-table&variant=control",
+        "https://www.meridian-mutual.example/products/home-insurance.html?caf_preview=exp-pricing-table&variant=treatment"
+      ],
+      "instrumentation": {
+        "events": [
+          "quote_start",
+          "quote_start_premium",
+          "policy_purchase",
+          "bounce",
+          "advisor_contact"
+        ]
+      },
+      "owner": "Jordan Pike"
+    },
+    {
+      "id": "exp-mobile-sticky",
+      "name": "Sticky quote button on mobile",
+      "status": "draft",
+      "platform": "adobe_target",
+      "page_url": "https://www.meridian-mutual.example/products/home-insurance.html",
+      "hypothesis": "If we keep a 'Get a quote' button fixed to the bottom of the screen on mobile, then quote starts will increase, because the hero button scrolls out of view long before most mobile visitors decide.",
+      "primary_metric": {
+        "id": "quote_start",
+        "name": "Quote start rate",
+        "type": "conversion",
+        "event": "quote_start"
+      },
+      "secondary_metrics": [
+        {
+          "id": "quote_complete",
+          "name": "Quote completion rate",
+          "type": "conversion",
+          "event": "quote_complete"
+        }
+      ],
+      "guardrail_metrics": [],
+      "variants": [
+        {
+          "id": "control",
+          "name": "No sticky button",
+          "allocation": 60,
+          "is_control": true,
+          "description": "Current mobile page."
+        },
+        {
+          "id": "treatment",
+          "name": "Sticky quote button",
+          "allocation": 50,
+          "is_control": false,
+          "description": "A full-width 'Get a quote' bar fixed to the bottom of the viewport on mobile."
+        }
+      ],
+      "traffic_allocation": 100,
+      "audience": {
+        "devices": [
+          "mobile"
+        ],
+        "geo": [
+          "US"
+        ],
+        "conditions": [
+          "Visitors to the home insurance product page on phones"
+        ]
+      },
+      "start_date": "2026-10-26",
+      "end_date": "2026-10-30",
+      "planned_duration_days": 5,
+      "baseline_rate": 0.02,
+      "mde": 0.05,
+      "expected_daily_visitors": 400,
+      "qa_links": [],
+      "instrumentation": {
+        "events": []
+      },
+      "owner": "Sam Whitaker"
+    },
+    {
+      "id": "exp-faq-accordion",
+      "name": "Claims tips quick answers as an accordion",
+      "status": "draft",
+      "platform": "internal",
+      "page_url": "https://www.meridian-mutual.example/blog/claims-tips.html",
+      "hypothesis": "If we turn the 'Quick answers' section of the claims tips article into an accordion with a 'Start a claim' link under each answer, then article call-to-action clicks will increase, because readers can scan the questions and act without scrolling past every answer.",
+      "primary_metric": {
+        "id": "article_cta_click",
+        "name": "Article CTA click-through rate",
+        "type": "conversion",
+        "event": "article_cta_click"
+      },
+      "secondary_metrics": [
+        {
+          "id": "faq_expand",
+          "name": "Quick answer expansions per visitor",
+          "type": "count",
+          "event": "faq_expand"
+        },
+        {
+          "id": "claim_start",
+          "name": "Claim start rate",
+          "type": "conversion",
+          "event": "claim_start"
+        }
+      ],
+      "guardrail_metrics": [
+        {
+          "id": "bounce_rate",
+          "name": "Bounce rate",
+          "type": "conversion",
+          "event": "bounce"
+        },
+        {
+          "id": "organic_entrances",
+          "name": "Organic search entrances",
+          "type": "count",
+          "event": "organic_entrance"
+        }
+      ],
+      "variants": [
+        {
+          "id": "control",
+          "name": "Static quick answers",
+          "allocation": 50,
+          "is_control": true,
+          "description": "Current article: questions as h3 headings with answers always visible."
+        },
+        {
+          "id": "treatment",
+          "name": "Accordion",
+          "allocation": 50,
+          "is_control": false,
+          "description": "Questions become accordion buttons; answers stay in the DOM for search engines."
+        }
+      ],
+      "traffic_allocation": 100,
+      "audience": {
+        "devices": [
+          "desktop",
+          "mobile"
+        ],
+        "geo": [
+          "US"
+        ],
+        "conditions": [
+          "All visitors to /blog/claims-tips.html"
+        ]
+      },
+      "start_date": "2026-10-27",
+      "end_date": "2026-11-23",
+      "planned_duration_days": 28,
+      "baseline_rate": 0.08,
+      "mde": 0.2,
+      "expected_daily_visitors": 400,
+      "qa_links": [
+        "https://www.meridian-mutual.example/blog/claims-tips.html?caf_preview=exp-faq-accordion&variant=control",
+        "https://www.meridian-mutual.example/blog/claims-tips.html?caf_preview=exp-faq-accordion&variant=treatment"
+      ],
+      "instrumentation": {
+        "events": [
+          "article_cta_click",
+          "faq_expand",
+          "claim_start",
+          "bounce",
+          "organic_entrance"
+        ]
+      },
+      "owner": "Priya Nair"
+    }
+  ]
+}

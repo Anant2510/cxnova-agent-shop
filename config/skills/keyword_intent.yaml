@@ -1,0 +1,129 @@
+# Keyword intent rules + opportunity model (Keyword Research agent).
+# Everything here is deterministic: the agent classifies intent and scores opportunity in code
+# from this file. The model only proposes extra candidates (flagged estimates), names clusters
+# and suggests pillar + cluster content. Tune per client, market and language.
+version: "1.0"
+
+# --------------------------------------------------------------------------- intent rules
+# Rules are evaluated in `precedence` order; the first intent with a matching rule wins.
+#   phrases     - whole-word / whole-phrase match anywhere in the keyword (case-insensitive)
+#   starts_with - the keyword's first word(s)
+# Brand terms (brand_voice.name, the brand website host and `brand_terms` below) are always
+# navigational: people searching for the brand already know where they want to go.
+precedence: [navigational, transactional, commercial, informational]
+default_intent: informational
+brand_terms: []                  # extra brand / product names, e.g. [meridian, meridian home plus]
+competitor_terms: []             # competitor names -> commercial (comparison research)
+
+intents:
+  navigational:
+    phrases: [login, log in, sign in, my account, account, portal, app, customer service, contact, contact us,
+              phone number, opening hours, head office, careers, claims line]
+  transactional:
+    phrases: [quote, get a quote, online quote, buy, purchase, apply, sign up, order, book, near me,
+              get covered, renew, renewal, switch, discount code, coupon]
+  commercial:
+    phrases: [best, top, compare, comparison, vs, versus, review, reviews, rated, rating, cheap, cheapest,
+              affordable, cost, costs, price, prices, pricing, rates, premium, premiums, alternatives,
+              worth it, deals, providers, companies]
+  informational:
+    starts_with: [how, what, why, when, where, who, which, does, do, is, are, can, should, will]
+    phrases: [guide, tips, ideas, examples, meaning, definition, explained, checklist, ways to, steps,
+              tutorial, learn, faq, covered]
+
+# --------------------------------------------------------------------------- opportunity model
+# opportunity = impressions x max(0, expected_ctr(target) - actual_ctr)       (extra clicks available)
+#             x ease(position band) x intent_weight [x estimate_discount]
+# The 0-100 opportunity_score is relative to the best keyword in the run.
+opportunity:
+  target_position: 3             # aim for the top 3; keywords already in the top 3 aim for #1
+  # Organic CTR by average position - a blend of public CTR studies. Replace with a curve fitted
+  # on your own Search Console data when you have it. Linear interpolation between points.
+  expected_ctr_curve:
+    - [1, 0.30]
+    - [2, 0.16]
+    - [3, 0.11]
+    - [4, 0.08]
+    - [5, 0.06]
+    - [6, 0.045]
+    - [7, 0.035]
+    - [8, 0.028]
+    - [9, 0.023]
+    - [10, 0.019]
+    - [15, 0.009]
+    - [20, 0.006]
+    - [30, 0.003]
+    - [50, 0.001]
+    - [100, 0.0]
+  position_bands:                # first band whose max_position >= position
+    - {max_position: 3, label: top_3, ease: 0.8}
+    - {max_position: 10, label: page_one, ease: 1.0}
+    - {max_position: 20, label: striking_distance, ease: 0.85}
+    - {max_position: 50, label: long_shot, ease: 0.45}
+    - {max_position: 100000, label: not_ranking, ease: 0.25}
+  intent_weights: {transactional: 1.0, commercial: 0.9, informational: 0.7, navigational: 0.35}
+  ctr_gap_ratio: 0.7             # top-3 keyword with CTR below 70% of expected -> title/snippet fix
+  estimate_discount: 0.5         # model-estimated volumes weigh half against first-party impressions
+  estimate_defaults:
+    monthly_searches: 50         # used when the model gives no estimate
+    position: 100                # estimated keywords are treated as not ranking
+  min_impressions: 1             # ignore first-party rows below this
+
+# --------------------------------------------------------------------------- relevance gate
+# relevance = idf-weighted share of the topic's (or a seed's) subject words found in the keyword,
+# with light stemming and prefix matching (home ~ homeowners). Intent modifiers from the rules above
+# (quote, best, cost, how ...) are not subject words, so 'car insurance quote' is not relevant to
+# 'home insurance quote'. Synonyms map equivalent subject words. First-party queries ranking on the
+# requested page_url and seed keywords are always kept.
+relevance:
+  min_relevance: 0.5
+  synonyms:
+    home: [house, household, homeowner, homeowners, contents, buildings, dwelling, property]
+    car: [auto, motor, vehicle]
+    flood: [flooding, floods]
+
+# --------------------------------------------------------------------------- clustering
+# TF-IDF word 1-2 grams + char 3-5 grams + concept tags, cosine distance. Words present in more
+# than `ubiquitous_df` of the keywords (e.g. 'insurance' in an insurance set) are left out because
+# they carry no grouping signal. Concepts are a small lexicon of themes - edit per domain; with no
+# concepts the clustering is purely lexical.
+clustering:
+  hdbscan_min_keywords: 12       # below this, AgglomerativeClustering is used instead of HDBSCAN
+  min_cluster_size: 2
+  min_samples: 1
+  selection_method: leaf         # leaf = finer topic clusters; eom = broader
+  agglomerative_distance_threshold: 0.8
+  attach_min_similarity: 0.25    # leftover keywords join their nearest neighbour's cluster above this
+  ubiquitous_df: 0.6
+  word_weight: 0.6
+  char_weight: 0.25              # catches plurals, typos and compounds
+  concept_weight: 0.6
+  concepts:
+    cost: [cost, costs, price, prices, pricing, how much, cheap, cheapest, affordable, premium, premiums, rates,
+           monthly payments, deductible, excess, discount, discounts, going up, increase, calculator]
+    claims: [claim, claims, adjuster, denied, payout, settlement]
+    coverage: [cover, covered, coverage, covers, what does, does]
+    buying: [quote, quotes, near me, switch, best, compare, bundle, online, providers, companies]
+    protection: [checklist, winter, hurricane, wildfire, prep, protection, resilience, maintenance, climate, risk,
+                 leak, sensor, storm]
+    water: [flood, flooding, flash flood, water damage, basement, leak, leaks]
+    property: [mobile home, vacation home, second home, older homes, contents, buildings, house, homeowners, renters, landlord]
+
+# --------------------------------------------------------------------------- content mapping
+content_formats:                 # dominant cluster intent -> pillar content format + fallback title
+  informational: {format: guide, title: "The complete guide to {keyword}"}
+  commercial: {format: comparison_page, title: "{Keyword}: compare your options"}
+  transactional: {format: landing_page, title: "{Keyword} - get started"}
+  navigational: {format: brand_page, title: "{Keyword}"}
+
+# Deterministic candidates used only when first-party data is missing or thin (< min_first_party).
+min_first_party: 8
+expansion_modifiers:
+  - "{topic} quote"
+  - "best {topic}"
+  - "{topic} cost"
+  - "compare {topic}"
+  - "what does {topic} cover"
+  - "how to choose {topic}"
+  - "{topic} reviews"
+  - "{topic} tips"

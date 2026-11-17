@@ -1,0 +1,279 @@
+# CRO heuristic library (Experiment Ideation). Proven conversion patterns, each tied to the
+# evidence signals that trigger it. The agent computes the signals in code (crawler, analytics,
+# behaviour events, upstream findings), matches heuristics deterministically and only then asks
+# the model to phrase ideas - every idea must cite heuristic ids and evidence ids from here.
+#
+# Fields
+#   id             stable id cited by ideas and stored in the backlog (never reuse an id)
+#   principle      why the pattern works (shown to the model and in the backlog)
+#   triggers       evidence signals that fire the heuristic (any match), in priority order - the first one present
+#                  becomes the idea's primary evidence. upstream_* signals come from other agents' findings
+#                  (heatmap, accessibility, SEO ...), so ideation also works when it has no data of its own.
+#   supporting     signals that strengthen it (added as evidence when about the same element) but never fire it alone
+#   keywords       phrases used to tag experiments and learnings with the heuristic they tested
+#   typical_impact 1-10, the expected size of the effect when the pattern applies (ICE impact)
+#   ease           1-10, how cheap the change is to build and QA (ICE / PIE ease)
+#   primary_metric metric the idea should move
+#   idea           deterministic template used offline and to top up model output;
+#                  {placeholders} are filled from the evidence (unknown ones are left generic)
+version: "1.1"
+
+# How ICE and PIE are computed in code (agent never asks the model for scores).
+scoring:
+  ice: mean            # mean -> (I+C+E)/3 ; product -> I*C*E/100
+  pie: mean            # (P+I+E)/3
+  impact:
+    severity_bonus: {critical: 2, high: 1, medium: 0, low: -1}
+  confidence:
+    base: 3            # a heuristic with a single weak signal
+    per_source: 1.5    # each additional independent evidence source (page, analytics, behaviour, upstream)
+    per_item: 0.5      # each additional evidence item, capped by max_items
+    max_items: 4
+    quantitative_bonus: 1   # at least one behavioural or analytics measurement
+    learning_win_bonus: 1   # a past test with the same heuristic shipped (learnings repository)
+    learning_loss_penalty: 1
+  potential:
+    base: 5
+    gap_weight: 5      # (site conversion rate - page conversion rate) / site conversion rate, clipped to [-1, 1]
+    severity_bonus: {critical: 2, high: 1.5, medium: 0.5, low: 0}
+  importance:
+    unknown: 5         # no analytics for the page (flagged as an estimate)
+    min: 2
+    max: 10            # page with the most sessions on the site
+
+# Generic CTA labels (lower-case, compared after normalisation).
+generic_cta_texts: [get a quote, learn more, find out more, submit, click here, read more, get started, continue, go, more, details, sign up]
+
+# Thresholds for the signals computed in code.
+signals:
+  dead_click_share: 0.05          # share of clicks on non-interactive elements
+  dead_click_min: 15              # or at least this many dead clicks on one element
+  rage_click_min: 10              # rage clicks on one element
+  false_bottom_drop: 0.20         # survival drop between consecutive 10% scroll buckets
+  false_bottom_max_depth: 70      # only drops above this depth count as a false bottom
+  low_scroll_median: 50           # median max scroll depth (%)
+  below_avg_conversion: 0.90      # page conversion rate < site rate x this
+  high_traffic_share: 0.10        # page share of site sessions
+  low_engagement: 0.85            # page engagement rate < site rate x this
+  long_form_fields: 6
+  ctas_above_fold: 3
+  mobile_heavy_share: 0.50
+
+heuristics:
+  - id: CRO-CTA-CLARITY
+    name: Specific, outcome-led primary CTA
+    keywords: [call to action, cta, button copy, button text, button label, get a quote]
+    principle: Visitors click when the label tells them what they get and how much effort it takes; generic labels ("Get a quote") hide the value and the effort.
+    triggers: [generic_cta_text, duplicate_cta_text]
+    typical_impact: 6
+    ease: 9
+    primary_metric: Primary CTA click-through rate
+    idea:
+      title: "Rewrite the primary CTA '{cta_text}' to state the outcome and effort"
+      change: "Change the label of {cta_selector} from '{cta_text}' to an outcome-led label that states the time to a price (for example 'See my price in 2 minutes') and give it more visual weight."
+      hypothesis_if: "we replace the generic '{cta_text}' label on {cta_selector} with a label that states the outcome and the effort"
+      hypothesis_then: "the primary CTA click-through rate and quote starts will increase"
+      hypothesis_because: "visitors currently see the same generic label in several places and cannot tell what happens next or how long it takes"
+
+  - id: CRO-DEAD-CLICK-AFFORDANCE
+    name: Make clicked elements do something
+    keywords: [dead click, clickable image, hero image, link the image]
+    principle: Repeated clicks on non-interactive elements show intent with nowhere to go; either make the element a working link to the next step or remove the false affordance.
+    triggers: [dead_clicks, upstream_dead_clicks]
+    supporting: [images_missing_alt]
+    typical_impact: 6
+    ease: 8
+    primary_metric: Quote starts per visitor
+    idea:
+      title: "Turn the dead-clicked {dead_target_label} into a link to the quote flow"
+      change: "Wrap {dead_selector} in a link to the quote start (same destination as the primary CTA), add a visible hover state and an accessible name."
+      hypothesis_if: "we make {dead_selector} a working link to the quote flow"
+      hypothesis_then: "quote starts per visitor will increase and dead clicks will fall"
+      hypothesis_because: "{dead_clicks} dead clicks ({dead_share} of all clicks) show visitors expect it to take them forward"
+
+  - id: CRO-RAGE-CLICK-BROKEN
+    name: Fix unresponsive controls first
+    keywords: [rage click, broken tab, unresponsive, plan tab, premium tab]
+    principle: Rage clicks mark controls that fail silently; a broken step in comparison or selection blocks the visitors closest to buying.
+    triggers: [rage_clicks, upstream_rage_clicks]
+    supporting: [non_semantic_controls, upstream_accessibility]
+    typical_impact: 8
+    ease: 7
+    primary_metric: Plan selection to quote start rate
+    idea:
+      title: "Fix the unresponsive {rage_target_label} and confirm the selection visually"
+      change: "Make {rage_selector} respond on the first click (show its panel), add a selected state and keyboard support, then compare quote starts against the current behaviour."
+      hypothesis_if: "we make {rage_selector} respond on the first click with a clear selected state"
+      hypothesis_then: "more visitors who compare plans will start a quote for their chosen plan"
+      hypothesis_because: "{rage_clicks} rage clicks on {rage_selector} show the control fails for visitors who are actively comparing"
+
+  - id: CRO-FALSE-BOTTOM
+    name: Break the false bottom
+    keywords: [false bottom, scroll depth, below the fold, promo band, full-width band]
+    principle: A full-width band or large gap that looks like the end of the page stops scrolling; key decision content placed below it is never seen.
+    triggers: [false_bottom, upstream_scroll]
+    supporting: [low_scroll_depth, competing_offer_above_plans]
+    typical_impact: 7
+    ease: 6
+    primary_metric: Visitors reaching the plan comparison
+    idea:
+      title: "Break the false bottom at {false_bottom_depth}% scroll so visitors reach the plans"
+      change: "Make {false_bottom_hint} stop looking like the end of the page (slimmer, lighter band or moved below the plans), add a visual cue that more content follows and bring the plan comparison up."
+      hypothesis_if: "we remove the false bottom created by {false_bottom_hint} at {false_bottom_depth}% of the page"
+      hypothesis_then: "more visitors will reach the plans and start a quote"
+      hypothesis_because: "scroll survival drops by {false_bottom_drop} between {false_bottom_depth}% of the page, so most visitors never see the plans and pricing"
+
+  - id: CRO-SOCIAL-PROOF-PROXIMITY
+    name: Put proof next to the decision
+    keywords: [testimonial, reviews, rating, social proof, trust badge]
+    principle: Ratings and testimonials reduce perceived risk most at the moment of commitment, so they work best beside the primary CTA rather than deep in the page.
+    triggers: [testimonials_below_fold, no_social_proof]
+    typical_impact: 5
+    ease: 8
+    primary_metric: Quote starts per visitor
+    idea:
+      title: "Show a member testimonial and the rating beside the primary CTA"
+      change: "Add one short testimonial and the review rating directly under {cta_selector}; keep the full testimonials section where it is."
+      hypothesis_if: "we place a member testimonial and the rating next to the primary CTA"
+      hypothesis_then: "quote starts per visitor will increase"
+      hypothesis_because: "the testimonials currently sit in section {testimonial_section} of the page, far from the decision point"
+
+  - id: CRO-CHOICE-OVERLOAD
+    name: One primary action per view
+    keywords: [competing offer, bundle offer, too many options, distraction]
+    principle: Several competing calls to action in the same view split attention and delay the decision (Hick's law).
+    triggers: [many_ctas_above_fold, competing_offer_above_plans]
+    supporting: [false_bottom]
+    typical_impact: 5
+    ease: 7
+    primary_metric: Quote starts per visitor
+    idea:
+      title: "Remove the competing offer before the plan comparison"
+      change: "Move the {offer_label} band below the plan comparison (or turn it into a slim inline note) so the plan choice and primary CTA are not interrupted."
+      hypothesis_if: "we move the competing offer below the plan comparison"
+      hypothesis_then: "more visitors will reach the plans and start a home quote"
+      hypothesis_because: "a second full-width offer with its own CTA interrupts the path from cover details to plan choice"
+
+  - id: CRO-ACCESSIBLE-CONTROLS
+    name: Accessible, semantic controls convert better
+    keywords: [accessibility, keyboard, screen reader, tablist, aria]
+    principle: Controls built from non-semantic elements are unusable for keyboard and assistive-technology users and often unreliable on touch; fixing them removes hidden friction for everyone.
+    triggers: [non_semantic_controls, images_missing_alt, upstream_accessibility]
+    supporting: [rage_clicks]
+    typical_impact: 4
+    ease: 7
+    primary_metric: Plan selection to quote start rate
+    idea:
+      title: "Rebuild the {control_label} as accessible tabs"
+      change: "Replace the non-semantic {control_selector} elements with buttons in a tablist (role=tab, aria-selected, keyboard arrows) and give informative images an alt text."
+      hypothesis_if: "we rebuild {control_selector} as accessible, keyboard-operable tabs"
+      hypothesis_then: "plan selection and quote starts will increase, including for keyboard and screen-reader users"
+      hypothesis_because: "the controls are non-semantic elements without roles or focus, which fails WCAG 4.1.2 and blocks part of the audience"
+
+  - id: CRO-VALUE-PROP-CLARITY
+    name: Lead with a specific value proposition
+    keywords: [headline, value proposition, hero copy, benefit]
+    principle: High-traffic pages that convert below the site average often fail to answer "why this, why now" above the fold; a concrete, quantified benefit near the headline lifts conversion.
+    triggers: [below_avg_conversion]
+    supporting: [high_traffic_page, low_engagement]
+    typical_impact: 7
+    ease: 6
+    primary_metric: Quote starts per visitor
+    idea:
+      title: "Quantify the main benefit in the hero headline"
+      change: "Test a hero headline and lead that state a concrete, verifiable benefit (for example claims speed or price from) instead of a general promise."
+      hypothesis_if: "we replace the general hero headline with a specific, quantified benefit"
+      hypothesis_then: "quote starts per visitor will increase"
+      hypothesis_because: "the page converts at {page_cr} against a site average of {site_cr} while receiving {page_share} of all sessions"
+
+  - id: CRO-RISK-REVERSAL
+    name: Reassure engaged visitors at the CTA
+    keywords: [reassurance, no obligation, objection, faq, guarantee]
+    principle: Visitors who engage but do not convert are usually blocked by uncertainty (price, commitment, effort); reassurance at the CTA (no obligation, time to complete, change any time) removes it.
+    triggers: [engaged_not_converting, faq_below_fold]
+    supporting: [high_traffic_page]
+    typical_impact: 5
+    ease: 9
+    primary_metric: Quote starts per visitor
+    idea:
+      title: "Add a reassurance line under the primary CTA"
+      change: "Add a one-line reassurance under {cta_selector} that answers the top objection from the FAQ (for example 'No obligation. Change your plan any time.')."
+      hypothesis_if: "we add a reassurance line that answers the main objection under the primary CTA"
+      hypothesis_then: "more engaged visitors will start a quote"
+      hypothesis_because: "the answers to visitors' main objections (price, commitment, changing plans) sit in the FAQ at the end of the page, far from the primary CTA"
+
+  - id: CRO-TABLE-SCANNABILITY
+    name: Make comparison tables scannable
+    keywords: [pricing table, comparison table, plan cards, compare plans, recommended plan]
+    principle: Comparison tables with a highlighted recommended option, real headers and fewer rows reduce the effort of choosing.
+    triggers: [table_without_headers]
+    typical_impact: 4
+    ease: 7
+    primary_metric: Plan selection to quote start rate
+    idea:
+      title: "Highlight the recommended plan in the pricing table"
+      change: "Turn the first row of {table_selector} into real column headers, highlight the most chosen plan and add a quote button per column."
+      hypothesis_if: "we give the pricing table real headers, a highlighted recommended plan and per-plan quote buttons"
+      hypothesis_then: "plan selection to quote start rate will increase"
+      hypothesis_because: "the table has no header cells, so visitors and screen readers cannot tell which column is which"
+
+  - id: CRO-FORM-FRICTION
+    name: Ask for less up front
+    keywords: [form fields, form length, quote form, fewer fields]
+    principle: Every extra field adds effort; deferring non-essential fields to later steps raises completion.
+    triggers: [long_form]
+    typical_impact: 7
+    ease: 5
+    primary_metric: Form completion rate
+    idea:
+      title: "Cut the form to the essential fields"
+      change: "Reduce {form_selector} to the fields needed for a first price and ask for the rest after the price is shown."
+      hypothesis_if: "we reduce the form to the fields needed for a first price"
+      hypothesis_then: "form completion rate will increase"
+      hypothesis_because: "the form asks for {form_fields} fields before showing any value"
+
+  - id: CRO-MOBILE-STICKY-CTA
+    name: Keep the primary action in reach on mobile
+    keywords: [sticky, fixed button, mobile cta, bottom bar]
+    principle: On long mobile pages the primary CTA scrolls away; a slim sticky CTA keeps the next step one tap away.
+    triggers: [mobile_heavy]
+    supporting: [low_scroll_depth]
+    typical_impact: 5
+    ease: 7
+    primary_metric: Quote starts per mobile visitor
+    idea:
+      title: "Add a slim sticky quote bar on mobile"
+      change: "Show a slim sticky bar with the primary CTA on viewports under 768px after the hero scrolls out of view."
+      hypothesis_if: "we add a sticky primary CTA on mobile after the hero scrolls away"
+      hypothesis_then: "quote starts per mobile visitor will increase"
+      hypothesis_because: "{mobile_share} of sessions are on mobile and the primary CTA is only in the hero"
+
+  - id: CRO-MESSAGE-MATCH
+    name: Match the promise that brought the visitor
+    keywords: [message match, search snippet, meta description, ad copy]
+    principle: Search snippets, ads and on-page headlines that tell the same story keep visitors from bouncing.
+    triggers: [upstream_seo, low_engagement]
+    typical_impact: 4
+    ease: 8
+    primary_metric: Engaged sessions rate
+    idea:
+      title: "Align the hero headline with the search snippet promise"
+      change: "Rewrite the hero headline and lead so they repeat the promise in the page title and meta description ({meta_hint})."
+      hypothesis_if: "we align the hero headline with the promise in the search snippet"
+      hypothesis_then: "the engaged sessions rate and quote starts will increase"
+      hypothesis_because: "visitors arriving from search see a different promise from the one they clicked"
+
+  - id: CRO-SPEED
+    name: Faster pages convert better
+    keywords: [page speed, performance, load time, core web vitals]
+    principle: Slow rendering of the hero and CTA delays the first interaction and raises abandonment, especially on mobile.
+    triggers: [upstream_performance]
+    typical_impact: 5
+    ease: 4
+    primary_metric: Quote starts per visitor
+    idea:
+      title: "Speed up the hero render"
+      change: "Inline critical CSS, size the hero image and defer non-critical scripts so the hero and CTA render first."
+      hypothesis_if: "we make the hero and primary CTA render faster"
+      hypothesis_then: "quote starts per visitor will increase"
+      hypothesis_because: "performance findings show the hero renders late"

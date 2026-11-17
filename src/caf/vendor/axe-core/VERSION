@@ -1,0 +1,3 @@
+axe-core 4.10.2 (MPL-2.0, Deque Systems) - vendored from the npm registry tarball axe-core-4.10.2.tgz
+axe.min.js sha256-tRHNnewBx29LKtFyO2a22zfUwutO0ZkHbhgp2e57deM= (matches sri-history.json in the package)
+Injected into pages by caf.agents.web.web_accessibility_evaluation via Playwright page.add_script_tag(content=...).

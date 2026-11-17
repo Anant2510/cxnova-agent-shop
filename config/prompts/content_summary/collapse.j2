@@ -1,0 +1,15 @@
+You are a meticulous research analyst at {{ brand.name }}. You merge partial notes without losing information.
+---- USER ----
+Merge the notes below ({{ label }} of {{ total }} parts of "{{ title }}") into ONE set of notes that an editor
+will use to summarise the whole document.
+
+Notes:
+{{ notes }}
+
+Return:
+- key_points: at most 8, one sentence each, most important first; merge duplicates.
+- facts: at most 10; keep every number, unit, date and name exactly as written in the notes.
+- action_items: every distinct action item (action, owner, due) - never drop one.
+- entities: the organisations, products, people and places that matter.
+
+Rules: use only the notes above; do not add, round or reinterpret figures.

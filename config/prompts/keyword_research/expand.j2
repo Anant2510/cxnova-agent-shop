@@ -1,0 +1,47 @@
+You are a senior SEO strategist for {{ brand.name }} ({{ brand.website }}). You expand keyword
+research for content and SEO planning. You never invent first-party metrics: any volume you give
+is a rough estimate and is labelled as one.
+---- USER ----
+Propose additional search keywords for this research.
+
+- Topic: {{ topic }}
+- Market: {{ market | default("not specified", true) }}
+{% if page_url %}
+- Target page: {{ page_url }}{% if page_title %} (title: {{ page_title }}){% endif %}
+
+{% endif %}
+{% if key_messages %}
+Campaign key messages (context only):
+{{ key_messages | bullets }}
+{% endif %}
+
+Queries we already rank for (first-party data - do not repeat them):
+{% if known %}
+{{ known | bullets }}
+{% else %}
+(no first-party data available)
+{% endif %}
+
+Titles of pages currently ranking in search for the topic:
+{% if serp_titles %}
+{{ serp_titles | bullets }}
+{% else %}
+(no search results available)
+{% endif %}
+{% if estimate_for %}
+
+We have no data for these keywords. Include every one of them in your answer, exactly as written,
+with an estimate:
+{{ estimate_for | bullets }}
+{% endif %}
+
+Rules:
+- Return at most {{ max_new }} new keyword candidates, plus every keyword listed as having no data.
+- keyword: a lowercase query a real searcher in the market would type, 2-8 words, no punctuation
+  except hyphens, no competitor brand names.
+- Cover the gaps: informational (how / what / why), commercial (best, compare, cost) and
+  transactional (quote, buy) intent around the topic.
+- est_monthly_searches: your rough estimate of monthly searches in the market, or null if you have
+  no basis for one. It is shown to users as an estimate.
+- rationale: one short phrase - the gap or intent the keyword covers.
+- Stay on the topic; do not drift into unrelated products.

@@ -1,0 +1,38 @@
+# A customer's policy for the CX Nova Agent Shop (run mode 2: Coforge hosts the agents, the customer's model answers).
+# Load it with:  caf shop policy meridian-mutual --file config/policies/example-customer.yaml
+# or paste it as JSON in the admin console. The customer's admin owns and signs this document.
+
+version: 3
+signed_by: ciso@meridian-mutual.example
+
+models:
+  provider: azure_openai                     # coforge | anthropic | anthropic_foundry | azure_openai | openai | bedrock | ollama
+  endpoint: https://mm-ai-eu.openai.azure.com/
+  api_version: 2025-04-01-preview
+  region: westeurope
+  api_key_env: MERIDIAN_AZURE_OPENAI_KEY     # an environment variable on the shop server; the key never enters the database
+  # api_key: ...                             # alternative: stored encrypted (needs CAF_SECRET_KEY on the server)
+  tiers:                                     # the framework's routing tiers -> the customer's approved deployments
+    fast: mm-small
+    balanced: mm-large
+    pro: mm-large
+    complex: mm-large
+  images_allowed: false                      # screenshots and design images are dropped before the call
+
+data:
+  mask_before_model: [email, phone, policy_number]   # also: card_number, iban
+  keep_run_records_days: 30
+  provider_training: forbidden
+
+reach:
+  websites: ["*.meridian-mutual.example"]    # the agents may fetch only these hosts (empty = any public host)
+  systems: {cms: read_write, ga4: read, crm: none}
+
+actions:
+  need_approval: [cms.publish, email.send, experiment.start]   # publish-type actions are always held; this documents which
+  approvers: [marketing-ops@meridian-mutual.example]
+
+limits:
+  runs_per_day: 500
+  tokens_per_month: 20000000
+  model_spend_per_month_usd: 2000            # informative: the provider bills the customer; the shop meters tokens

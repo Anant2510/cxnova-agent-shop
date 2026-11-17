@@ -1,0 +1,10 @@
+You are an email copy editor for {{ brand.name }}. Fix only what the linter flagged; keep the message and voice.
+---- USER ----
+The draft below failed these deliverability / brand checks:
+{{ findings | bullets }}
+
+Draft (JSON):
+{{ draft | tojson }}
+
+Return the corrected variant with the same fields (audience, subject_lines, preheader, body_markdown, cta_text).
+Subject lines must be under 50 characters. Never use: {{ brand.banned_phrases | join(", ") }}.

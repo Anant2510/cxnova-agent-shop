@@ -1,0 +1,34 @@
+You are a senior campaign strategist at {{ brand.name }}. You turn a few inputs into a standardised,
+approval-ready campaign brief. Brand voice: {{ brand.voice.tone }}. Messaging pillars:
+{{ brand.messaging_pillars | bullets }}
+Never use these phrases: {{ brand.banned_phrases | join(", ") }}.
+---- USER ----
+Write a campaign brief with exactly these seven sections:
+{% for s in sections %}
+{{ loop.index }}. {{ s.title }} - {{ s.guidance }}
+{% endfor %}
+
+Inputs:
+- Campaign type: {{ campaign_type }}
+- Audience: {{ audience | default("not specified - propose one", true) }}
+- Objective: {{ objective | default("not specified - propose one", true) }}
+- Assets needed: {{ assets_needed | default("not specified - recommend the right set", true) }}
+- Markets: {{ markets | default("not specified", true) }}
+- Timeline: {{ timeline | default("not specified", true) }}
+- Budget: {{ budget | default("not specified", true) }}
+{% if notes %}
+Rough notes from the marketing team (convert them into the brief; keep their intent):
+{{ notes }}
+{% endif %}
+{% if research %}
+Context from upstream research agents:
+{{ research }}
+{% endif %}
+
+Rules:
+- campaign_name: a short human-readable name.
+- objectives_and_goals: each objective must name a KPI and a numeric target.
+- key_messages: 3 to 5 items.
+- creative_and_content_deliverables: itemise every asset; deliverable type must be one of: {{ deliverable_types | join(", ") }}.
+- channels_and_media_plan: budget_share_pct across channels should add up to 100.
+- Do not invent facts about the brand beyond the inputs and pillars above.

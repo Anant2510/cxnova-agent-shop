@@ -1,0 +1,86 @@
+# Webinar follow-up segmentation rules (Webinar Follow Up Email Creation agent).
+# Marketing ops own this file: segments, the engagement flag, the MQL hand-off and the email brief per
+# segment are configuration, evaluated deterministically by the agent - no model decides who gets what.
+version: "2026.2"
+
+# Column aliases: the first column present in the attendance export wins, so Zoom, Teams, ON24,
+# GoToWebinar and CSV exports work without code changes.
+columns:
+  email: [email, Email, attendee_email, "Email Address", "Attendee Email"]
+  first_name: [first_name, "First Name", firstname, given_name]
+  last_name: [last_name, "Last Name", lastname, family_name]
+  company: [company, organization, organisation, "Company Name", Organization]
+  job_title: [job_title, title, "Job Title", role]
+  attended: [attended, Attended, "Attended (Yes/No)", attendance]
+  minutes: [minutes_attended, "Time in Session (minutes)", duration_minutes, "Attendance Duration", time_in_session]
+  join_minute: [join_minute, "Join Minute"]
+  leave_minute: [leave_minute, "Leave Minute"]
+  questions: [questions_asked, questions, "Questions Asked", qa_count]
+  polls: [poll_responses, polls_answered, "Poll Responses", poll_count]
+  resources: [resources_clicked, "Resources Clicked", downloads, handouts_clicked]
+required: [email, attended]
+
+# Derived fields available to rules: watch_pct (minutes / webinar duration, 0-1), attended (bool),
+# minutes, questions, polls, resources, company, job_title.
+# Operators: ==, !=, >, >=, <, <=, in, not_in. A rule is {all: [...]} or {any: [...]} of conditions.
+
+# Segments are evaluated in order; the first match wins. Every registrant lands in exactly one segment.
+segments:
+  - id: no_show
+    label: Registered, did not attend
+    criteria: Registered but never joined the live session
+    when:
+      all:
+        - {field: attended, op: "==", value: false}
+    email:
+      goal: Deliver the recording with a reason to watch it now - lead with the single most useful takeaway, list what they will learn, keep it short.
+      cta: recording_url
+      cta_text: Watch the recording
+      utm_content: no_show
+
+  - id: early_drop
+    label: Left early
+    criteria: Joined but watched less than 50% of the session
+    when:
+      all:
+        - {field: attended, op: "==", value: true}
+        - {field: watch_pct, op: "<", value: 0.5}
+    email:
+      goal: Recap what they missed in the second half (the practical advice and the Q&A) and send them back to the recording.
+      cta: recording_url
+      cta_text: Catch up on the recording
+      utm_content: early_drop
+
+  - id: attended_full
+    label: Attended
+    criteria: Watched at least 50% of the live session
+    when:
+      all:
+        - {field: attended, op: "==", value: true}
+        - {field: watch_pct, op: ">=", value: 0.5}
+    email:
+      goal: Thank them, recap the three most useful takeaways, share the slides and suggest one practical next step.
+      cta: slides_url
+      cta_text: Get the slides
+      utm_content: attended
+
+# Engagement flag (not a segment): true when ANY condition holds.
+engaged:
+  label: Engaged
+  any:
+    - {field: questions, op: ">=", value: 1}
+    - {field: polls, op: ">=", value: 2}
+
+# MQL hand-off to sales: engaged registrants in these segments become MQLs.
+mql:
+  require_engaged: true
+  segments: [attended_full, early_drop]
+  exclude: []                       # e.g. [{field: company, op: in, value: [Competitor Inc]}]
+  consumer_companies: [Individual, "", Self-employed, N/A]   # lead_type = consumer, otherwise business
+  # Lead score for sales prioritisation (capped at 100): points per unit of each signal.
+  score_weights: {watch_pct: 40, questions: 20, polls: 5, resources: 5}
+  owner: Sales / partner team
+
+# Link tagging for the follow-up CTAs (utm_taxonomy channel used for email).
+utm:
+  channel: email

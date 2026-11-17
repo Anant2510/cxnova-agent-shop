@@ -1,0 +1,28 @@
+# Campaign brief contract (Campaign Brief Generation). The seven sections are configuration:
+# add, rename or reorder them here and the agent, its validator and the console follow.
+version: "1.0"
+sections:
+  - key: campaign_overview
+    title: Campaign overview
+    guidance: Two or three sentences - what the campaign is, why now, and the single-minded proposition.
+  - key: objectives_and_goals
+    title: Objectives and goals
+    guidance: Two to four SMART objectives, each with a KPI and a numeric target.
+  - key: target_audience
+    title: Target audience
+    guidance: Primary and secondary audiences, the insight that motivates them, and named personas.
+  - key: key_messages
+    title: Key messages
+    guidance: Three to five messages ordered by priority; each one sentence, benefit-led.
+  - key: creative_and_content_deliverables
+    title: Creative and content deliverables
+    guidance: Itemise every asset so each one can become a task (type, channel, owner role, due offset in days).
+  - key: channels_and_media_plan
+    title: Channels and media plan
+    guidance: Channels with their role in the journey, timing and indicative budget share (%).
+  - key: measurement_and_reporting
+    title: Measurement and reporting
+    guidance: KPIs, reporting cadence, tools and the UTM/attribution convention.
+deliverable_types: [email, landing_page, social_post, paid_social_ad, search_ad, display_ad, blog_post, press_release, video, webinar, event, sales_enablement, other]
+campaign_types: [product launch, webinar, event, content campaign, nurture, acquisition, retention, brand awareness, partner co-marketing]
+default_task_project: MARKETING

@@ -1,0 +1,201 @@
+# Experiment Review rules - the deterministic pre-launch QA gate (Experiment Review agent).
+# Every rule runs in code over the platform-neutral ExperimentDefinition (caf.connectors.experiments),
+# so the same gate works for Optimizely, VWO, Adobe Target, LaunchDarkly or an internal registry and can
+# be enforced in CI (the agent writes JUnit XML). The language model only explains the findings.
+#
+# Rule fields
+#   id        stable rule id (JUnit test case name)
+#   severity  low | medium | high | critical
+#   blocking  true -> a failure fails the gate; false -> reported as a warning only
+#   enabled   switch a rule off without deleting it
+#   params    thresholds used by the rule implementation
+#   ref       programme standard the rule enforces
+#   fix       default remediation text (used when no model is configured)
+version: "1.1"
+
+# Statistical settings shared with Experiment Planning (power analysis for sample-size sufficiency).
+stats:
+  alpha: 0.05
+  power: 0.8
+  bonferroni: true        # alpha / (variants - 1) when a test has more than one treatment
+
+# Defaults Experiment Planning applies so that new plans pass this gate.
+defaults:
+  min_duration_days: 7
+  guardrails:
+    - {id: bounce_rate, name: Bounce rate, type: conversion, event: bounce, definition: "Single-page sessions / sessions"}
+    - {id: form_error_rate, name: Form error rate, type: conversion, event: form_error, definition: "Visitors with a form validation error / visitors who start the form"}
+
+rules:
+  - id: allocation.sum_100
+    name: Variant allocations sum to 100%
+    severity: critical
+    blocking: true
+    params: {tolerance: 0.01}
+    ref: EXP-STD-01 Traffic allocation
+    fix: Set the variant allocations so they add up to exactly 100% of the experiment's traffic.
+
+  - id: allocation.single_control
+    name: Exactly one control
+    severity: critical
+    blocking: true
+    ref: EXP-STD-01 Traffic allocation
+    fix: Mark exactly one variant as the control (is_control = true).
+
+  - id: allocation.min_variants
+    name: At least one treatment next to the control
+    severity: critical
+    blocking: true
+    params: {min_variants: 2}
+    ref: EXP-STD-01 Traffic allocation
+    fix: Add at least one treatment variant.
+
+  - id: allocation.balanced
+    name: Equal split between arms (or a documented reason)
+    severity: low
+    blocking: false
+    params: {max_spread_pct: 1.0}
+    ref: EXP-STD-01 Traffic allocation
+    fix: Use an equal split unless an unequal split is deliberate; unequal splits need a larger total sample.
+
+  - id: traffic.allocation_range
+    name: Traffic allocation between 1% and 100%
+    severity: high
+    blocking: true
+    params: {min_pct: 1, max_pct: 100}
+    ref: EXP-STD-01 Traffic allocation
+    fix: Set traffic_allocation to a percentage between 1 and 100.
+
+  - id: metric.primary_defined
+    name: Primary metric defined with an event
+    severity: critical
+    blocking: true
+    ref: EXP-STD-02 Metrics
+    fix: Define one primary metric with an id, a type and the analytics event that measures it.
+
+  - id: metric.guardrails_present
+    name: At least one guardrail metric
+    severity: high
+    blocking: true
+    params: {min_guardrails: 1}
+    ref: EXP-STD-02 Metrics
+    fix: Add guardrail metrics that must not get worse (for example bounce rate and form error rate).
+
+  - id: metric.secondary_limit
+    name: A focused set of secondary metrics
+    severity: low
+    blocking: false
+    params: {max_secondary: 5}
+    ref: EXP-STD-02 Metrics
+    fix: Keep secondary metrics to the few that explain the primary result; many metrics inflate false discoveries.
+
+  - id: stats.baseline_present
+    name: Baseline conversion rate recorded
+    severity: high
+    blocking: true
+    ref: EXP-STD-03 Sizing
+    fix: Record the control's baseline conversion rate (from analytics) so the test can be sized.
+
+  - id: stats.mde_realistic
+    name: Minimum detectable effect is realistic
+    severity: medium
+    blocking: false
+    params: {min_mde: 0.02, max_mde: 0.5}
+    ref: EXP-STD-03 Sizing
+    fix: Choose a relative MDE between 2% and 50%; smaller effects need very large samples, larger ones are rarely real.
+
+  - id: stats.sample_size_sufficient
+    name: Planned traffic reaches the required sample size
+    severity: critical
+    blocking: true
+    params: {margin: 1.0}
+    ref: EXP-STD-03 Sizing
+    fix: Extend the duration, raise the traffic allocation, reduce the number of variants or increase the MDE until the planned sample covers the power analysis.
+
+  - id: duration.min_days
+    name: Runs for at least one full week
+    severity: high
+    blocking: true
+    params: {min_days: 7}
+    ref: EXP-STD-04 Duration
+    fix: Run for at least 7 days so every weekday is represented.
+
+  - id: duration.whole_weeks
+    name: Duration in whole weeks
+    severity: medium
+    blocking: true
+    ref: EXP-STD-04 Duration
+    fix: Round the planned duration up to a whole number of weeks to avoid day-of-week bias.
+
+  - id: duration.max_days
+    name: Not longer than the programme maximum
+    severity: medium
+    blocking: false
+    params: {max_days: 56}
+    ref: EXP-STD-04 Duration
+    fix: Tests longer than 8 weeks suffer cookie churn and drift; increase the MDE or the traffic instead.
+
+  - id: dates.consistent
+    name: Start, end and planned duration agree
+    severity: medium
+    blocking: false
+    ref: EXP-STD-04 Duration
+    fix: Make end_date - start_date + 1 equal planned_duration_days.
+
+  - id: targeting.overlap
+    name: No overlap with running tests on the same page and audience
+    severity: high
+    blocking: true
+    params: {statuses: [running, paused]}
+    ref: EXP-STD-05 Targeting and conflicts
+    fix: Make the tests mutually exclusive (exclusion group or audience split), change the dates, or wait for the running test to finish.
+
+  - id: srm.interim
+    name: No sample ratio mismatch in interim results
+    severity: critical
+    blocking: true
+    params: {p_threshold: 0.001, min_visitors: 1000}
+    ref: EXP-STD-06 Data quality
+    fix: Stop and investigate assignment (redirects, caching, bot filtering, late-firing tags) before trusting any result.
+
+  - id: instrumentation.primary_event
+    name: Primary metric event is instrumented
+    severity: critical
+    blocking: true
+    ref: EXP-STD-07 Instrumentation
+    fix: Add the primary metric's event to the experiment's instrumentation and verify it fires in every variant.
+
+  - id: instrumentation.metric_events
+    name: Secondary and guardrail events are instrumented
+    severity: medium
+    blocking: false
+    ref: EXP-STD-07 Instrumentation
+    fix: Instrument every secondary and guardrail metric event before launch.
+
+  - id: qa.links_present
+    name: One QA preview link per variant
+    severity: high
+    blocking: true
+    ref: EXP-STD-08 QA
+    fix: Add a preview/QA link for every variant (including the control) and have QA sign them off.
+
+  - id: qa.links_valid
+    name: QA links are absolute http(s) URLs
+    severity: low
+    blocking: false
+    ref: EXP-STD-08 QA
+    fix: Use absolute https:// preview links.
+
+  - id: hypothesis.format
+    name: Hypothesis follows If / Then / Because
+    severity: medium
+    blocking: true
+    ref: EXP-STD-09 Hypothesis
+    fix: "Write the hypothesis as: If <change>, then <measurable effect on the primary metric>, because <evidence>."
+
+  - id: metadata.owner
+    name: An owner is assigned
+    severity: low
+    blocking: false
+    ref: EXP-STD-10 Governance
+    fix: Assign an accountable owner.

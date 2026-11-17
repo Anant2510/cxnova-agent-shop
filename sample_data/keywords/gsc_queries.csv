@@ -1,0 +1,225 @@
+query,page,clicks,impressions,ctr,position
+meridian mutual,https://www.meridian-mutual.example/,12353,22400,0.5515,1.0
+meridian mutual login,https://www.meridian-mutual.example/account/login,3874,5200,0.7450,1.0
+meridian mutual insurance,https://www.meridian-mutual.example/,3712,6100,0.6085,1.1
+meridian mutual claims,https://www.meridian-mutual.example/claims,2270,3900,0.5821,1.1
+meridian mutual claims phone number,https://www.meridian-mutual.example/contact.html,1492,2600,0.5738,1.3
+meridian insurance,https://www.meridian-mutual.example/,1375,4100,0.3354,3.4
+meridian mutual home insurance,https://www.meridian-mutual.example/products/home-insurance.html,1341,2900,0.4624,1.1
+meridian mutual phone number,https://www.meridian-mutual.example/contact.html,993,1400,0.7093,1.2
+meridian mutual car insurance,https://www.meridian-mutual.example/products/car-insurance.html,899,1700,0.5288,1.2
+meridian mutual quote,https://www.meridian-mutual.example/quote,748,1500,0.4987,1.1
+meridian mutual reviews,https://www.meridian-mutual.example/about.html,708,2300,0.3078,2.6
+home insurance,https://www.meridian-mutual.example/products/home-insurance.html,644,121000,0.0053,18.4
+homeowners insurance,https://www.meridian-mutual.example/products/home-insurance.html,472,96500,0.0049,22.7
+pet insurance,https://www.meridian-mutual.example/pet-insurance,454,90400,0.0050,23.4
+meridian mutual pet insurance,https://www.meridian-mutual.example/pet-insurance,445,900,0.4944,1.2
+meridian mutual travel insurance,https://www.meridian-mutual.example/travel-insurance,442,700,0.6314,1.3
+renters insurance,https://www.meridian-mutual.example/renters-insurance,415,88200,0.0047,21.5
+travel insurance,https://www.meridian-mutual.example/travel-insurance,408,110500,0.0037,28.1
+meridian mutual customer service,https://www.meridian-mutual.example/contact.html,405,800,0.5062,1.4
+car insurance,https://www.meridian-mutual.example/products/car-insurance.html,336,142000,0.0024,31.2
+flood insurance,https://www.meridian-mutual.example/blog/flood-cover-explained.html,335,21800,0.0154,14.2
+cheap car insurance,https://www.meridian-mutual.example/products/car-insurance.html,318,70300,0.0045,24.6
+meridian mutual track claim,https://www.meridian-mutual.example/claims/track,318,600,0.5300,1.1
+liability car insurance,https://www.meridian-mutual.example/products/car-insurance.html,316,3925,0.0805,3.5
+apartment insurance,https://www.meridian-mutual.example/renters-insurance,300,5307,0.0565,4.6
+home insurance quote,https://www.meridian-mutual.example/products/home-insurance.html,295,28400,0.0104,9.6
+travel insurance checklist,https://www.meridian-mutual.example/blog/travel-insurance-checklist.html,270,2600,0.1038,3.8
+auto insurance quotes,https://www.meridian-mutual.example/products/car-insurance.html,269,61200,0.0044,19.4
+car insurance quote,https://www.meridian-mutual.example/products/car-insurance.html,252,41500,0.0061,15.3
+how to cancel home insurance,https://www.meridian-mutual.example/help/faq,238,3567,0.0667,3.8
+flood insurance,https://www.meridian-mutual.example/products/home-insurance.html,229,74100,0.0031,26.3
+landlord insurance cost,https://www.meridian-mutual.example/landlord-insurance,227,2184,0.1039,4.1
+roof damage insurance claim,https://www.meridian-mutual.example/blog/claims-tips.html,221,6231,0.0355,6.4
+meridian mutual careers,https://www.meridian-mutual.example/about.html,221,400,0.5525,1.6
+homeowners insurance quotes,https://www.meridian-mutual.example/products/home-insurance.html,220,24100,0.0091,11.3
+how to make a home insurance claim,https://www.meridian-mutual.example/blog/claims-tips.html,211,5400,0.0391,6.2
+buildings and contents insurance,https://www.meridian-mutual.example/products/home-insurance.html,211,3449,0.0612,6.4
+best pet insurance,https://www.meridian-mutual.example/pet-insurance,210,41800,0.0050,21.9
+pet insurance cost,https://www.meridian-mutual.example/blog/pet-insurance-costs.html,205,7400,0.0277,7.3
+does home insurance cover flooding,https://www.meridian-mutual.example/blog/flood-cover-explained.html,204,18400,0.0111,8.8
+best car insurance,https://www.meridian-mutual.example/products/car-insurance.html,202,38200,0.0053,17.1
+does home insurance cover water damage,https://www.meridian-mutual.example/blog/claims-tips.html,197,2387,0.0825,3.8
+home insurance deductible,https://www.meridian-mutual.example/products/home-insurance.html,190,2161,0.0879,3.1
+wildfire home protection,https://www.meridian-mutual.example/blog/wildfire-season-prep.html,175,3900,0.0449,6.1
+meridian mutual address,https://www.meridian-mutual.example/contact.html,171,300,0.5700,1.5
+collision coverage,https://www.meridian-mutual.example/products/car-insurance.html,167,4397,0.0380,10.1
+home insurance cost,https://www.meridian-mutual.example/products/home-insurance.html,159,14300,0.0111,8.7
+winter home checklist,https://www.meridian-mutual.example/blog/winter-home-checklist.html,143,2900,0.0493,4.4
+best home insurance,https://www.meridian-mutual.example/products/home-insurance.html,139,33600,0.0041,14.8
+how much is pet insurance a month,https://www.meridian-mutual.example/blog/pet-insurance-costs.html,133,1689,0.0787,5.7
+what does home insurance cover,https://www.meridian-mutual.example/products/home-insurance.html,129,16900,0.0076,10.1
+flood zone insurance,https://www.meridian-mutual.example/blog/flood-cover-explained.html,125,7806,0.0160,10.9
+renters vs homeowners insurance,https://www.meridian-mutual.example/blog/renters-vs-homeowners.html,124,3300,0.0376,5.3
+car insurance monthly,https://www.meridian-mutual.example/products/car-insurance.html,123,4266,0.0288,8.9
+home insurance claim tips,https://www.meridian-mutual.example/blog/claims-tips.html,117,2100,0.0557,4.1
+landlord insurance,https://www.meridian-mutual.example/landlord-insurance,116,22100,0.0052,14.2
+home and auto bundle,https://www.meridian-mutual.example/products/home-insurance.html,116,4533,0.0256,13.9
+water damage claim,https://www.meridian-mutual.example/blog/claims-tips.html,115,4720,0.0244,8.5
+wildfire insurance,https://www.meridian-mutual.example/blog/wildfire-season-prep.html,111,12600,0.0088,11.2
+is flood damage covered by homeowners insurance,https://www.meridian-mutual.example/blog/flood-cover-explained.html,111,4095,0.0271,7.7
+dog insurance,https://www.meridian-mutual.example/pet-insurance,108,30100,0.0036,17.2
+annual travel insurance,https://www.meridian-mutual.example/travel-insurance,106,15200,0.0070,13.4
+comprehensive car insurance,https://www.meridian-mutual.example/products/car-insurance.html,104,2137,0.0487,6.5
+home insurance rebuild cost,https://www.meridian-mutual.example/products/home-insurance.html,101,3190,0.0317,7.8
+water leak sensor,https://www.meridian-mutual.example/products/home-insurance.html,100,3036,0.0329,8.8
+why is my home insurance going up,https://www.meridian-mutual.example/products/home-insurance.html,97,13100,0.0074,10.6
+car insurance claim process,https://www.meridian-mutual.example/claims,96,9076,0.0106,14.0
+private flood insurance,https://www.meridian-mutual.example/products/home-insurance.html,96,2037,0.0471,6.3
+house insurance,https://www.meridian-mutual.example/products/home-insurance.html,95,21400,0.0044,19.1
+make a claim online,https://www.meridian-mutual.example/claims,93,3077,0.0302,9.0
+average home insurance cost 2026,https://www.meridian-mutual.example/products/home-insurance.html,93,2591,0.0359,5.2
+cheap home insurance,https://www.meridian-mutual.example/products/home-insurance.html,92,19200,0.0048,16.2
+renters insurance quote,https://www.meridian-mutual.example/renters-insurance,86,12300,0.0070,13.1
+landlord insurance quote,https://www.meridian-mutual.example/landlord-insurance,82,7376,0.0111,12.7
+travel medical insurance,https://www.meridian-mutual.example/travel-insurance,81,19400,0.0042,18.7
+basement flooding insurance,https://www.meridian-mutual.example/blog/flood-cover-explained.html,81,968,0.0837,4.3
+home emergency cover,https://www.meridian-mutual.example/products/home-insurance.html,78,1332,0.0586,5.6
+rental property insurance,https://www.meridian-mutual.example/landlord-insurance,77,13900,0.0055,16.8
+home maintenance checklist,https://www.meridian-mutual.example/blog/winter-home-checklist.html,73,9900,0.0074,11.9
+travel insurance for seniors,https://www.meridian-mutual.example/travel-insurance,71,4686,0.0152,13.5
+what to do after water damage,https://www.meridian-mutual.example/blog/claims-tips.html,71,3194,0.0222,9.2
+how long does a home insurance claim take,https://www.meridian-mutual.example/blog/claims-tips.html,68,6200,0.0110,9.8
+multi trip travel insurance,https://www.meridian-mutual.example/travel-insurance,68,1379,0.0493,7.1
+do i need travel insurance,https://www.meridian-mutual.example/blog/travel-insurance-checklist.html,68,824,0.0825,5.3
+contents insurance,https://www.meridian-mutual.example/products/home-insurance.html,67,11800,0.0057,12.4
+cat insurance,https://www.meridian-mutual.example/pet-insurance,67,11200,0.0060,12.6
+bundle home and car insurance,https://www.meridian-mutual.example/products/home-insurance.html,63,9400,0.0067,12.9
+insurance,https://www.meridian-mutual.example/,62,46200,0.0013,59.4
+cheap renters insurance,https://www.meridian-mutual.example/renters-insurance,62,15600,0.0040,18.2
+flood cover,https://www.meridian-mutual.example/blog/flood-cover-explained.html,61,9300,0.0066,12.1
+get insurance quote,https://www.meridian-mutual.example/quote,59,10800,0.0055,16.4
+car insurance for young drivers,https://www.meridian-mutual.example/blog/new-driver-guide.html,59,8700,0.0068,13.6
+home insurance price increase 2027,https://www.meridian-mutual.example/products/home-insurance.html,59,2612,0.0226,10.7
+how to file an insurance claim,https://www.meridian-mutual.example/claims,59,2503,0.0236,10.1
+hail damage claim,https://www.meridian-mutual.example/claims,59,2219,0.0266,9.2
+family travel insurance,https://www.meridian-mutual.example/travel-insurance,57,3903,0.0146,14.0
+is renters insurance required,https://www.meridian-mutual.example/blog/renters-vs-homeowners.html,57,786,0.0725,3.2
+is pet insurance worth it,https://www.meridian-mutual.example/blog/pet-insurance-costs.html,56,1729,0.0324,8.4
+home insurance calculator,https://www.meridian-mutual.example/quote,54,2500,0.0216,12.4
+home insurance tips,https://www.meridian-mutual.example/blog/,54,1728,0.0312,6.3
+vacation home insurance,https://www.meridian-mutual.example/products/home-insurance.html,54,404,0.1337,2.0
+harborline home insurance price increase,https://www.meridian-mutual.example/products/home-insurance.html,53,4800,0.0110,11.5
+puppy insurance,https://www.meridian-mutual.example/pet-insurance,52,2794,0.0186,11.8
+insurance claim status,https://www.meridian-mutual.example/claims/track,52,1256,0.0414,5.1
+flood insurance cost,https://www.meridian-mutual.example/blog/flood-cover-explained.html,49,2742,0.0179,7.9
+track my insurance claim,https://www.meridian-mutual.example/claims/track,46,3007,0.0153,13.3
+how much is home insurance,https://www.meridian-mutual.example/products/home-insurance.html,43,3356,0.0128,13.8
+single trip travel insurance,https://www.meridian-mutual.example/travel-insurance,42,2437,0.0172,11.6
+insurance companies,https://www.meridian-mutual.example/,40,18400,0.0022,57.2
+home insurance discounts,https://www.meridian-mutual.example/products/home-insurance.html,40,2639,0.0152,12.2
+climate change home insurance,https://www.meridian-mutual.example/products/home-insurance.html,39,8200,0.0048,15.8
+wildfire defensible space,https://www.meridian-mutual.example/blog/wildfire-season-prep.html,39,2563,0.0152,13.6
+pet insurance for cats,https://www.meridian-mutual.example/pet-insurance,39,1961,0.0199,12.0
+landlord liability insurance,https://www.meridian-mutual.example/landlord-insurance,39,807,0.0483,3.7
+roadside assistance,https://www.meridian-mutual.example/products/car-insurance.html,38,12900,0.0029,33.4
+do i need renters insurance,https://www.meridian-mutual.example/blog/renters-vs-homeowners.html,38,2808,0.0135,12.3
+insurance faq,https://www.meridian-mutual.example/help/faq,38,606,0.0627,5.3
+travel insurance for flights,https://www.meridian-mutual.example/travel-insurance,35,620,0.0565,7.7
+underinsured home,https://www.meridian-mutual.example/products/home-insurance.html,33,518,0.0637,4.6
+first time driver insurance,https://www.meridian-mutual.example/blog/new-driver-guide.html,30,856,0.0350,6.2
+insurance quote online,https://www.meridian-mutual.example/quote,30,822,0.0365,7.8
+harborline insurance,https://www.meridian-mutual.example/,29,5100,0.0057,18.3
+what does renters insurance cover,https://www.meridian-mutual.example/renters-insurance,28,1885,0.0149,10.1
+switch home insurance,https://www.meridian-mutual.example/products/home-insurance.html,27,1778,0.0152,11.3
+frozen pipe burst insurance,https://www.meridian-mutual.example/blog/winter-home-checklist.html,24,809,0.0297,7.5
+insurance for rental property,https://www.meridian-mutual.example/landlord-insurance,23,813,0.0283,6.4
+alternatives to harborline insurance,https://www.meridian-mutual.example/products/home-insurance.html,22,2100,0.0105,9.2
+pet insurance pre existing conditions,https://www.meridian-mutual.example/pet-insurance,22,728,0.0302,5.9
+renters insurance cost,https://www.meridian-mutual.example/renters-insurance,21,1144,0.0184,13.7
+storm damage claim,https://www.meridian-mutual.example/claims,21,1040,0.0202,11.8
+mutual home insurance,https://www.meridian-mutual.example/about.html,21,735,0.0286,12.7
+car insurance calculator,https://www.meridian-mutual.example/quote,20,9100,0.0022,38.2
+travel insurance cancellation cover,https://www.meridian-mutual.example/travel-insurance,20,1304,0.0153,11.1
+loss of rent insurance,https://www.meridian-mutual.example/landlord-insurance,20,838,0.0239,8.6
+new driver insurance tips,https://www.meridian-mutual.example/blog/new-driver-guide.html,20,504,0.0397,6.5
+insurance company founded 1952,https://www.meridian-mutual.example/about.html,20,386,0.0518,7.2
+how to prepare for a hurricane,https://www.meridian-mutual.example/blog/flood-cover-explained.html,19,6400,0.0030,35.6
+cancel for any reason travel insurance,https://www.meridian-mutual.example/travel-insurance,19,1676,0.0113,14.7
+how to prevent frozen pipes,https://www.meridian-mutual.example/blog/winter-home-checklist.html,19,1647,0.0115,14.0
+hurricane season home prep,https://www.meridian-mutual.example/blog/flood-cover-explained.html,19,431,0.0441,7.7
+home insurance wildfire risk,https://www.meridian-mutual.example/blog/wildfire-season-prep.html,18,2316,0.0078,14.4
+change address home insurance,https://www.meridian-mutual.example/help/faq,18,1251,0.0144,10.9
+home insurance with named adjuster,https://www.meridian-mutual.example/products/home-insurance.html,18,486,0.0370,7.5
+burst pipe insurance claim,https://www.meridian-mutual.example/blog/claims-tips.html,18,467,0.0385,12.4
+uninsured motorist coverage,https://www.meridian-mutual.example/products/car-insurance.html,18,419,0.0430,7.4
+parametric flood insurance,https://www.meridian-mutual.example/blog/flood-cover-explained.html,16,300,0.0533,4.3
+how to calculate rebuild value,https://www.meridian-mutual.example/products/home-insurance.html,16,299,0.0535,5.1
+mold damage insurance,https://www.meridian-mutual.example/blog/claims-tips.html,15,2900,0.0052,26.4
+home insurance excess explained,https://www.meridian-mutual.example/products/home-insurance.html,15,602,0.0249,19.7
+impact rated roof insurance discount,https://www.meridian-mutual.example/products/home-insurance.html,15,281,0.0534,7.4
+gap insurance,https://www.meridian-mutual.example/products/car-insurance.html,14,7300,0.0019,45.9
+condo insurance,https://www.meridian-mutual.example/renters-insurance,14,5200,0.0027,36.8
+flood insurance quote,https://www.meridian-mutual.example/products/home-insurance.html,14,986,0.0142,12.7
+tenant damage insurance,https://www.meridian-mutual.example/landlord-insurance,14,749,0.0187,11.4
+trip delay insurance,https://www.meridian-mutual.example/travel-insurance,14,454,0.0308,9.7
+kitten insurance,https://www.meridian-mutual.example/pet-insurance,14,399,0.0351,5.1
+cruise travel insurance,https://www.meridian-mutual.example/travel-insurance,14,394,0.0355,9.2
+classic car insurance,https://www.meridian-mutual.example/products/car-insurance.html,13,4100,0.0032,39.7
+home insurance near me,https://www.meridian-mutual.example/products/home-insurance.html,13,3800,0.0034,41.5
+crestview pet insurance,https://www.meridian-mutual.example/pet-insurance,12,2200,0.0055,19.3
+flood vs water damage insurance,https://www.meridian-mutual.example/blog/flood-cover-explained.html,12,383,0.0313,7.1
+can i choose my own contractor insurance claim,https://www.meridian-mutual.example/blog/claims-tips.html,12,285,0.0421,6.0
+crestview assurance,https://www.meridian-mutual.example/,11,3400,0.0032,25.6
+multi car insurance,https://www.meridian-mutual.example/products/car-insurance.html,11,884,0.0124,14.0
+mobile home insurance,https://www.meridian-mutual.example/products/home-insurance.html,10,6100,0.0016,48.3
+harborline insurance reviews,https://www.meridian-mutual.example/about.html,10,2900,0.0034,22.4
+ice dam roof damage insurance,https://www.meridian-mutual.example/blog/winter-home-checklist.html,10,458,0.0218,11.1
+travel insurance pandemic cover,https://www.meridian-mutual.example/travel-insurance,8,3100,0.0026,47.5
+does making a claim increase home insurance premium,https://www.meridian-mutual.example/blog/claims-tips.html,8,727,0.0110,22.0
+accidental damage cover home insurance,https://www.meridian-mutual.example/products/home-insurance.html,8,686,0.0117,17.0
+home insurance for older homes,https://www.meridian-mutual.example/products/home-insurance.html,8,536,0.0149,13.1
+insurance proof of coverage,https://www.meridian-mutual.example/help/faq,8,417,0.0192,17.8
+property management insurance,https://www.meridian-mutual.example/landlord-insurance,8,189,0.0423,5.8
+insurance for short term rental host,https://www.meridian-mutual.example/landlord-insurance,7,2400,0.0029,31.9
+harborline floodflex,https://www.meridian-mutual.example/blog/flood-cover-explained.html,7,1600,0.0044,16.4
+car insurance for new drivers,https://www.meridian-mutual.example/blog/new-driver-guide.html,7,737,0.0095,14.3
+insurance claim photos,https://www.meridian-mutual.example/blog/claims-tips.html,7,171,0.0409,9.4
+harborline vs crestview,https://www.meridian-mutual.example/,6,1100,0.0055,15.2
+vet bills insurance,https://www.meridian-mutual.example/pet-insurance,6,303,0.0198,13.1
+umbrella insurance,https://www.meridian-mutual.example/products/home-insurance.html,5,8800,0.0006,52.6
+car insurance excess,https://www.meridian-mutual.example/products/car-insurance.html,5,666,0.0075,21.0
+pet insurance dental cover,https://www.meridian-mutual.example/pet-insurance,5,638,0.0078,14.0
+car insurance with courtesy car,https://www.meridian-mutual.example/products/car-insurance.html,5,351,0.0142,10.4
+second home insurance,https://www.meridian-mutual.example/products/home-insurance.html,5,342,0.0146,8.6
+first notice of loss,https://www.meridian-mutual.example/claims,5,333,0.0150,12.5
+contents insurance for renters,https://www.meridian-mutual.example/renters-insurance,5,246,0.0203,9.9
+home warranty vs home insurance,https://www.meridian-mutual.example/blog/,4,2700,0.0015,44.0
+rising water insurance,https://www.meridian-mutual.example/blog/flood-cover-explained.html,4,462,0.0087,18.7
+how much is car insurance for a 17 year old,https://www.meridian-mutual.example/blog/new-driver-guide.html,4,447,0.0089,16.7
+multi property landlord insurance,https://www.meridian-mutual.example/landlord-insurance,4,343,0.0117,23.0
+document damage for insurance claim,https://www.meridian-mutual.example/blog/claims-tips.html,4,342,0.0117,17.9
+insurance blog,https://www.meridian-mutual.example/blog/,4,296,0.0135,10.0
+home insurance 24/7 claims,https://www.meridian-mutual.example/products/home-insurance.html,4,90,0.0444,5.9
+exotic pet insurance,https://www.meridian-mutual.example/pet-insurance,3,1300,0.0023,42.8
+crestview cancel for any reason,https://www.meridian-mutual.example/travel-insurance,3,900,0.0033,21.7
+talk to an insurance advisor,https://www.meridian-mutual.example/contact.html,3,695,0.0043,26.2
+home insurance claim denied,https://www.meridian-mutual.example/claims,3,523,0.0057,21.8
+resilience credits home insurance,https://www.meridian-mutual.example/products/home-insurance.html,3,507,0.0059,17.5
+apartment building insurance,https://www.meridian-mutual.example/landlord-insurance,3,348,0.0086,13.7
+renters insurance monthly cost,https://www.meridian-mutual.example/renters-insurance,3,248,0.0121,16.3
+leak sensor insurance discount,https://www.meridian-mutual.example/products/home-insurance.html,3,238,0.0126,9.2
+home insurance monthly payments,https://www.meridian-mutual.example/products/home-insurance.html,3,210,0.0143,10.2
+sump pump failure insurance,https://www.meridian-mutual.example/blog/flood-cover-explained.html,3,201,0.0149,18.7
+pet insurance boarding fees,https://www.meridian-mutual.example/pet-insurance,3,136,0.0221,9.1
+emergency fund vs insurance,https://www.meridian-mutual.example/blog/,2,1900,0.0011,54.1
+harborline app not working,https://www.meridian-mutual.example/claims,2,700,0.0029,27.5
+smart leak detector,https://www.meridian-mutual.example/products/home-insurance.html,2,351,0.0057,17.2
+travel insurance for europe,https://www.meridian-mutual.example/travel-insurance,2,331,0.0060,15.8
+travel insurance cost,https://www.meridian-mutual.example/travel-insurance,2,288,0.0069,14.3
+renters insurance for students,https://www.meridian-mutual.example/renters-insurance,2,139,0.0144,11.5
+pet insurance for older dogs,https://www.meridian-mutual.example/pet-insurance,2,121,0.0165,10.3
+do i need flood insurance outside a flood zone,https://www.meridian-mutual.example/blog/flood-cover-explained.html,1,498,0.0020,34.8
+insurance adjuster tips,https://www.meridian-mutual.example/blog/claims-tips.html,1,361,0.0028,30.7
+wildfire smoke damage insurance claim,https://www.meridian-mutual.example/blog/wildfire-season-prep.html,1,329,0.0030,42.4
+storm preparation checklist,https://www.meridian-mutual.example/blog/winter-home-checklist.html,1,326,0.0031,32.4
+member owned insurance company,https://www.meridian-mutual.example/about.html,1,218,0.0046,26.7
+tree fell on house insurance,https://www.meridian-mutual.example/claims,1,162,0.0062,17.8
+hail resistant roof,https://www.meridian-mutual.example/products/home-insurance.html,1,157,0.0064,17.3
+lost luggage insurance,https://www.meridian-mutual.example/travel-insurance,1,146,0.0068,25.4
+storm surge insurance,https://www.meridian-mutual.example/blog/flood-cover-explained.html,1,127,0.0079,13.3
+flash flood insurance,https://www.meridian-mutual.example/blog/flood-cover-explained.html,1,126,0.0079,16.7
+does homeowners insurance cover roof leaks,https://www.meridian-mutual.example/blog/claims-tips.html,1,109,0.0092,21.8
+ember resistant vents,https://www.meridian-mutual.example/blog/wildfire-season-prep.html,1,76,0.0132,20.1
+teen driver insurance cost,https://www.meridian-mutual.example/blog/new-driver-guide.html,0,72,0.0000,16.3

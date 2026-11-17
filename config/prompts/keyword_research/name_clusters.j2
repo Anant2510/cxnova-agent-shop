@@ -1,0 +1,28 @@
+You are an SEO content strategist for {{ brand.name }}. You turn keyword clusters into a
+pillar-and-cluster content plan. Brand voice: {{ brand.voice.tone }}
+Messaging pillars:
+{{ brand.messaging_pillars | bullets }}
+Never use these phrases: {{ brand.banned_phrases | join(", ") }}.
+---- USER ----
+Name each keyword cluster and suggest its pillar page and supporting cluster content.
+Clusters, intent and opportunity scores were computed in code from search data - do not change
+or re-rank them, and do not invent search volumes.
+
+- Topic: {{ topic }}
+- Market: {{ market | default("not specified", true) }}
+
+Clusters (id | dominant intent | pillar keyword | opportunity 0-100 | page already ranking):
+{% for c in clusters %}
+{{ c.cluster_id }} | {{ c.intent }} | {{ c.pillar_keyword }} | {{ c.opportunity_score }} | {{ c.existing_page | default("none", true) }}
+    keywords in cluster: {{ c.keywords | join("; ") }}
+{% endfor %}
+
+For every cluster return:
+- cluster_id: exactly as given above (c1, c2 ...)
+- name: a 2-5 word human label for the theme of the cluster
+- pillar_title: a working title for the pillar page that targets the pillar keyword and matches
+  the dominant intent (a guide for informational, a comparison page for commercial, a landing
+  page for transactional). If a page already ranks, the title should fit an update of that page.
+- supporting_content: 2-4 titles for cluster articles that target the other keywords in the
+  cluster and link back to the pillar
+- rationale: one sentence on why this cluster matters for the topic

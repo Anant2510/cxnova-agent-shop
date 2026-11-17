@@ -1,0 +1,26 @@
+# secrets and local state
+.env
+*.env.local
+data/
+runs/
+*.db
+# python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+# node (only used to build the console)
+console/node_modules/
+# editors and OS
+.DS_Store
+.vscode/
+.idea/
+# packages and snapshots
+*.zip
+*.tgz
+# keep console/dist: the built console is committed so the VM needs no Node.js
+!console/dist/

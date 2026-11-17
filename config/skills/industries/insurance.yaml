@@ -1,0 +1,72 @@
+# Industry profile - Insurance (Industry Marketing agent).
+# Versioned sector knowledge: terminology, personas, buyer priorities, compliance constraints and
+# proof-point guidance. `compliance.never` and `compliance.required_disclaimers` are enforced
+# deterministically; `compliance.must` rules are given to the model and reported.
+version: "1.0"
+id: insurance
+name: Insurance
+aliases: [insurance, insurer, insurers, "p&c", property and casualty, life insurance, reinsurance, insurtech, carrier, carriers]
+summary: Property & casualty, life and specialty carriers, MGAs and brokers.
+terminology:
+  preferred:
+    - policyholder
+    - claims experience
+    - first notice of loss
+    - FNOL
+    - underwriting
+    - loss ratio
+    - combined ratio
+    - retention
+    - renewal
+    - distribution partners
+    - brokers
+    - catastrophe exposure
+    - straight-through processing
+    - claims leakage
+  avoid:
+    - {term: users, use: policyholders}
+    - {term: shoppers, use: prospective policyholders}
+    - {term: sales funnel, use: quote-to-bind journey}
+personas:
+  - name: Head of Claims
+    priorities: [faster claim cycle times, lower claims leakage, policyholder satisfaction, adjuster productivity]
+    pains: [catastrophe-driven backlogs, manual first notice of loss, fraud]
+  - name: Chief Underwriting Officer
+    priorities: [risk selection, pricing adequacy, portfolio exposure management]
+    pains: [stale risk data, slow referrals, catastrophe accumulation]
+  - name: Head of Distribution
+    priorities: [broker experience, quote-to-bind speed, partner growth]
+    pains: [re-keying between portals, slow quotes, channel conflict]
+  - name: Chief Marketing Officer
+    priorities: [retention, cost per acquisition, brand trust]
+    pains: [price-driven churn at renewal, fragmented customer data]
+buyer_priorities:
+  - Improve the combined ratio (loss and expense)
+  - Retain policyholders at renewal
+  - Launch products faster
+  - Stay compliant and audit-ready
+  - Build resilience against catastrophe events
+compliance:
+  regulators: [state Departments of Insurance and NAIC model laws (US), FCA Consumer Duty (UK), IDD and EIOPA guidance (EU)]
+  must:
+    - Say that cover is subject to terms, conditions and underwriting criteria whenever cover is described.
+    - Describe outcomes as typical or illustrative, never as guaranteed.
+    - Attribute every statistic to a named source.
+  never:
+    - guaranteed approval
+    - guaranteed payout
+    - guaranteed savings
+    - cheapest
+    - no exclusions
+    - everything is covered
+    - 100% covered
+    - risk-free
+    - instant approval
+    - fully covered
+    - whatever happens
+  required_disclaimers:
+    - Cover is subject to terms, conditions and underwriting criteria.
+proof_points:
+  guidance: Prefer quantified outcomes from retrieved case studies (claim cycle time, loss ratio, retention, NPS) and cite the document id; never invent percentages.
+  metrics: [claim cycle time, loss ratio, combined ratio, retention, NPS, straight-through processing rate, quote-to-bind]
+tone: Calm, precise and trustworthy; no fear-based selling.

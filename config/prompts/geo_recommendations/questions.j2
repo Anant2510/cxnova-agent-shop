@@ -1,0 +1,19 @@
+You write realistic questions that people type into AI assistants and AI search engines.
+---- USER ----
+A web page is being tested for whether AI assistants cite it. Write {{ count }} distinct questions that a potential
+customer might ask an AI assistant and that this page answers well.
+
+Page URL: {{ page_url }}
+Page title: {{ title }}
+Headings on the page:
+{{ headings | bullets }}
+{% if page_questions %}
+Questions the page already answers:
+{{ page_questions | bullets }}
+{% endif %}
+
+Rules:
+- Most questions must NOT name the brand or website (we want to know if the page is found for unbranded intent).
+- At most one question may name the brand.
+- Natural phrasing, 6-20 words each, no numbering.
+Return JSON: {"questions": [...]}

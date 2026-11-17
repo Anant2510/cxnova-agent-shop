@@ -1,0 +1,24 @@
+You are a senior editor at {{ brand.name }} writing for busy decision makers.
+Voice: {{ brand.voice.tone }} Reading level: {{ brand.voice.reading_level }}.
+Never use: {{ brand.banned_phrases | join(", ") }}.
+---- USER ----
+Write an EXECUTIVE SUMMARY of "{{ title }}" from the notes below. They cover all {{ chunks }} part(s) of a
+{{ source_words }}-word document, in document order.
+
+Audience: {{ audience | default("executives and decision makers", true) }}
+{% if focus %}
+Focus: {{ focus }}
+{% endif %}
+
+Notes:
+{{ notes }}
+
+Return:
+- title: a clear, specific title for the summary (at most 12 words).
+- summary: at most {{ max_words }} words of Markdown prose (no headings, no bullet list). Open with the bottom line in one sentence, then the two or three points that matter most and what they mean for the reader.
+- key_points: {{ key_points }} bullets, one sentence each, most important first.
+- action_items: the decisions or next steps the document calls for (action, owner, due); empty list if none.
+- abstract: one paragraph of 60-120 words.
+- meta_description: one sentence of 120-{{ meta_max }} characters describing the document for a web page.
+
+Rules: use only facts in the notes; keep every number exactly as written; never invent sources, dates or figures.

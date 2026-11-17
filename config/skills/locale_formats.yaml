@@ -1,0 +1,34 @@
+# Locale formatting rules (Content Translation agent): deterministic number / date localisation and the
+# length budget used by the QA pass. Add a locale by adding a block; unknown locales fall back to the
+# language (fr-CA -> fr-*) and then to `defaults`.
+#   decimal / thousands : separators used when numbers are parsed (QA) and re-formatted (localisation)
+#   date                : numeric date pattern (YYYY, MM, DD and the separators between them)
+#   max_expansion       : max target/source character ratio before the length check warns
+#                         (German and French run long; CJK scripts are denser than Latin ones)
+version: "2026.1"
+# Number idioms that may legitimately change between languages ("24/7" -> "rund um die Uhr" / "24 h/24, 7 j/7");
+# they are ignored by the numbers-preserved QA check. Regular expressions, case-insensitive.
+number_idioms:
+  - '\b24\s*/\s*7\b'
+  - '\b24\s*h\s*/\s*24\b'
+  - '\b7\s*j\s*/\s*7\b'
+  - '\b24\s*x\s*7\b'
+  - '\b365\s*(?:days|jours|Tage|días)\b'
+defaults: {decimal: ".", thousands: ",", date: "MM/DD/YYYY", max_expansion: 1.35, percent: "{n}%"}
+locales:
+  en-US: {decimal: ".", thousands: ",", date: "MM/DD/YYYY", max_expansion: 1.15, percent: "{n}%"}
+  en-GB: {decimal: ".", thousands: ",", date: "DD/MM/YYYY", max_expansion: 1.15, percent: "{n}%"}
+  en-CA: {decimal: ".", thousands: ",", date: "YYYY-MM-DD", max_expansion: 1.15, percent: "{n}%"}
+  fr-FR: {decimal: ",", thousands: " ", date: "DD/MM/YYYY", max_expansion: 1.35, percent: "{n} %"}
+  fr-CA: {decimal: ",", thousands: " ", date: "YYYY-MM-DD", max_expansion: 1.35, percent: "{n} %"}
+  de-DE: {decimal: ",", thousands: ".", date: "DD.MM.YYYY", max_expansion: 1.40, percent: "{n} %"}
+  es-ES: {decimal: ",", thousands: ".", date: "DD/MM/YYYY", max_expansion: 1.35, percent: "{n} %"}
+  es-MX: {decimal: ".", thousands: ",", date: "DD/MM/YYYY", max_expansion: 1.35, percent: "{n}%"}
+  it-IT: {decimal: ",", thousands: ".", date: "DD/MM/YYYY", max_expansion: 1.35, percent: "{n}%"}
+  nl-NL: {decimal: ",", thousands: ".", date: "DD-MM-YYYY", max_expansion: 1.35, percent: "{n}%"}
+  pt-BR: {decimal: ",", thousands: ".", date: "DD/MM/YYYY", max_expansion: 1.35, percent: "{n}%"}
+  pl-PL: {decimal: ",", thousands: " ", date: "DD.MM.YYYY", max_expansion: 1.40, percent: "{n}%"}
+  ja-JP: {decimal: ".", thousands: ",", date: "YYYY/MM/DD", max_expansion: 1.0, percent: "{n}%"}
+  zh-CN: {decimal: ".", thousands: ",", date: "YYYY-MM-DD", max_expansion: 0.9, percent: "{n}%"}
+  ko-KR: {decimal: ".", thousands: ",", date: "YYYY.MM.DD", max_expansion: 1.0, percent: "{n}%"}
+  ar-SA: {decimal: "٫", thousands: "٬", date: "DD/MM/YYYY", max_expansion: 1.30, percent: "{n}٪"}

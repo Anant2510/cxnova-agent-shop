@@ -1,0 +1,57 @@
+You are an industry marketing specialist writing for {{ brand.name }}. You adapt horizontal
+propositions into {{ industry_name }} messaging that sector buyers recognise as their own: their
+language, their priorities, their regulatory reality. Brand voice: {{ brand.voice.tone }}
+Sector tone: {{ tone }}
+Never use: {{ brand.banned_phrases | join(", ") }}.
+---- USER ----
+Tailor the source content below for the {{ industry_name }} industry.
+
+- Industry: {{ industry_name }}
+- Asset: {{ asset_type | default("landing page section", true) }}
+- Persona focus: {{ persona | default("the sector's main buyers", true) }}
+- Region: {{ region | default("not specified", true) }}
+
+Source content (horizontal - keep its core proposition):
+<<<
+{{ source_text }}
+>>>
+
+Sector terminology to use where it fits naturally:
+{{ terminology | join(", ") }}
+{% if avoid %}
+Terminology swaps:
+{{ avoid | bullets }}
+{% endif %}
+
+Buyer personas and their priorities:
+{{ personas | bullets }}
+
+Buyer priorities in this sector:
+{{ buyer_priorities | bullets }}
+
+Compliance - you must:
+{{ must | bullets }}
+Never write these phrases: {{ never | join("; ") }}
+Required disclaimer(s), quoted exactly at the end of the copy:
+{{ disclaimers | bullets }}
+{% if regulators %}
+Regulatory context: {{ regulators | join("; ") }}
+{% endif %}
+
+Grounding passages from our own industry corpus (cite them by document id in square brackets):
+{% if passages %}
+{{ passages | bullets }}
+{% else %}
+(none retrieved - do not use statistics or proof points)
+{% endif %}
+
+Proof-point guidance: {{ proof_guidance }}
+
+Return the tailored headline, the tailored copy in Markdown (sized for the asset), the sector terms
+you used, the personas you wrote for (names exactly as listed above), up to three proof points and
+the citations:
+- every proof point is a quantified outcome copied faithfully from one passage, with its source_doc
+  set to that passage's document id (the text inside the square brackets) - never combine figures
+  from different documents and never invent or round figures
+- cite document ids inline in the copy where you rely on a passage, e.g. [insurance_claims_automation_case]
+- tie the proposition to what the persona measures, using the sector's own words

@@ -1,0 +1,5 @@
+variant,segment,visitors,conversions,revenue
+control,desktop,11820,520,216830.54
+control,mobile,12050,410,164660.27
+treatment,desktop,11760,588,250360.57
+treatment,mobile,12140,455,178034.08

@@ -1,0 +1,99 @@
+# Model routing: which model does which piece of work.
+#
+# Every model step in the framework (agent + prompt template) is listed below with the kind of work it does.
+# The router picks the tier for that kind of work, then adjusts it for the call in hand:
+#   * a large input steps up one tier for reasoning work (work types with escalate_on_size: true)
+#   * a large, strict output schema on the fast tier steps up to balanced
+#   * an answer that fails its schema twice is retried once on the next tier up
+#   * the profile shifts every choice: economy = one tier down, quality = one tier up
+# Effort (Claude models) sets how hard the model thinks before answering: low for mechanical work, medium for
+# writing, high for analysis, design and code. It keeps routine calls fast without weakening the hard ones.
+# Tiers map to concrete models per provider in config/settings.yaml (llm.providers.<provider>.tiers), e.g. on
+# Claude in Microsoft Foundry: fast, balanced -> claude-sonnet-5-5; pro, complex -> claude-opus-5.
+#
+# To confirm or change a decision, set `tier:` on the step (a pinned tier is used as-is, never adjusted),
+# or change the work type's default. `caf models` prints the resulting table for the configured provider.
+
+profile: ${CAF_MODEL_PROFILE:-balanced}     # economy | balanced | quality
+large_input_tokens: 25000                    # estimated prompt tokens above which reasoning work steps up a tier
+strict_schema_fields: 40                     # output fields above which fast-tier work steps up to balanced
+escalate_on_retry: true                      # retry a failed structured answer once on the next tier up
+
+work_types:
+  extract:        {tier: fast, effort: low,     description: "Pull facts, quotes or notes out of supplied text; little reasoning"}
+  label:          {tier: fast, effort: low,     description: "Name, tag or expand short items (cluster names, keyword ideas, likely questions)"}
+  repair:         {tier: fast, effort: low,     description: "Fix listed rule failures in an existing draft (length, banned words, missing parts)"}
+  copywrite:      {tier: balanced, effort: medium, description: "Short on-brand copy: emails, InMail, social posts, press releases, tailored sections"}
+  longform:       {tier: balanced, effort: medium, description: "Long-form writing: outlines, articles, revisions", escalate_on_size: true}
+  summarize:      {tier: balanced, effort: medium, description: "Final summaries in a chosen format from extracted notes", escalate_on_size: true}
+  translate:      {tier: balanced, effort: medium, description: "Translation and post-editing with glossary and do-not-translate rules"}
+  narrate:        {tier: balanced, effort: medium, description: "Explain results the code already computed (audits, statistics, charts)"}
+  plan_document:  {tier: balanced, effort: medium, description: "Structured planning documents: campaign briefs, run plans"}
+  analyze:        {tier: pro, effort: high,      description: "Reason over evidence to find insights and recommendations", escalate_on_size: true}
+  review:         {tier: pro, effort: high,      description: "Critique a draft against goals and guardrails"}
+  query:          {tier: pro, effort: high,      description: "Turn a business question into a governed query or SQL"}
+  design:         {tier: pro, effort: high,      description: "Design a structure (content models, information architecture)", escalate_on_size: true}
+  vision:         {tier: pro, effort: medium,      description: "Read images: designs, screenshots, charts"}
+  experiment:     {tier: complex, effort: high,  description: "Experiment design: hypotheses, metrics, variants and risks"}
+  code:           {tier: complex, effort: high,  description: "Write executable changes (DOM patches, CSS, scripts) that must run first time"}
+  synthesis:      {tier: fast, effort: low,     description: "One-paragraph roll-up of a finished run"}
+
+steps:
+  # ---- orchestrator
+  orchestrator.plan:                              {work: plan_document}
+  orchestrator.synthesize:                        {work: synthesis}
+  # ---- strategy and planning
+  campaign_brief_generation.brief:                {work: plan_document}
+  keyword_research.expand:                        {work: label}
+  keyword_research.name_clusters:                 {work: label}
+  competitive_insights.synthesis:                 {work: analyze}
+  # ---- content creation
+  email_creation.draft:                           {work: copywrite}
+  email_creation.repair:                          {work: repair}
+  blog_post_creation.outline:                     {work: longform}
+  blog_post_creation.draft:                       {work: longform}
+  blog_post_creation.critique:                    {work: review}
+  blog_post_creation.revise:                      {work: longform}
+  linkedin_inmail_copy.draft:                     {work: copywrite}
+  linkedin_inmail_copy.repair:                    {work: repair}
+  content_adaptation.adapt:                       {work: copywrite}
+  content_adaptation.repair:                      {work: repair}
+  webinar_followup_email.email:                   {work: copywrite}
+  webinar_followup_email.repair:                  {work: repair}
+  industry_marketing.tailor:                      {work: copywrite}
+  industry_marketing.repair:                      {work: repair}
+  press_release_creation.draft:                   {work: copywrite}
+  press_release_creation.repair:                  {work: repair}
+  quote_extraction.extract:                       {work: extract}
+  content_summary.map:                            {work: extract}
+  content_summary.collapse:                       {work: extract}
+  content_summary.meta_description:               {work: label}
+  content_summary.executive:                      {work: summarize}
+  content_summary.abstract:                       {work: summarize}
+  content_summary.bullet:                         {work: summarize}
+  content_summary.technical:                      {work: summarize}
+  content_summary.action_items:                   {work: summarize}
+  # ---- website optimization
+  geo_recommendations.questions:                  {work: label}
+  geo_recommendations.answer:                     {work: copywrite, follow_request: true}   # citation test asks each tier on purpose
+  geo_recommendations.plan:                       {work: analyze}
+  technical_seo_recommendations.explain:          {work: narrate}
+  ga4_traffic_report.summary:                     {work: analyze}
+  web_accessibility_evaluation.remediate:         {work: narrate}
+  heatmap_analysis.insights:                      {work: analyze}
+  content_model_creation.vision:                  {work: vision}
+  content_model_creation.propose:                 {work: design}
+  content_translation.translate:                  {work: translate}
+  content_translation.post_edit:                  {work: translate}
+  # ---- end-to-end testing
+  experiment_ideation.ideas:                      {work: analyze}
+  experiment_planning.plan:                       {work: experiment}
+  variation_development.patch:                    {work: code}
+  variation_development.repair:                   {work: code}
+  experiment_review.explain:                      {work: narrate}
+  experiment_summary.narrative:                   {work: narrate}
+  exploration_generation.query:                   {work: query}
+  exploration_generation.sql:                     {work: query}
+  exploration_generation.explain:                 {work: narrate}
+  chart_summary.narrative:                        {work: narrate}
+  chart_summary.vision:                           {work: vision}

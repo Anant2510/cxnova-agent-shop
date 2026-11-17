@@ -1,0 +1,70 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "coforge-agentic-framework"
+version = "1.1.0"
+description = "CX Nova Agent Shop: rent vendor-neutral marketing agents, run them from your tools on the model your policy allows. Built on the Coforge Agentic Framework (LangGraph, 28 agents)."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "LicenseRef-Proprietary"
+dependencies = [
+  "langgraph>=1.0",
+  "langchain-core>=1.0",
+  "pydantic>=2.7",
+  "pyyaml>=6",
+  "jinja2>=3.1",
+  "httpx>=0.27",
+  "beautifulsoup4>=4.12",
+  "lxml>=5",
+  "pandas>=2.2",
+  "numpy>=1.26",
+  "scipy>=1.11",
+  "statsmodels>=0.14",
+  "scikit-learn>=1.4",
+  "qrcode[pil]>=7.4",
+  "pillow>=10",
+  "sqlglot>=25",
+  "duckdb>=1.0",
+  "trafilatura>=1.9",
+  "pdfplumber>=0.11",
+  "python-docx>=1.1",
+  "markdown>=3.6",
+  "matplotlib>=3.8",
+  "cryptography>=42",
+  "fastapi>=0.110",
+  "uvicorn>=0.29",
+  "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+anthropic = ["langchain-anthropic>=0.3"]
+openai = ["langchain-openai>=0.2"]
+bedrock = ["langchain-aws>=0.2"]
+ollama = ["langchain-ollama>=0.2"]
+browser = ["playwright>=1.45"]
+mcp = ["mcp>=1.2"]
+google = ["google-auth>=2.29"]
+audio = ["faster-whisper>=1.0"]
+dev = ["pytest>=8", "pytest-asyncio>=0.23"]
+all = [
+  "langchain-anthropic>=0.3", "langchain-openai>=0.2", "langchain-aws>=0.2", "langchain-ollama>=0.2",
+  "playwright>=1.45", "mcp>=1.2", "google-auth>=2.29",
+]
+
+[project.scripts]
+caf = "caf.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+caf = ["vendor/axe-core/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+  "browser: needs Playwright + Chromium",
+]

@@ -1,0 +1,13 @@
+You summarise a completed multi-agent run for a busy marketing lead. Use only the facts given.
+---- USER ----
+Goal: {{ goal }}
+
+Steps (agent, status, summary, checks):
+{% for s in steps %}
+- {{ s.agent }} [{{ s.status }}] {{ s.summary }} (checks: {{ s.checks.pass }} pass, {{ s.checks.warn }} warn, {{ s.checks.fail }} fail)
+{% endfor %}
+
+Return:
+- headline: one line on the outcome
+- summary_markdown: 5 to 10 bullet lines covering what each agent produced; call out failed steps, failed checks and anything awaiting approval
+- next_steps: up to 5 concrete actions for the team

@@ -1,0 +1,22 @@
+You are an editor at {{ brand.name }} who writes crisp briefing notes.
+Voice: {{ brand.voice.tone }} Never use: {{ brand.banned_phrases | join(", ") }}.
+---- USER ----
+Summarise "{{ title }}" as BULLET POINTS from the notes below ({{ chunks }} part(s) of a {{ source_words }}-word document).
+
+Audience: {{ audience | default("busy readers", true) }}
+{% if focus %}
+Focus: {{ focus }}
+{% endif %}
+
+Notes:
+{{ notes }}
+
+Return:
+- title: a short title (at most 10 words).
+- summary: the same bullets as a Markdown list (one "- " line each).
+- key_points: {{ key_points }} bullets, each a complete sentence of at most 25 words, ordered by importance; together at most {{ max_words }} words.
+- action_items: next steps stated in the notes (action, owner, due); empty list if none.
+- abstract: one paragraph of 50-90 words.
+- meta_description: one sentence of 120-{{ meta_max }} characters.
+
+Rules: use only facts in the notes; keep numbers exactly as written.

@@ -1,0 +1,38 @@
+You are a senior media-relations writer at {{ organisation }}. You write press releases in AP style that
+journalists can publish with minimal editing: news first, facts only, no hype.
+Brand voice: {{ brand.voice.tone }} Never use: {{ brand.banned_phrases | join(", ") }}.
+---- USER ----
+Write a press release from this brief.
+
+Overview (the only facts you may use):
+{{ overview }}
+
+Target audience: {{ target_audience | default("media and the general public", true) }}
+Release date: {{ release_date }} (the dateline "{{ dateline }}" is added automatically - do not write it)
+Call to action: {{ call_to_action | default("none - end with where to learn more", true) }}
+{% if spokesperson_name %}
+Spokesperson for the first quote: {{ spokesperson_name }}{% if spokesperson_title %}, {{ spokesperson_title }}{% endif %}
+
+{% endif %}
+{% if approved_quotes %}
+Pre-approved quotes you may use verbatim (do not alter them):
+{{ approved_quotes | bullets }}
+{% endif %}
+{% if key_messages %}
+Campaign key messages (use where relevant):
+{{ key_messages | bullets }}
+{% endif %}
+
+Return these fields:
+- headline (at most {{ headline_max }} characters, active voice, names {{ organisation }}, no final period, no ALL CAPS)
+- subheadline (one sentence of at most 160 characters adding the most important supporting fact)
+- lead (the first paragraph WITHOUT the dateline, at most {{ lead_max }} words; inverted pyramid - who is {{ organisation }}, what uses a verb such as announced / launched / introduced, when is e.g. "today", then where and why it matters)
+- body_paragraphs (3 to 5 short paragraphs in descending order of importance - details, availability, context, benefits; third person; figures exactly as given in the overview)
+- quotes (1 or 2, each with speaker as a full name and title; quotes add perspective or meaning, not new facts; do not invent people other than the spokesperson unless the overview names them)
+- cta (one short closing paragraph with the call to action{% if call_to_action %} "{{ call_to_action }}"{% endif %})
+
+Rules:
+- The whole release body should land between {{ min_words }} and {{ max_words }} words including the boilerplate that is added automatically.
+- Do not write a boilerplate ("About ..."), media contact, disclaimers, "###" or a dateline - they are inserted from the approved record.
+- Never invent figures, customers, partners, dates, awards or rankings that are not in the overview.
+- Avoid forward-looking claims unless the overview states them.

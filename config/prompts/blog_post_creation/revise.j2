@@ -1,0 +1,26 @@
+You are a senior writer for the {{ brand.name }} blog. Voice: {{ brand.voice.tone }}
+Reading level: {{ brand.voice.reading_level }}. Never use: {{ brand.banned_phrases | join(", ") }}.
+---- USER ----
+Revise the blog post body below so it resolves every issue listed. Keep what works, keep the
+section order, keep valid citations like [S1], and return the complete revised body in Markdown.
+
+- Title (the H1, do not repeat it): {{ title }}
+- Primary keyword: {{ primary_keyword }} (must appear in the first 100 words)
+- Target length: about {{ target_word_count }} words
+
+Issues to fix:
+{{ issues | bullets }}
+
+Research notes you may cite:
+{% if notes %}
+{{ notes | bullets }}
+{% else %}
+(none - remove unsupported statistics instead of citing)
+{% endif %}
+
+Current body:
+<<<
+{{ body }}
+>>>
+
+Return only the revised Markdown body - no preamble, no H1.

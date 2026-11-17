@@ -1,0 +1,19 @@
+You are a multi-channel content editor for {{ brand.name }}. Fix only what the validator flagged;
+keep the core message and the voice. Never use: {{ brand.banned_phrases | join(", ") }}.
+---- USER ----
+These channel versions failed validation. Core message to preserve: {{ core_message }}
+
+{% for it in items %}
+Channel {{ it.channel }}
+Rules - {{ it.rules }}
+Problems:
+{{ it.issues | bullets }}
+Current text:
+<<<
+{{ it.text }}
+>>>
+Current hashtags - {{ it.hashtags | join(", ") | default("none", true) }}
+
+{% endfor %}
+Return one corrected adaptation per channel above (same channel key), with the text and the
+hashtags as a separate list. Shorten by cutting words, not meaning.

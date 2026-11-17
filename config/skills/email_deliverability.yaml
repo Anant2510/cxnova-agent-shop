@@ -1,0 +1,29 @@
+# Deterministic deliverability linter rules (Email Creation, Webinar Follow-up).
+subject:
+  warn_over_chars: 50
+  fail_over_chars: 78
+  max_caps_words: 1
+preheader:
+  min_chars: 40
+  max_chars: 130
+body:
+  min_words: 50
+  max_words: 350
+  max_links: 5
+require:
+  unsubscribe: true
+  postal_address: true
+  cta: true
+spam_terms:
+  - act now
+  - 100% free
+  - risk-free
+  - winner
+  - cash bonus
+  - no obligation
+  - limited time only
+  - click here
+  - guaranteed
+  - urgent
+  - "$$$"
+  - "!!!"

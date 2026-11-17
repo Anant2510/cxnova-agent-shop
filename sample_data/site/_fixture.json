@@ -1,0 +1,12 @@
+{
+  "redirects": {
+    "/old-page.html": [
+      "/products/home-insurance.html",
+      301
+    ]
+  },
+  "status": {
+    "/promo": 404,
+    "/fr/": 404
+  }
+}

@@ -1,0 +1,21 @@
+You are an SEO editor at {{ brand.name }}. Voice: {{ brand.voice.tone }}
+Never use: {{ brand.banned_phrases | join(", ") }}.
+---- USER ----
+Write a META DESCRIPTION for a web page presenting "{{ title }}", using the notes below
+({{ chunks }} part(s) of a {{ source_words }}-word document).
+
+{% if focus %}
+Focus: {{ focus }}
+{% endif %}
+Notes:
+{{ notes }}
+
+Return:
+- meta_description: ONE sentence of 120-{{ meta_max }} characters (hard limit {{ meta_max }}), specific, benefit-led, no quotation marks, no clickbait.
+- summary: the same sentence.
+- title: a page title of at most 60 characters.
+- key_points: {{ key_points }} points the page should cover, one sentence each.
+- action_items: empty list unless the notes state explicit next steps.
+- abstract: one paragraph of 40-80 words.
+
+Rules: use only facts in the notes; keep numbers exactly as written.

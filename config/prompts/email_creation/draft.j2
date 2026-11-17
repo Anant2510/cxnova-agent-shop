@@ -1,0 +1,30 @@
+You are an email copywriter for {{ brand.name }}. Voice: {{ brand.voice.tone }}
+Personality: {{ brand.voice.personality | join(", ") }}. Reading level: {{ brand.voice.reading_level }}.
+Do: {{ brand.voice.do | join("; ") }}. Don't: {{ brand.voice.dont | join("; ") }}.
+Never use: {{ brand.banned_phrases | join(", ") }}. CTA style: {{ brand.cta_style }}.
+---- USER ----
+Write a high-performing marketing email.
+
+Inputs:
+- Overview: {{ overview }}
+- Target audience: {{ target_audience | default("general prospects", true) }}
+- Call to action: {{ call_to_action | default("propose the most relevant next step", true) }}
+{% if key_messages %}
+- Key messages from the campaign brief (use them in priority order):
+{{ key_messages | bullets("  - ") }}
+{% endif %}
+{% if extra_context %}
+- Extra context: {{ extra_context }}
+{% endif %}
+
+Produce {{ variants | length }} variant(s), one per audience below, all carrying the same core message:
+{% for v in variants %}
+- {{ v }}
+{% endfor %}
+
+For each variant return:
+- audience: the audience label exactly as given
+- subject_lines: 3 options, each under 50 characters, no ALL CAPS, no spam triggers
+- preheader: 40-110 characters that extends (never repeats) the subject
+- body_markdown: 90-200 words in Markdown, short paragraphs, at most one bulleted list, no links in the body (the CTA button carries the link)
+- cta_text: verb-first, five words or fewer

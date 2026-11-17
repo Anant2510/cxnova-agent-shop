@@ -1,0 +1,66 @@
+# Industry profile - Banking and Financial Services (Industry Marketing agent).
+# `compliance.never` and `compliance.required_disclaimers` are enforced deterministically.
+version: "1.0"
+id: bfs
+name: Banking and Financial Services
+aliases: [bfs, bfsi, banking, bank, banks, financial services, fintech, wealth management, lending, payments, credit union, capital markets]
+summary: Retail and commercial banks, lenders, payments providers, wealth and asset managers.
+terminology:
+  preferred:
+    - account holder
+    - customer onboarding
+    - KYC
+    - AML
+    - credit risk
+    - deposit growth
+    - share of wallet
+    - cost-to-income ratio
+    - digital channels
+    - next best action
+    - fraud losses
+    - core banking
+    - regulatory reporting
+    - open banking
+  avoid:
+    - {term: users, use: customers or account holders}
+    - {term: cheap loans, use: competitive rates}
+personas:
+  - name: Chief Digital Officer
+    priorities: [digital adoption, onboarding conversion, app engagement]
+    pains: [legacy core systems, high onboarding drop-off]
+  - name: Head of Retail Banking
+    priorities: [deposit growth, cross-sell, customer retention]
+    pains: [rate-driven attrition, low product holding]
+  - name: Chief Risk Officer
+    priorities: [credit risk, fraud reduction, regulatory compliance]
+    pains: [false-positive fraud alerts, model risk scrutiny]
+  - name: Chief Marketing Officer
+    priorities: [cost per acquisition, personalisation at scale, brand trust]
+    pains: [siloed customer data, consent management]
+buyer_priorities:
+  - Grow deposits and share of wallet
+  - Reduce the cost-to-income ratio
+  - Cut fraud losses without adding friction
+  - Meet regulatory expectations with an audit trail
+  - Modernise channels without disrupting the core
+compliance:
+  regulators: [CFPB, OCC, FINRA and SEC marketing rules (US), FCA financial promotions and Consumer Duty (UK), EBA and MiFID II (EU)]
+  must:
+    - Keep promotions fair, clear and not misleading, with benefits balanced by relevant risks.
+    - Show representative rates and fees wherever a rate or saving is mentioned.
+    - Describe outcomes as illustrative; results vary by institution.
+  never:
+    - guaranteed returns
+    - risk-free
+    - no risk
+    - free money
+    - guaranteed approval
+    - instant approval
+    - get rich
+    - best rates guaranteed
+  required_disclaimers:
+    - Results are illustrative and vary by institution.
+proof_points:
+  guidance: Use quantified outcomes from retrieved case studies (onboarding conversion, fraud losses, cost-to-income, NPS) and cite the document id; never invent figures.
+  metrics: [onboarding conversion, account opening time, fraud losses, false-positive rate, cost-to-income ratio, deposit growth, NPS]
+tone: Assured, precise and plain-spoken; no hype about returns.

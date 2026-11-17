@@ -1,0 +1,131 @@
+# Press release record (Press Release Creation agent).
+# Owned by Communications + Legal and version-controlled: the agent inserts the boilerplate, media
+# contact and legal disclaimers from this file verbatim - the model never writes them.
+# DEMO BRAND: Meridian Mutual is fictional. Replace this file per client (or per region, via CAF_SKILLS_DIR).
+version: "2026.3"
+organisation: Meridian Mutual
+legal_name: Meridian Mutual Insurance Company
+name_variants: [Meridian Mutual, Meridian]       # any of these in the lead satisfies the "who" check
+headquarters_dateline: "Springfield, Illinois"   # used when no location is given
+
+boilerplate:
+  heading: About Meridian Mutual
+  text: >-
+    Meridian Mutual is a fictional mutual insurer created to demonstrate the Coforge Agentic
+    Framework. It provides home, car, pet and travel insurance to households across the United States,
+    with claims handled by people who care and prevention advice that helps customers avoid losses.
+    Learn more at www.meridian-mutual.example.
+
+# Leave empty to fall back to brand_voice.media_contact.
+media_contact: {}
+
+disclaimers:
+  forward_looking:
+    heading: Forward-looking statements
+    text: >-
+      This press release contains forward-looking statements, including statements about expected
+      product availability, plans, benefits and results. These statements are based on current
+      expectations and are subject to risks and uncertainties that could cause actual results to differ
+      materially. Meridian Mutual undertakes no obligation to update any forward-looking statement,
+      except as required by law.
+  always: []                                    # e.g. product disclaimers appended to every release
+  product: "Cover is subject to terms, conditions and underwriting criteria."
+
+# Words that make a statement forward-looking (whole-word, case-insensitive). Any hit in the
+# model-written text triggers the safe-harbour disclaimer above.
+forward_looking_terms: [expects, expected, expect, anticipates, anticipated, anticipate, plans, planned, plan to,
+                        will, forecast, forecasts, intends, intend, believes, believe, estimates, projects, projected,
+                        outlook, aims to, targets, guidance, on track to, going forward]
+
+style:
+  release_label: FOR IMMEDIATE RELEASE
+  embargo_label: EMBARGOED UNTIL
+  end_mark: "###"
+  headline_max_chars: 100        # fail above
+  headline_warn_chars: 80        # warn above
+  subheadline_max_chars: 180
+  lead_min_words: 12
+  lead_max_words: 45
+  word_count: {min: 300, max: 800}
+  announcement_verbs: [announce, announces, announced, launch, launches, launched, introduce, introduces, introduced,
+                       unveil, unveils, unveiled, appoint, appoints, appointed, name, names, named, partner, partners,
+                       partnered, expand, expands, expanded, open, opens, opened, release, releases, released, report,
+                       reports, reported, receive, receives, received, win, wins, won, earn, earns, earned, complete,
+                       completes, completed, acquire, acquires, acquired, sign, signs, signed, select, selects,
+                       selected, award, awards, awarded, debut, debuts, debuted, offer, offers, roll out, rolls out,
+                       celebrate, celebrates, achieve, achieves, achieved, join, joins, joined]
+
+# AP dateline conventions.
+ap_months: [Jan., Feb., March, April, May, June, July, Aug., Sept., Oct., Nov., Dec.]
+ap_states:
+  Alabama: Ala.
+  Arizona: Ariz.
+  Arkansas: Ark.
+  California: Calif.
+  Colorado: Colo.
+  Connecticut: Conn.
+  Delaware: Del.
+  Florida: Fla.
+  Georgia: Ga.
+  Illinois: Ill.
+  Indiana: Ind.
+  Kansas: Kan.
+  Kentucky: Ky.
+  Louisiana: La.
+  Maryland: Md.
+  Massachusetts: Mass.
+  Michigan: Mich.
+  Minnesota: Minn.
+  Mississippi: Miss.
+  Missouri: Mo.
+  Montana: Mont.
+  Nebraska: Neb.
+  Nevada: Nev.
+  New Hampshire: N.H.
+  New Jersey: N.J.
+  New Mexico: N.M.
+  New York: N.Y.
+  North Carolina: N.C.
+  North Dakota: N.D.
+  Oklahoma: Okla.
+  Oregon: Ore.
+  Pennsylvania: Pa.
+  Rhode Island: R.I.
+  South Carolina: S.C.
+  South Dakota: S.D.
+  Tennessee: Tenn.
+  Vermont: Vt.
+  Virginia: Va.
+  Washington: Wash.
+  West Virginia: W.Va.
+  Wisconsin: Wis.
+  Wyoming: Wyo.
+  Alaska: Alaska
+  Hawaii: Hawaii
+  Idaho: Idaho
+  Iowa: Iowa
+  Maine: Maine
+  Ohio: Ohio
+  Texas: Texas
+  Utah: Utah
+ap_postal_codes: {AL: Alabama, AK: Alaska, AZ: Arizona, AR: Arkansas, CA: California, CO: Colorado, CT: Connecticut,
+                  DE: Delaware, FL: Florida, GA: Georgia, HI: Hawaii, ID: Idaho, IL: Illinois, IN: Indiana, IA: Iowa,
+                  KS: Kansas, KY: Kentucky, LA: Louisiana, ME: Maine, MD: Maryland, MA: Massachusetts, MI: Michigan,
+                  MN: Minnesota, MS: Mississippi, MO: Missouri, MT: Montana, NE: Nebraska, NV: Nevada, NH: New Hampshire,
+                  NJ: New Jersey, NM: New Mexico, NY: New York, NC: North Carolina, ND: North Dakota, OH: Ohio,
+                  OK: Oklahoma, OR: Oregon, PA: Pennsylvania, RI: Rhode Island, SC: South Carolina, SD: South Dakota,
+                  TN: Tennessee, TX: Texas, UT: Utah, VT: Vermont, VA: Virginia, WA: Washington, WV: West Virginia,
+                  WI: Wisconsin, WY: Wyoming}
+# Cities that stand alone in an AP dateline (no state or country).
+ap_standalone_cities: [ATLANTA, BALTIMORE, BOSTON, CHICAGO, CINCINNATI, CLEVELAND, DALLAS, DENVER, DETROIT, HONOLULU,
+                       HOUSTON, INDIANAPOLIS, LAS VEGAS, LOS ANGELES, MIAMI, MILWAUKEE, MINNEAPOLIS, NEW ORLEANS,
+                       NEW YORK, OKLAHOMA CITY, PHILADELPHIA, PHOENIX, PITTSBURGH, ST. LOUIS, SALT LAKE CITY,
+                       SAN ANTONIO, SAN DIEGO, SAN FRANCISCO, SEATTLE, WASHINGTON, AMSTERDAM, BANGKOK, BEIJING, BERLIN,
+                       BRUSSELS, DUBLIN, FRANKFURT, GENEVA, HONG KONG, JOHANNESBURG, LONDON, MADRID, MEXICO CITY, MILAN,
+                       MONTREAL, MOSCOW, MUMBAI, MUNICH, NEW DELHI, OTTAWA, PARIS, ROME, SAO PAULO, SHANGHAI, SINGAPORE,
+                       STOCKHOLM, SYDNEY, TOKYO, TORONTO, VIENNA, ZURICH]
+
+# Newswire distribution defaults (payload metadata for the NewswireConnector).
+distribution:
+  default_regions: [US]
+  categories: [Insurance, Personal Finance]

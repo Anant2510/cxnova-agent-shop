@@ -1,0 +1,82 @@
+# Platform constraints for message copy (LinkedIn InMail Copy Creation - and any channel the same
+# engine emits). Character limits, required fields and ad-spec rules are configuration: version
+# this file and update it when a platform changes its specs - no code change is needed.
+#
+# IMPORTANT: the numbers below are typical published limits at the time of writing.
+# Verify against current platform specs before each campaign - platforms change limits without notice.
+version: "2026.10"
+
+# Personalisation tokens the copy may use. The validator budgets `reserve_chars` for each token
+# when checking limits; previews render real values from the `recipients` input (or any CRM
+# export with these columns) and fall back to `fallback` when a value is missing.
+merge_fields:
+  first_name: {token: "{first_name}", reserve_chars: 12, fallback: "there", sample: "Alex"}
+  company: {token: "{company}", reserve_chars: 28, fallback: "your organisation", sample: "Northwind Mutual"}
+  job_title: {token: "{job_title}", reserve_chars: 30, fallback: "your role", sample: "Head of Claims"}
+
+# Shared copy rules (all channels)
+rules:
+  max_caps_words: 1              # more ALL-CAPS words than this -> warning
+  caps_allowlist: [CEO, CFO, CIO, CRO, COO, CMO, CTO, AI, FAQ, US, UK, EU, ESG, ROI, KPI, B2B, CX, IT]
+
+channels:
+  linkedin_inmail:
+    label: LinkedIn Message Ad (Sponsored InMail)
+    utm_channel: paid_social               # utm_taxonomy channel used when a UTM link is available upstream
+    required_inputs: [sender_name]         # message ads are sent from a member profile
+    default_cta: Learn more
+    fields:
+      subject: {label: Subject line, max_chars: 60, required: true, merge_fields: true}            # verify against current platform specs
+      body: {label: Message text, max_chars: 1500, recommended_max_chars: 500, required: true, merge_fields: true}  # verify against current platform specs
+      cta_text: {label: CTA button, max_chars: 20, required: true, merge_fields: false}            # verify against current platform specs
+    platform_tokens: {first_name: "%FIRSTNAME%", company: "%COMPANYNAME%", job_title: "%JOBTITLE%"}  # LinkedIn macro syntax - verify against current platform specs
+    guidance:
+      - Open with the recipient's world (role, company, a relevant challenge), not with the sender.
+      - One message, one ask; the CTA button carries the link.
+      - Sound like a person writing to a peer - no ad-speak, no ALL CAPS, no exclamation stacks.
+
+  linkedin_conversation:
+    label: LinkedIn Conversation Ad (opening message)
+    utm_channel: paid_social
+    required_inputs: [sender_name]
+    default_cta: Tell me more
+    fields:
+      body: {label: Opening message, max_chars: 500, required: true, merge_fields: true}           # verify against current platform specs
+      cta_text: {label: Button, max_chars: 25, required: true, merge_fields: false}                 # verify against current platform specs
+    platform_tokens: {first_name: "%FIRSTNAME%", company: "%COMPANYNAME%", job_title: "%JOBTITLE%"}  # verify against current platform specs
+    guidance:
+      - Short, conversational opener that invites a click on the button.
+
+  x_post:
+    label: X (Twitter) post
+    utm_channel: organic_social
+    default_cta: ""
+    url_chars: 23                          # every URL counts as 23 characters (t.co) - verify against current platform specs
+    fields:
+      body: {label: Post text, max_chars: 280, required: true, merge_fields: false}                # verify against current platform specs
+    guidance:
+      - One idea, plain language, the link at the end. One or two hashtags at most.
+
+  email:
+    label: Email (subject, preheader, body, CTA)
+    utm_channel: email
+    default_cta: Find out more
+    fields:
+      subject: {label: Subject line, max_chars: 78, recommended_max_chars: 50, required: true, merge_fields: true}
+      preheader: {label: Preheader, max_chars: 130, recommended_max_chars: 110, required: false, merge_fields: true}
+      body: {label: Body, max_chars: 2000, recommended_max_chars: 1200, required: true, merge_fields: true}
+      cta_text: {label: CTA button, max_chars: 25, required: true, merge_fields: false}
+    guidance:
+      - Subject and preheader work as a pair; the preheader extends, never repeats, the subject.
+
+  whatsapp:
+    label: WhatsApp Business template message
+    utm_channel: sms
+    default_cta: View details
+    fields:
+      subject: {label: Header text, max_chars: 60, required: false, merge_fields: false}            # verify against current platform specs
+      body: {label: Body, max_chars: 1024, recommended_max_chars: 550, required: true, merge_fields: true}  # verify against current platform specs
+      cta_text: {label: Button text, max_chars: 25, required: false, merge_fields: false}           # verify against current platform specs
+    platform_tokens: {first_name: "{{1}}", company: "{{2}}", job_title: "{{3}}"}  # positional template variables - verify against current platform specs
+    guidance:
+      - Marketing templates need prior opt-in and template approval; keep it personal and brief.

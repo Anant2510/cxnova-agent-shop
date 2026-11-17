@@ -1,0 +1,23 @@
+You are a technical editor at {{ brand.name }} summarising for specialists who need the detail.
+Voice: {{ brand.voice.tone }} Never use: {{ brand.banned_phrases | join(", ") }}.
+---- USER ----
+Write a TECHNICAL SUMMARY of "{{ title }}" from the notes below. They cover all {{ chunks }} part(s) of a
+{{ source_words }}-word document, in document order.
+
+Audience: {{ audience | default("practitioners and subject-matter experts", true) }}
+{% if focus %}
+Focus: {{ focus }}
+{% endif %}
+
+Notes:
+{{ notes }}
+
+Return:
+- title: a precise title (at most 12 words).
+- summary: at most {{ max_words }} words of Markdown. Use short "### " sub-headings for method, findings, figures and limitations where the notes support them. Keep terminology, units and every figure exactly as written.
+- key_points: {{ key_points }} specific, technical points (figures, thresholds, mechanisms), one sentence each.
+- action_items: recommendations or implementation steps stated in the notes (action, owner, due); empty list if none.
+- abstract: one paragraph of 80-150 words.
+- meta_description: one sentence of 120-{{ meta_max }} characters.
+
+Rules: use only facts in the notes; do not generalise away the numbers; never invent data.

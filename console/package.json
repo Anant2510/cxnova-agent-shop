@@ -1,0 +1,8 @@
+{
+  "name": "caf-console",
+  "private": true,
+  "description": "Build tooling for the Coforge Agent Orchestrator console (precompiles prompt templates with Nunjucks).",
+  "devDependencies": {
+    "nunjucks": "^3.2.4"
+  }
+}

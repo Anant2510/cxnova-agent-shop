@@ -1,0 +1,50 @@
+<title>CX Nova Agent Console</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<!--STYLE-->
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+      <rect width="32" height="32" rx="7" fill="#1F3D7A"/>
+      <circle cx="9" cy="11" r="3" fill="#fff"/>
+      <path d="M9 11 L21 11 Q24 11 24 14 L24 22" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      <path d="M6 24 H26" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+    </svg>
+    <div><h1>Agent Console</h1><small>CX Nova Agent Shop · by Coforge</small></div>
+  </div>
+  <div class="top-stats">
+    <nav class="shop-nav hidden" id="shop-nav" aria-label="Shop"><a href="../shop" id="shop-link">Shop</a><a href="../shop/account" id="account-link">My account</a></nav>
+    <span class="chip"><span class="lamp running" id="lamp-live"></span><strong id="live-count">0/28</strong> agents live</span>
+    <span class="chip"><span class="lamp running" id="lamp-llm"></span><span id="llm-label">Connecting to Claude</span></span>
+    <div class="seg" role="group" aria-label="Model">
+      <button type="button" id="mode-live" aria-pressed="true">Claude</button>
+      <button type="button" id="mode-offline" aria-pressed="false">Offline</button>
+    </div>
+  </div>
+</header>
+<div class="shell">
+  <aside class="rail" id="rail" aria-label="Agent registry">
+    <div class="rail-head">
+      <div class="row"><span class="eyebrow grow">Agent registry · 4 categories</span><button type="button" class="btn sm ghost rail-toggle" id="rail-toggle">Show agents</button></div>
+      <input class="search" id="agent-search" type="text" placeholder="Filter the 28 agents" aria-label="Filter agents">
+    </div>
+    <div class="cats" id="cats"></div>
+  </aside>
+  <main class="main">
+    <nav class="tabs" role="tablist" aria-label="Views">
+      <button type="button" role="tab" id="tab-orchestrate" aria-selected="true">Orchestrate</button>
+      <button type="button" role="tab" id="tab-agent" aria-selected="false">Agent runner</button>
+      <button type="button" role="tab" id="tab-health" aria-selected="false">Health</button>
+      <button type="button" role="tab" id="tab-runs" aria-selected="false">Runs</button>
+    </nav>
+    <section class="view" id="view-orchestrate" aria-label="Orchestrate"></section>
+    <section class="view" id="view-agent" aria-label="Agent runner" hidden></section>
+    <section class="view" id="view-health" aria-label="Health" hidden></section>
+    <section class="view" id="view-runs" aria-label="Runs" hidden></section>
+  </main>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<!--DATA-->
+<!--SCRIPTS-->

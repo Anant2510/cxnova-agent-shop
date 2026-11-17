@@ -1,0 +1,61 @@
+contact_id,email,first_name,last_name,company,job_title,industry,country,lifecycle_stage
+CRM-0001,kai.brennan@summitvale.example,Kai,Brennan,Summit & Vale Brokerage,Account Manager,Insurance Brokerage,US,sql
+CRM-0002,zoe.thornton@harborandmain.example,Zoe,Thornton,Harbor & Main Insurance,Client Service Manager,Insurance,US,opportunity
+CRM-0003,victor.thornton@harborandmain.example,Victor,Thornton,Harbor & Main Insurance,Principal Broker,Insurance,US,mql
+CRM-0004,shreya.barker@keystonecover.example,Shreya,Barker,Keystone Cover Group,Account Manager,Insurance Brokerage,US,customer
+CRM-0005,omar.fischer@lakeside-insurance.example,Omar,Fischer,Lakeside Insurance Services,Account Manager,Insurance,US,mql
+CRM-0006,ryan.kaminski@summitvale.example,Ryan,Kaminski,Summit & Vale Brokerage,Senior Account Executive,Insurance Brokerage,US,sql
+CRM-0007,james.yilmaz@keystonecover.example,James,Yilmaz,Keystone Cover Group,Personal Lines Producer,Insurance Brokerage,US,mql
+CRM-0008,jasmine.brennan@bluewater-risk.example,Jasmine,Brennan,Bluewater Risk Partners,Client Service Manager,Insurance Brokerage,US,opportunity
+CRM-0009,ravi.mahoney@oakline.example,Ravi,Mahoney,Oakline Property Group,Facilities Director,Real Estate,US,opportunity
+CRM-0010,hamza.oduya@northgate-brokers.example,Hamza,Oduya,Northgate Insurance Brokers,Client Service Manager,Insurance Brokerage,US,sql
+CRM-0011,elijah.nakamura@redwoodrisk.example,Elijah,Nakamura,Redwood Risk Advisors,Principal Broker,Insurance Brokerage,US,mql
+CRM-0012,alicia.becker@graniteridge.example,Alicia,Becker,Granite Ridge Estates,Facilities Director,Real Estate,US,sql
+CRM-0013,ines.okafor@kestrelanalytics.example,Ines,Okafor,Kestrel Analytics,Head of Partnerships,Technology,US,mql
+CRM-0014,nikhil.montague@oakridgehomes.example,Nikhil,Montague,Oakridge Homebuilders,Fleet Manager,Construction,US,lead
+CRM-0015,gideon.kowalczyk@quarrylane.example,Gideon,Kowalczyk,Quarry Lane Retail,Marketing Manager,Retail,GB,lead
+CRM-0016,gideon.quintero@lumenfreight.example,Gideon,Quintero,Lumen Freight Logistics,Head of Partnerships,Logistics,CA,subscriber
+CRM-0017,chloe.abara@oakridgehomes.example,Chloe,Abara,Oakridge Homebuilders,Fleet Manager,Construction,US,lead
+CRM-0018,gideon.nakashima@oakline.example,Gideon,Nakashima,Oakline Property Group,Marketing Manager,Real Estate,US,lead
+CRM-0019,esme.larkspur@quarrylane.example,Esme,Larkspur,Quarry Lane Retail,Risk Manager,Retail,GB,customer
+CRM-0020,hugo.halvorsen@corvanehealth.example,Hugo,Halvorsen,Corvane Health Partners,Fleet Manager,Healthcare,US,mql
+CRM-0021,greta.nakashima@summitvale.example,Greta,Nakashima,Summit & Vale Brokerage,VP Customer Experience,Insurance Brokerage,US,mql
+CRM-0022,bastien.petrova@cedarpoint-residential.example,Bastien,Petrova,Cedar Point Residential,Fleet Manager,Real Estate,US,lead
+CRM-0023,aiko.sato@oakline.example,Aiko,Sato,Oakline Property Group,Marketing Manager,Real Estate,US,subscriber
+CRM-0024,yara.iyer@northwindcu.example,Yara,Iyer,Northwind Credit Union,Risk Manager,Banking,US,lead
+CRM-0025,elena.ortega@asterfleet.example,Elena,Ortega,Aster Fleet Services,Risk Manager,Automotive,CA,lead
+CRM-0026,hugo.ortega@cedarpoint-residential.example,Hugo,Ortega,Cedar Point Residential,Head of Partnerships,Real Estate,US,customer
+CRM-0027,wes.nakashima@tidewatertravel.example,Wes,Nakashima,Tidewater Travel Group,VP Customer Experience,Travel,GB,mql
+CRM-0028,hugo.dunmore@bluepeak-mortgage.example,Hugo,Dunmore,Bluepeak Mortgage Partners,Operations Director,Financial Services,US,customer
+CRM-0029,mei.montague@corvanehealth.example,Mei,Montague,Corvane Health Partners,Procurement Lead,Healthcare,US,opportunity
+CRM-0030,umar.moreau@corvanehealth.example,Umar,Moreau,Corvane Health Partners,Marketing Manager,Healthcare,US,mql
+CRM-0031,chloe.larkspur@cedarpoint-residential.example,Chloe,Larkspur,Cedar Point Residential,Office Manager,Real Estate,US,customer
+CRM-0032,ines.whitlock@northwindcu.example,Ines,Whitlock,Northwind Credit Union,Facilities Manager,Banking,US,subscriber
+CRM-0033,aiko.montague@corvanehealth.example,Aiko,Montague,Corvane Health Partners,Facilities Manager,Healthcare,US,opportunity
+CRM-0034,olivia.castellano@lumenfreight.example,Olivia,Castellano,Lumen Freight Logistics,Head of Partnerships,Logistics,CA,customer
+CRM-0035,olivia.petrova@corvanehealth.example,Olivia,Petrova,Corvane Health Partners,Operations Director,Healthcare,US,lead
+CRM-0036,mei.petrova@bluepeak-mortgage.example,Mei,Petrova,Bluepeak Mortgage Partners,Operations Director,Financial Services,US,subscriber
+CRM-0037,dmitri.ortega@kestrelanalytics.example,Dmitri,Ortega,Kestrel Analytics,Compliance Officer,Technology,US,opportunity
+CRM-0038,rosa.ortega@keystonecover.example,Rosa,Ortega,Keystone Cover Group,Compliance Officer,Insurance Brokerage,US,mql
+CRM-0039,zane.whitlock@oakridgehomes.example,Zane,Whitlock,Oakridge Homebuilders,Facilities Manager,Construction,US,sql
+CRM-0040,zane.sato@asterfleet.example,Zane,Sato,Aster Fleet Services,Marketing Manager,Automotive,CA,lead
+CRM-0041,umar.ortega@oakridgehomes.example,Umar,Ortega,Oakridge Homebuilders,Procurement Lead,Construction,US,subscriber
+CRM-0042,isla.abara@tidewatertravel.example,Isla,Abara,Tidewater Travel Group,Compliance Officer,Travel,GB,subscriber
+CRM-0043,mei.sato@corvanehealth.example,Mei,Sato,Corvane Health Partners,Operations Director,Healthcare,US,mql
+CRM-0044,wes.dunmore@quarrylane.example,Wes,Dunmore,Quarry Lane Retail,Marketing Manager,Retail,GB,lead
+CRM-0045,rosa.abara@oakline.example,Rosa,Abara,Oakline Property Group,Procurement Lead,Real Estate,US,customer
+CRM-0046,quinn.montague@summitvale.example,Quinn,Montague,Summit & Vale Brokerage,Fleet Manager,Insurance Brokerage,US,subscriber
+CRM-0047,olivia.petrova@kestrelanalytics.example,Olivia,Petrova,Kestrel Analytics,Compliance Officer,Technology,US,customer
+CRM-0048,dmitri.lindqvist@kestrelanalytics.example,Dmitri,Lindqvist,Kestrel Analytics,Office Manager,Technology,US,lead
+CRM-0049,isla.whitlock@summitvale.example,Isla,Whitlock,Summit & Vale Brokerage,Compliance Officer,Insurance Brokerage,US,mql
+CRM-0050,gideon.dunmore@keystonecover.example,Gideon,Dunmore,Keystone Cover Group,Office Manager,Insurance Brokerage,US,opportunity
+CRM-0051,liam.petrova@bluepeak-mortgage.example,Liam,Petrova,Bluepeak Mortgage Partners,Risk Manager,Financial Services,US,customer
+CRM-0052,liam.montague@bluepeak-mortgage.example,Liam,Montague,Bluepeak Mortgage Partners,VP Customer Experience,Financial Services,US,lead
+CRM-0053,ines.nakashima91@homenet.example,Ines,Nakashima,Individual,Homeowner,Consumer,US,lead
+CRM-0054,gideon.kowalczyk15@homenet.example,Gideon,Kowalczyk,Individual,Homeowner,Consumer,US,lead
+CRM-0055,hugo.quintero24@inbox.example,Hugo,Quintero,Individual,Homeowner,Consumer,US,customer
+CRM-0056,tessa.varga24@inbox.example,Tessa,Varga,Individual,Homeowner,Consumer,US,subscriber
+CRM-0057,darnell.halvorsen12@inbox.example,Darnell,Halvorsen,Individual,Homeowner,Consumer,US,customer
+CRM-0058,mei.quintero42@homenet.example,Mei,Quintero,Individual,Homeowner,Consumer,US,customer
+CRM-0059,jonah.zielinski51@homenet.example,Jonah,Zielinski,Individual,Homeowner,Consumer,US,subscriber
+CRM-0060,liam.achebe22@inbox.example,Liam,Achebe,Individual,Homeowner,Consumer,US,customer

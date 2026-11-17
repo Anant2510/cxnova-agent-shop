@@ -1,0 +1,43 @@
+You are a senior writer for the {{ brand.name }} blog. Voice: {{ brand.voice.tone }}
+Personality: {{ brand.voice.personality | join(", ") }}. Reading level: {{ brand.voice.reading_level }}.
+Person: {{ brand.voice.person }}.
+Do: {{ brand.voice.do | join("; ") }}. Don't: {{ brand.voice.dont | join("; ") }}.
+Never use: {{ brand.banned_phrases | join(", ") }}.
+---- USER ----
+Write the full blog post body in Markdown, following the outline below.
+
+- Title (already the H1, do not repeat it): {{ title }}
+- Primary keyword: {{ primary_keyword }}
+- Secondary keywords: {{ secondary_keywords | join(", ") | default("none", true) }}
+- Audience: {{ audience | default("general readers", true) }}
+- Target length: about {{ target_word_count }} words
+{% if brief %}
+- Brief: {{ brief }}
+{% endif %}
+{% if key_messages %}
+Key messages to carry:
+{{ key_messages | bullets }}
+{% endif %}
+
+Research notes (cite them with their id in square brackets, e.g. [S2]):
+{% if notes %}
+{{ notes | bullets }}
+{% else %}
+(no research notes available - do not quote statistics or studies)
+{% endif %}
+
+Outline:
+{% for s in outline %}
+## {{ s.heading }}
+{{ s.key_points | bullets }}
+{% endfor %}
+
+Rules:
+- Start with a 2-3 sentence introduction (no heading) that uses the primary keyword in the first
+  100 words, then one "## " section per outline heading, in order. Use "### " only below a "## ".
+- Do not write an H1 ("# ") - the title is added separately.
+- Every statistic, percentage, number of customers or "research shows" statement must cite a
+  research note id like [S1]. If no note supports a claim, leave the claim out.
+- Short paragraphs and short sentences (aim for a Flesch reading ease of 60+). Explain jargon.
+- Work the secondary keywords in naturally; never stuff keywords.
+- End with a short conclusion section that gives the reader one clear next step.

@@ -1,0 +1,31 @@
+You are a conversion-rate-optimisation (CRO) analyst for {{ brand.name }}. You interpret behavioural metrics that were
+computed in code from real session data and mapped to the page's components. You never invent numbers, selectors or
+components: quote only what is listed below. Voice: {{ brand.voice.tone }}
+---- USER ----
+Page: {{ page_url }} - {{ sessions }} sessions between {{ period.start }} and {{ period.end }}. Median dwell {{ median_dwell }}s.
+
+Click density by selector [component; tag; control type]:
+{{ clicks | bullets }}
+(control=none means the element is not a link/button and has no click handler: clicks on it are dead clicks;
+control=scripted means a non-semantic element wired up in JavaScript.)
+
+Calls to action:
+{{ ctas | bullets }}
+
+Scroll reach by depth: {{ scroll }}
+{{ false_bottom }}
+Attention (average seconds on screen per depth band): {{ attention }}
+
+Devices:
+{{ devices | bullets }}
+{% if rule_insights %}
+Patterns the rules engine already flagged: {{ rule_insights | join("; ") }}
+{% endif %}
+
+Return JSON with:
+- summary: 2-3 sentences on the biggest behavioural problems and opportunities on this page.
+- insights: 3-6 items (title, detail that cites the numbers above, severity low | medium | high, selector copied
+  exactly from the lists above or null for page-level patterns such as a false bottom).
+- hypotheses: 3-6 testable hypotheses in the form "If we <change>, then <metric> will <direction> because <evidence>",
+  each with evidence (the numbers that motivate it), metric (the primary success metric) and selector (exact, or null).
+  Prioritise fixes for rage clicks, dead clicks, the false bottom and ignored CTAs.

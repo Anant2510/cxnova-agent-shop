@@ -1,0 +1,71 @@
+# CX Nova Agent Shop: what the storefront shows beside each agent and bundle.
+#
+# Prices are INDICATIVE list prices for the storefront and proposals. They are not charged automatically:
+# the shop meters runs and tokens per customer (caf shop usage), and the invoice is built from those records.
+# Set them from the measured cost per run of the pilot. `included_runs` is the monthly allowance in the
+# subscription; runs above it are charged `per_run`.
+
+currency: USD
+pricing_note: "Indicative list prices. Model cost is included in Coforge Cloud; on your own model you pay your provider."
+
+defaults:
+  monthly: 150
+  included_runs: 100
+  per_run: 2.0
+
+# Per-agent overrides and the outcome each run produces (what a customer counts).
+agents:
+  campaign_brief_generation:   {monthly: 200, per_run: 3.0,  outcome: "campaign brief"}
+  keyword_research:            {monthly: 150, per_run: 2.0,  outcome: "keyword plan"}
+  competitive_insights:        {monthly: 300, per_run: 6.0,  outcome: "competitor report"}
+  utm_generation:              {monthly: 50,  per_run: 0.2,  outcome: "tagged link set", included_runs: 1000}
+  email_creation:              {monthly: 200, per_run: 2.0,  outcome: "email"}
+  blog_post_creation:          {monthly: 350, per_run: 8.0,  outcome: "article"}
+  linkedin_inmail_copy:        {monthly: 150, per_run: 1.5,  outcome: "InMail set"}
+  content_adaptation:          {monthly: 150, per_run: 1.5,  outcome: "channel set"}
+  webinar_followup_email:      {monthly: 150, per_run: 2.0,  outcome: "follow-up set"}
+  industry_marketing:          {monthly: 200, per_run: 3.0,  outcome: "tailored asset"}
+  press_release_creation:      {monthly: 200, per_run: 3.0,  outcome: "press release"}
+  quote_extraction:            {monthly: 100, per_run: 1.0,  outcome: "quote sheet"}
+  qr_code_generation:          {monthly: 50,  per_run: 0.2,  outcome: "QR set", included_runs: 1000}
+  content_summary:             {monthly: 150, per_run: 1.5,  outcome: "summary"}
+  geo_recommendations:         {monthly: 250, per_run: 4.0,  outcome: "GEO audit"}
+  technical_seo_recommendations: {monthly: 300, per_run: 5.0, outcome: "SEO audit"}
+  ga4_traffic_report:          {monthly: 250, per_run: 4.0,  outcome: "traffic report"}
+  web_accessibility_evaluation: {monthly: 250, per_run: 4.0, outcome: "accessibility report"}
+  heatmap_analysis:            {monthly: 250, per_run: 4.0,  outcome: "behaviour report"}
+  content_model_creation:      {monthly: 400, per_run: 10.0, outcome: "content model"}
+  content_translation:         {monthly: 250, per_run: 3.0,  outcome: "localised set"}
+  experiment_ideation:         {monthly: 250, per_run: 5.0,  outcome: "idea backlog"}
+  experiment_planning:         {monthly: 250, per_run: 5.0,  outcome: "experiment plan"}
+  variation_development:       {monthly: 300, per_run: 6.0,  outcome: "variation"}
+  experiment_review:           {monthly: 150, per_run: 2.0,  outcome: "review"}
+  experiment_summary:          {monthly: 200, per_run: 3.0,  outcome: "readout"}
+  exploration_generation:      {monthly: 300, per_run: 4.0,  outcome: "answered question"}
+  chart_summary:               {monthly: 150, per_run: 1.5,  outcome: "chart narrative"}
+
+# Bundles: one price for a playbook's agents, run as single agents or as the playbook.
+bundles:
+  campaign_launch:      {monthly: 700,  included_runs: 60,  per_run: 8.0,  tagline: "Brief to channel copy, links and QR codes"}
+  webinar_program:      {monthly: 600,  included_runs: 40,  per_run: 8.0,  tagline: "Invitations, recap, quotes and follow-ups"}
+  content_factory:      {monthly: 800,  included_runs: 40,  per_run: 12.0, tagline: "Keywords to a localised, repurposed article"}
+  competitive_pitch:    {monthly: 500,  included_runs: 30,  per_run: 10.0, tagline: "Competitor intelligence into a differentiated brief"}
+  website_audit:        {monthly: 900,  included_runs: 30,  per_run: 20.0, tagline: "SEO, GEO, accessibility, behaviour, traffic, test ideas"}
+  experimentation_loop: {monthly: 900,  included_runs: 30,  per_run: 20.0, tagline: "Ideas to built, reviewed variations and readouts"}
+  insights_reporting:   {monthly: 600,  included_runs: 60,  per_run: 8.0,  tagline: "Traffic report, governed data exploration, narrated charts"}
+  headless_migration:   {monthly: 800,  included_runs: 20,  per_run: 15.0, tagline: "Content model, pre-migration SEO audit, localisation"}
+
+# What each run mode means on the storefront.
+run_modes:
+  coforge_cloud:
+    name: "Coforge Cloud"
+    short: "We host the agents and the model"
+    detail: "Call the agents over API, MCP or A2A. Model cost is included. Fastest start."
+  coforge_cloud_customer_model:
+    name: "Coforge Cloud, your model"
+    short: "We host the agents; every model call goes to your LLM"
+    detail: "Azure OpenAI, Foundry, Bedrock or Vertex under your policy. You pay your provider for tokens."
+  customer_cloud:
+    name: "Customer Cloud"
+    short: "The runtime in your environment, on your LLM"
+    detail: "Your content never leaves. Only licence checks and usage counts reach Coforge."

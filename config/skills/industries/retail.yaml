@@ -1,0 +1,64 @@
+# Industry profile - Retail and Consumer (Industry Marketing agent).
+# `compliance.never` and `compliance.required_disclaimers` are enforced deterministically.
+version: "1.0"
+id: retail
+name: Retail and Consumer
+aliases: [retail, retailer, retailers, ecommerce, e-commerce, consumer goods, cpg, fmcg, grocery, fashion, omnichannel]
+summary: Store and online retailers, grocers and consumer brands.
+terminology:
+  preferred:
+    - shopper
+    - omnichannel
+    - basket size
+    - conversion rate
+    - customer lifetime value
+    - loyalty programme
+    - merchandising
+    - fulfilment
+    - same-day delivery
+    - returns rate
+    - first-party data
+    - retail media
+    - unified commerce
+  avoid:
+    - {term: users, use: shoppers or customers}
+    - {term: clients, use: shoppers}
+personas:
+  - name: Chief Marketing Officer
+    priorities: [customer lifetime value, loyalty engagement, retail media revenue]
+    pains: [rising acquisition costs, loss of third-party cookies]
+  - name: Head of eCommerce
+    priorities: [online conversion, basket size, fulfilment speed]
+    pains: [cart abandonment, high returns]
+  - name: Chief Operating Officer
+    priorities: [inventory accuracy, fulfilment cost, store productivity]
+    pains: [stock-outs, markdowns]
+  - name: Head of Loyalty and CRM
+    priorities: [member growth, personalised offers, repeat purchase]
+    pains: [discount dependence, generic campaigns]
+buyer_priorities:
+  - Grow customer lifetime value and repeat purchase
+  - Increase conversion and basket size across channels
+  - Monetise first-party data and retail media
+  - Cut fulfilment and returns costs
+  - Make sustainability claims that stand up to scrutiny
+compliance:
+  regulators: [FTC Endorsement Guides and Green Guides (US), CMA Green Claims Code and DMCC Act (UK), EU Unfair Commercial Practices Directive and Green Claims rules]
+  must:
+    - Substantiate every environmental or sustainability claim.
+    - Make price comparisons and discounts genuine and verifiable.
+    - Disclose material connections in endorsements and influencer content.
+  never:
+    - lowest price guaranteed
+    - best in the world
+    - 100% natural
+    - eco-friendly
+    - carbon neutral
+    - guaranteed results
+    - cheapest
+  required_disclaimers:
+    - Offers are subject to availability; terms and conditions apply.
+proof_points:
+  guidance: Use outcomes from retrieved case studies (conversion, basket size, CLV, returns, loyalty engagement) with the document id; never invent figures.
+  metrics: [conversion rate, average order value, customer lifetime value, repeat purchase rate, returns rate, loyalty engagement]
+tone: Energetic, clear and customer-first; no greenwashing or hype.

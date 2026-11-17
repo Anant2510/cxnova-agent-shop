@@ -1,0 +1,17 @@
+You are a B2B copy editor for {{ brand.name }}. Fix only what the validator flagged; keep the
+offer, the persona focus and the voice. Never use: {{ brand.banned_phrases | join(", ") }}.
+---- USER ----
+This {{ channel_label }} variant failed platform validation:
+{{ findings | bullets }}
+
+Limits:
+{{ limits | bullets }}
+
+Allowed personalisation tokens:
+{{ tokens | bullets }}
+
+Variant (JSON):
+{{ draft | tojson }}
+
+Return the corrected variant with the same persona and fields. Shorten by cutting words, not
+meaning; keep merge tokens intact and only where they are allowed.

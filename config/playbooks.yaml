@@ -1,0 +1,190 @@
+# Playbooks: reusable multi-agent workflows. Every one of the 28 agents appears in at least one.
+# Step inputs may reference $goal, ${input.<key>} (shared run inputs) and ${steps.<id>.output.<field>}.
+# Fields not listed are filled from shared inputs / the goal, and agents read upstream outputs automatically.
+playbooks:
+  campaign_launch:
+    name: Campaign launch kit
+    description: Brief, then channel copy (email, LinkedIn InMail, press release, social adaptations), tagged links and QR codes.
+    triggers: [launch, campaign kit, go-to-market, gtm, announce, launch campaign, campaign assets]
+    inputs: [campaign_type, audience, objective, url]
+    steps:
+      - id: brief
+        agent: campaign_brief_generation
+        purpose: Standardised seven-section brief and deliverable tasks
+        inputs: {campaign_type: "${input.campaign_type|'product launch'}", audience: "${input.audience}", objective: "${input.objective|goal}", notes: "$goal"}
+      - id: links
+        agent: utm_generation
+        purpose: Tracking links for every channel in the plan
+        needs: [brief]
+        inputs: {base_url: "${input.url}", channels: [email, paid_social, organic_social, qr]}
+      - id: email
+        agent: email_creation
+        purpose: Launch email with tagged CTA
+        needs: [brief, links]
+        inputs: {overview: "$goal", target_audience: "${input.audience}"}
+      - id: inmail
+        agent: linkedin_inmail_copy
+        purpose: B2B outreach copy
+        needs: [brief]
+      - id: press
+        agent: press_release_creation
+        purpose: Announcement for media pickup
+        needs: [brief]
+        inputs: {overview: "$goal"}
+      - id: social
+        agent: content_adaptation
+        purpose: Social versions of the core message
+        needs: [brief]
+        inputs: {channels: [linkedin_post, x_post, instagram_caption]}
+      - id: qr
+        agent: qr_code_generation
+        purpose: QR codes for print and events, tagged and short-linked
+        needs: [links]
+
+  webinar_program:
+    name: Webinar programme
+    description: Webinar brief and invitations, then post-event summary, quotes, social posts and behaviour-based follow-ups.
+    triggers: [webinar, event, follow-up, follow up, attendees, no-show, recording]
+    inputs: [audience, url]
+    steps:
+      - id: brief
+        agent: campaign_brief_generation
+        inputs: {campaign_type: webinar, audience: "${input.audience}", notes: "$goal"}
+      - id: invite
+        agent: email_creation
+        needs: [brief]
+        inputs: {overview: "$goal", call_to_action: Register for the webinar}
+      - id: inmail
+        agent: linkedin_inmail_copy
+        needs: [brief]
+      - id: recap
+        agent: content_summary
+        inputs: {source: sample_data/webinar/transcript.txt}
+      - id: quotes
+        agent: quote_extraction
+        inputs: {path: sample_data/webinar/transcript.txt}
+      - id: social
+        agent: content_adaptation
+        needs: [recap, quotes]
+        inputs: {channels: [linkedin_post, x_post]}
+      - id: followups
+        agent: webinar_followup_email
+        needs: [recap]
+
+  content_factory:
+    name: SEO content factory
+    description: Keyword research into a long-form blog post, repurposed for channels and localised, with source summary and quote mining.
+    triggers: [blog, seo content, content plan, articles, thought leadership, keyword, localise, localize]
+    inputs: [topic, url, target_locales]
+    steps:
+      - id: keywords
+        agent: keyword_research
+        inputs: {topic: "${input.topic|goal}"}
+      - id: source
+        agent: content_summary
+        inputs: {source: "${input.source|'sample_data/docs/whitepaper.md'}"}
+      - id: quotes
+        agent: quote_extraction
+        inputs: {path: "${input.source|'sample_data/docs/whitepaper.md'}"}
+      - id: blog
+        agent: blog_post_creation
+        needs: [keywords, source]
+        inputs: {topic: "${input.topic|goal}"}
+      - id: social
+        agent: content_adaptation
+        needs: [blog, quotes]
+        inputs: {channels: [linkedin_post, x_post, email_snippet]}
+      - id: localise
+        agent: content_translation
+        needs: [blog]
+
+  competitive_pitch:
+    name: Competitive pitch
+    description: Competitive intelligence and industry tailoring feeding a differentiated campaign brief.
+    triggers: [competitor, competitive, battlecard, pitch, positioning, differentiation, vertical, industry]
+    inputs: [competitors, industry]
+    steps:
+      - id: intel
+        agent: competitive_insights
+        inputs: {competitors: "${input.competitors}"}
+      - id: industry
+        agent: industry_marketing
+        needs: [intel]
+        inputs: {industry: "${input.industry|'insurance'}"}
+      - id: brief
+        agent: campaign_brief_generation
+        needs: [intel, industry]
+        inputs: {campaign_type: "${input.campaign_type|'competitive takeout'}", notes: "$goal"}
+
+  website_audit:
+    name: Website audit
+    description: Technical SEO, GEO (AI-search readiness), accessibility, heatmap behaviour and traffic analysis in parallel, then evidence-based experiment ideas.
+    triggers: [audit, website, site health, seo audit, accessibility, wcag, geo, ai search, heatmap, traffic, page performance]
+    inputs: [url]
+    steps:
+      - id: seo
+        agent: technical_seo_recommendations
+      - id: geo
+        agent: geo_recommendations
+      - id: a11y
+        agent: web_accessibility_evaluation
+      - id: heatmap
+        agent: heatmap_analysis
+      - id: traffic
+        agent: ga4_traffic_report
+      - id: ideas
+        agent: experiment_ideation
+        needs: [seo, geo, a11y, heatmap, traffic]
+
+  experimentation_loop:
+    name: Experimentation loop
+    description: Ideas to plan to built variation to pre-launch review, plus a readout of the last completed test.
+    triggers: [experiment, a/b test, ab test, cro, conversion rate optimisation, test idea, variation, hypothesis]
+    inputs: [url, test_idea, experiment_id]
+    steps:
+      - id: ideas
+        agent: experiment_ideation
+      - id: plan
+        agent: experiment_planning
+        needs: [ideas]
+        inputs: {test_idea: "${input.test_idea|steps.ideas.output.ideas.0.title|goal}"}
+      - id: build
+        agent: variation_development
+        needs: [plan]
+        inputs: {change_request: "${input.test_idea|steps.plan.output.test_idea|goal}", experiment_id: "${steps.plan.output.experiment_id}"}
+      - id: review
+        agent: experiment_review
+        needs: [plan]
+        inputs: {experiment_id: "${steps.plan.output.experiment_id}"}
+      - id: readout
+        agent: experiment_summary
+        inputs: {experiment_id: "${input.completed_experiment_id|'exp-hero-cta'}"}
+
+  insights_reporting:
+    name: Insights reporting
+    description: Traffic report, an ad-hoc data exploration and a narrated chart for stakeholders.
+    triggers: [report, reporting, dashboard, analytics, kpi, insight, explore data, chart, trend, why did]
+    inputs: [question]
+    steps:
+      - id: traffic
+        agent: ga4_traffic_report
+      - id: explore
+        agent: exploration_generation
+        inputs: {question: "${input.question|goal}"}
+      - id: narrate
+        agent: chart_summary
+        needs: [explore]
+
+  headless_migration:
+    name: Headless CMS migration
+    description: Derive a platform-neutral content model from the live site, audit technical SEO before migration and localise key content.
+    triggers: [headless, cms migration, content model, replatform, aem, contentful, sitecore, migration]
+    inputs: [url]
+    steps:
+      - id: model
+        agent: content_model_creation
+      - id: seo
+        agent: technical_seo_recommendations
+      - id: localise
+        agent: content_translation
+        needs: [model]

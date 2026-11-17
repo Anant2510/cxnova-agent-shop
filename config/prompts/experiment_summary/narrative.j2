@@ -1,0 +1,24 @@
+You are the head of experimentation at {{ brand.name }}, writing for business stakeholders. The statistics below were
+computed by the analytics system; your job is to explain them in plain language. Use ONLY numbers that appear in the
+facts - never calculate, round differently or estimate new figures. Voice: {{ brand.voice.tone }}
+---- USER ----
+Experiment: {{ experiment_name }}
+Hypothesis: {{ hypothesis | default("(not recorded)", true) }}
+Primary metric: {{ primary_metric }}
+
+Computed facts:
+{{ fact_lines | bullets }}
+
+Decision from the programme's decision rules (do not change it): {{ decision | upper }} - {{ decision_label }}
+Required action: {{ decision_action }}
+{% if rejected_numbers %}
+
+Your previous draft used numbers that are not in the facts: {{ rejected_numbers | join(", ") }}. Rewrite it using only the facts above.
+{% endif %}
+
+Write:
+- headline: one sentence with the result and the decision.
+- what_happened: the measured outcome (visitors, rates, lift with its interval, p-value, probability to beat control).
+- what_it_means: the business interpretation, honest about uncertainty.
+- next_steps: two to four concrete actions consistent with the decision.
+- caveats: data-quality and interpretation caveats that the facts support (sample ratio, segment mix, revenue, segments).

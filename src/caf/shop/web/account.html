@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My account · {{PRODUCT}}</title>
+<link rel="icon" href="{{BASE}}/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="{{BASE}}/shop/static/shop.css">
+</head>
+<body data-product="{{PRODUCT}}" data-company="{{COMPANY}}">
+<div id="top"></div>
+<main class="wrap" id="main"></main>
+<div id="foot"></div>
+<script src="{{BASE}}/shop/static/shop.js"></script>
+<script>
+(function () {
+  const { api, h, $, clear, token, setToken, toast, num, when, topbar, footer, copy, BASE } = Shop;
+  $("#top").replaceWith(topbar("account"));
+  $("#foot").replaceWith(footer());
+  const main = $("#main");
+
+  function gate(message) {
+    clear(main).append(h("section", { class: "panel gate stack" },
+      h("h1", { style: "font-size:20px" }, "Your account"),
+      h("p", { class: "muted small" }, "Paste the customer key you received. It stays in this browser only."),
+      message ? h("div", { class: "notice warn" }, message) : null,
+      h("form", { class: "stack", onsubmit: (e) => { e.preventDefault(); setToken($("#key").value.trim()); load(); } },
+        h("label", { class: "f" }, "Customer key", h("input", { type: "password", id: "key", placeholder: "cxn_…", autocomplete: "off", required: true })),
+        h("div", { class: "row" }, h("button", { class: "btn primary", type: "submit" }, "Open my account"), h("a", { class: "btn ghost", href: BASE + "/shop#request" }, "No key yet? Request access")))));
+  }
+  function statusChip(s) { return h("span", { class: "chip " + (s === "ok" ? "good" : s === "degraded" || s === "needs_approval" ? "warn" : "bad") }, s); }
+  function show(me) {
+    const c = me.customer, conn = me.connection, u = me.usage || { totals: {}, lines: [] };
+    clear(main).append(
+      h("div", { class: "row", style: "margin-bottom:14px" },
+        h("div", null, h("h1", null, c.name), h("p", { class: "muted small" }, "Customer id ", h("code", null, c.id), " · run mode ", h("strong", null, conn.run_mode_number + ". " + conn.run_mode.replace(/_/g, " ")), " · since " + when(c.created_at))),
+        h("button", { class: "btn sm ghost right", type: "button", onclick: () => { setToken(""); gate(); } }, "Sign out")),
+      h("div", { class: "two" },
+        h("div", { class: "stack-lg" },
+          h("section", { class: "panel" }, h("div", { class: "panel-head" }, h("h2", null, "Your agents"), h("span", { class: "muted small" }, me.entitled_agents.length + " subscribed")),
+            me.entitled_agents.length ? h("div", { class: "row" }, me.entitled_agents.map(a => h("a", { class: "chip", href: BASE + "/shop/agents/" + a }, a.replace(/_/g, " ")))) : h("p", { class: "muted" }, "No agents yet. Your Coforge contact will add them."),
+            me.entitled_playbooks.length ? h("p", { class: "small", style: "margin-top:10px" }, h("strong", null, "Playbooks you can run: "), me.entitled_playbooks.join(", ")) : null,
+            h("table", { style: "margin-top:12px" }, h("thead", null, h("tr", null, h("th", null, "Subscription"), h("th", null, "Item"), h("th", null, "Ends"), h("th", null, "Status"))),
+              h("tbody", null, me.subscriptions.map(s => h("tr", null, h("td", null, s.kind), h("td", null, h("code", null, s.item_id)), h("td", null, s.ends_at || "open"), h("td", null, h("span", { class: "chip " + (s.current ? "good" : "bad") }, s.current ? "active" : s.status))))))),
+          h("section", { class: "panel" }, h("div", { class: "panel-head" }, h("h2", null, "Connect your tools"), h("span", { class: "muted small" }, "send your key as a bearer token")),
+            h("div", { class: "stack" },
+              block("REST", conn.rest.base_url + "\nPOST " + conn.rest.run_agent + "\nPOST " + conn.rest.orchestrate + "\n" + conn.rest.header + "\nDocs: " + conn.rest.docs),
+              block("MCP server (Claude, Copilot Studio, Agentforce, Cursor)", JSON.stringify(conn.mcp.client_config, null, 2)),
+              block("A2A", "Agent card: " + conn.a2a.agent_card + "\nEndpoint: " + conn.a2a.endpoint),
+              h("p", { class: "small muted" }, "The console at ", h("a", { href: conn.console }, conn.console), " runs the same agents in the browser."))),
+          h("section", { class: "panel" }, h("div", { class: "panel-head" }, h("h2", null, "Usage this month"), h("span", { class: "muted small" }, u.month)),
+            h("div", { class: "stats" }, stat(num(u.totals.runs), "agent runs"), stat(num(u.totals.llm_calls), "model calls"), stat(num(u.totals.input_tokens), "input tokens"), stat(num(u.totals.output_tokens), "output tokens")),
+            u.lines.length ? h("table", { style: "margin-top:12px" }, h("thead", null, h("tr", null, h("th", null, "Agent"), h("th", { class: "num" }, "Runs"), h("th", { class: "num" }, "OK"), h("th", { class: "num" }, "Tokens in"), h("th", { class: "num" }, "Tokens out"))),
+              h("tbody", null, u.lines.map(l => h("tr", null, h("td", null, l.agent_id), h("td", { class: "num" }, num(l.runs)), h("td", { class: "num" }, num(l.ok_runs)), h("td", { class: "num" }, num(l.input_tokens)), h("td", { class: "num" }, num(l.output_tokens)))))) : h("p", { class: "muted small", style: "margin-top:8px" }, "No runs yet this month."))),
+        h("aside", { class: "stack" },
+          h("div", { class: "panel stack" }, h("h4", null, "Your policy"),
+            h("dl", { class: "kv" },
+              h("dt", null, "Model"), h("dd", null, me.policy.models.provider === "coforge" ? "Coforge's deployment" : me.policy.models.provider + (me.policy.models.region ? " · " + me.policy.models.region : "")),
+              h("dt", null, "Tiers"), h("dd", null, Object.keys(me.policy.models.tiers || {}).length ? Object.entries(me.policy.models.tiers).map(([k, v]) => k + " → " + v).join(", ") : "shop defaults"),
+              h("dt", null, "Masked"), h("dd", null, (me.policy.data.mask_before_model || []).join(", ") || "nothing"),
+              h("dt", null, "Websites"), h("dd", null, (me.policy.reach.websites || []).join(", ") || "any public site"),
+              h("dt", null, "Approvals"), h("dd", null, (me.policy.actions.need_approval || []).join(", ")),
+              h("dt", null, "Limits"), h("dd", null, [me.policy.limits.runs_per_day && me.policy.limits.runs_per_day + " runs/day", me.policy.limits.tokens_per_month && num(me.policy.limits.tokens_per_month) + " tokens/month"].filter(Boolean).join(", ") || "none")),
+            h("p", { class: "xs muted" }, "Policy version " + me.policy.version + (me.policy.signed_by ? ", signed by " + me.policy.signed_by : "") + ". Ask your Coforge contact to change it.")),
+          h("div", { class: "panel stack" }, h("h4", null, "Last agent check on your model"),
+            me.last_check ? h("div", { class: "stack" },
+              h("p", { class: "small" }, h("strong", null, me.last_check.passed + " of " + me.last_check.total), " agents passed on " + (me.last_check.provider || "") + ", " + when(me.last_check.checked_at)),
+              h("div", { class: "stack", style: "gap:4px" }, me.last_check.agents.map(a => h("div", { class: "row small" }, h("span", { class: "lamp " + (a.live ? "good" : "bad") }), h("span", { class: "grow" }, a.name || a.agent_id), statusChip(a.status))))) : h("p", { class: "muted small" }, "Not run yet.")),
+          h("div", { class: "panel stack" }, h("h4", null, "Keys"), h("table", null, h("tbody", null, me.keys.map(k => h("tr", null, h("td", null, h("code", null, k.prefix + "…"), k.label ? " " + k.label : ""), h("td", { class: "muted xs" }, k.revoked_at ? "revoked" : "last used " + (when(k.last_used_at) || "never"))))))),
+          h("div", { class: "panel stack" }, h("h4", null, "Recent runs"), me.recent.length ? h("div", { class: "stack", style: "gap:4px" }, me.recent.slice(0, 10).map(r => h("div", { class: "row xs" }, h("span", { class: "grow" }, r.agent_id), h("span", { class: "muted" }, r.surface), statusChip(r.status)))) : h("p", { class: "muted small" }, "None yet.")))));
+    function block(title, code) { return h("div", { class: "stack", style: "gap:4px" }, h("div", { class: "row" }, h("h4", null, title), h("button", { class: "btn sm ghost right", type: "button", onclick: () => copy(code) }, "Copy")), h("pre", null, code)); }
+    function stat(v, l) { return h("div", { class: "stat" }, h("span", { class: "v" }, v), h("span", { class: "l" }, l)); }
+  }
+  async function load() {
+    if (!token()) return gate();
+    try { show(await api("/shop/me")); }
+    catch (e) { setToken(""); gate(e.status === 401 || e.status === 403 ? "That key was not accepted: " + e.message : "Could not load your account: " + e.message); }
+  }
+  load();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get a quote | Meridian Mutual</title>
+<meta name="description" content="Get a home, car, pet or travel insurance quote from Meridian Mutual in about two minutes.">
+<link rel="canonical" href="https://www.meridian-mutual.example/quote">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="/"><img src="/assets/logo.svg" alt="Meridian Mutual" width="184" height="36"></a>
+    <nav class="main-nav" aria-label="Main">
+      <a href="/products/home-insurance.html">Home insurance</a>
+      <a href="/products/car-insurance.html">Car insurance</a>
+      <a href="/blog/">Blog</a>
+      <a href="/about.html">About</a>
+      <a href="/contact.html">Contact</a>
+    </nav>
+    <a class="nav-cta" href="/quote">Get a quote</a>
+  </div>
+</header>
+<main id="main">
+  <section class="page-head">
+    <div class="wrap">
+      <h1>Get a quote</h1>
+      <p class="lead">Answer four questions and see your price in about two minutes.</p>
+    </div>
+  </section>
+  <section class="section">
+    <div class="wrap">
+      <form class="form" action="/quote" method="get">
+        <div class="field"><label for="product">What would you like to insure?</label>
+          <select id="product" name="product">
+            <option value="home">Home</option>
+            <option value="car">Car</option>
+            <option value="pet">Pet</option>
+            <option value="travel">Travel</option>
+            <option value="bundle">Home and car together</option>
+          </select>
+        </div>
+        <div class="field"><label for="zip">ZIP code</label><input id="zip" name="zip" type="text" inputmode="numeric" autocomplete="postal-code" required></div>
+        <div class="field"><label for="dob">Date of birth</label><input id="dob" name="dob" type="date" required></div>
+        <div class="field"><label for="quote-email">Email address</label><input id="quote-email" name="email" type="email" autocomplete="email" required></div>
+        <div><button class="btn btn-primary" type="submit">See my price</button></div>
+      </form>
+    </div>
+  </section>
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div>
+      <p class="footer-name">Meridian Mutual</p>
+      <p>Member-owned home, car, pet and travel cover since 1952.</p>
+    </div>
+    <nav class="footer-nav" aria-label="Footer">
+      <a href="/products/home-insurance.html">Home insurance</a>
+      <a href="/products/car-insurance.html">Car insurance</a>
+      <a href="/blog/">Blog</a>
+      <a href="/about.html">About</a>
+      <a href="/contact.html">Contact</a>
+    </nav>
+  </div>
+  <div class="wrap footer-legal"><p>&copy; 2026 Meridian Mutual. A fictional insurer for product demonstrations.</p></div>
+</footer>
+<script>
+(function () {
+  var wanted = new URLSearchParams(window.location.search).get("product");
+  var select = document.getElementById("product");
+  if (wanted && select.querySelector('option[value="' + wanted + '"]')) { select.value = wanted; }
+})();
+</script>
+</body>
+</html>

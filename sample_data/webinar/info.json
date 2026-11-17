@@ -1,0 +1,23 @@
+{
+  "webinar_id": "wb-2026-09-climate-home",
+  "title": "Climate-ready home protection: what changes in 2027",
+  "date": "2026-09-24",
+  "duration_minutes": 60,
+  "host": "Meridian Mutual",
+  "recording_url": "https://www.meridian-mutual.example/webinars/climate-ready-home/recording",
+  "slides_url": "https://www.meridian-mutual.example/webinars/climate-ready-home/slides.pdf",
+  "speakers": [
+    {
+      "name": "Dr. Asha Raman",
+      "title": "Head of Risk Analytics"
+    },
+    {
+      "name": "Tom Ellery",
+      "title": "Claims Director"
+    },
+    {
+      "name": "Priya Nair",
+      "title": "Customer Experience Lead"
+    }
+  ]
+}

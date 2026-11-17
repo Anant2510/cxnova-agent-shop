@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent · {{PRODUCT}}</title>
+<link rel="icon" href="{{BASE}}/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="{{BASE}}/shop/static/shop.css">
+</head>
+<body data-product="{{PRODUCT}}" data-company="{{COMPANY}}">
+<div id="top"></div>
+<main class="wrap" id="main"><p class="muted">Loading…</p></main>
+<div id="foot"></div>
+<script src="{{BASE}}/shop/static/shop.js"></script>
+<script>
+(function () {
+  const { api, h, $, clear, money, catClass, tierLabel, topbar, footer, pathTail, copy, BASE } = Shop;
+  $("#top").replaceWith(topbar("shop"));
+  $("#foot").replaceWith(footer());
+  const id = pathTail();
+
+  function fields(schema) {
+    const props = (schema && schema.properties) || {};
+    const req = new Set((schema && schema.required) || []);
+    const rows = Object.entries(props).map(([name, p]) => {
+      const type = p.type || (p.anyOf ? p.anyOf.map(x => x.type).filter(Boolean).join(" | ") : (p.$ref ? "object" : ""));
+      return h("tr", null, h("td", null, h("code", null, name), req.has(name) ? h("span", { class: "chip ai", style: "margin-left:6px" }, "required") : null),
+        h("td", { class: "muted" }, type || "object"), h("td", null, p.description || ""));
+    });
+    return rows.length ? h("table", { class: "schema" }, h("thead", null, h("tr", null, h("th", null, "Field"), h("th", null, "Type"), h("th", null, "Meaning"))), h("tbody", null, rows))
+      : h("p", { class: "muted small" }, "No fields.");
+  }
+  function snippet(a) {
+    const base = location.origin + BASE;
+    const input = JSON.stringify(a.selftest_input || {}, null, 2);
+    return [
+      ["REST", "curl -X POST " + base + "/agents/" + a.id + "/run \\\n  -H 'Authorization: Bearer <your key>' -H 'Content-Type: application/json' \\\n  -d '" + JSON.stringify({ inputs: a.selftest_input || {} }) + "'"],
+      ["MCP (Claude, Copilot Studio, Agentforce)", JSON.stringify({ mcpServers: { "cxnova-agent-shop": { type: "http", url: base + "/mcp", headers: { Authorization: "Bearer <your key>" } } } }, null, 2) + "\n\nThen call the tool run_" + a.id + "."],
+      ["A2A", "Agent card: " + base + "/a2a/agents/" + a.id + "/agent-card.json\nJSON-RPC message/send to " + base + "/a2a/agents/" + a.id],
+      ["Example input", input],
+    ];
+  }
+  api("/shop/catalog/" + encodeURIComponent(id)).then(a => {
+    const p = a.price || {};
+    const main = clear($("#main"));
+    main.append(
+      h("p", { class: "small" }, h("a", { href: BASE + "/shop" }, "← All agents")),
+      h("div", { class: "two", style: "margin-top:10px" },
+        h("div", { class: "stack-lg" },
+          h("div", { class: "stack" },
+            h("div", { class: "row" }, h("span", { class: "cat " + catClass(a.category) }, a.category_label), h("span", { class: "chip" }, a.kind), h("span", { class: "chip" }, "v" + a.version)),
+            h("h1", null, a.name),
+            h("p", { class: "lead", style: "font-size:15px;color:var(--ink-2)" }, a.summary),
+            a.description ? h("p", null, a.description) : null,
+            h("div", { class: "row" }, h("a", { class: "btn primary", href: BASE + "/console#agent=" + a.id }, "Try it in the console"), h("a", { class: "btn", href: BASE + "/shop#request" }, "Request access"))),
+          a.use_cases && a.use_cases.length ? h("section", { class: "panel" }, h("div", { class: "panel-head" }, h("h2", null, "What teams use it for")), h("ul", { style: "margin:0;padding-left:18px" }, a.use_cases.map(u => h("li", null, u)))) : null,
+          h("section", { class: "panel" }, h("div", { class: "panel-head" }, h("h2", null, "Inputs")), fields(a.input_schema)),
+          h("section", { class: "panel" }, h("div", { class: "panel-head" }, h("h2", null, "Output")), fields(a.output_schema)),
+          h("section", { class: "panel" }, h("div", { class: "panel-head" }, h("h2", null, "Call it from your tools"), h("span", { class: "muted small" }, "with the key from your account")),
+            h("div", { class: "stack" }, snippet(a).map(([title, code]) => h("div", { class: "stack", style: "gap:4px" }, h("div", { class: "row" }, h("h4", null, title), h("button", { class: "btn sm ghost right", type: "button", onclick: () => copy(code) }, "Copy")), h("pre", null, code)))))),
+        h("aside", { class: "stack" },
+          h("div", { class: "panel stack" },
+            h("h4", null, "Indicative price"),
+            h("div", { class: "price", style: "font-size:22px" }, money(p.monthly, p.currency), h("small", null, " /month")),
+            h("p", { class: "small muted" }, (p.included_runs || 0) + " runs included, then " + money(p.per_run, p.currency) + (p.outcome ? " per " + p.outcome : " per run") + "."),
+            h("p", { class: "xs muted" }, p.note || "")),
+          h("div", { class: "panel stack" },
+            h("h4", null, "Model steps"),
+            (a.model_steps && a.model_steps.length) ? h("table", null, h("tbody", null, a.model_steps.map(s => h("tr", null, h("td", null, h("code", null, s.step)), h("td", { class: "muted" }, s.work), h("td", null, h("span", { class: "chip ai" }, s.tier + (s.effort && s.effort !== "-" ? " · " + s.effort : ""))))))) : h("p", { class: "small muted" }, "No model calls: this agent is deterministic code."),
+            h("p", { class: "xs muted" }, "Fast and balanced tiers run on the fast model, pro and complex on the strong one. On your own model, your policy maps the tiers.")),
+          h("div", { class: "panel stack" },
+            h("h4", null, "Connects to"),
+            h("div", { class: "row" }, (a.connectors || []).length ? a.connectors.map(c => h("span", { class: "chip" }, c)) : h("span", { class: "muted small" }, "nothing external")),
+            a.side_effects && a.side_effects.length ? h("p", { class: "small" }, h("strong", null, "Held for approval: "), a.side_effects.join(", ")) : h("p", { class: "small muted" }, "Takes no publishing actions."),
+            a.feeds && a.feeds.length ? h("p", { class: "small" }, h("strong", null, "Feeds: "), a.feeds.map(f => h("a", { href: BASE + "/shop/agents/" + f, style: "margin-right:6px" }, f.replace(/_/g, " ")))) : null))));
+    document.title = a.name + " · " + (document.body.dataset.product || "");
+  }).catch(e => { clear($("#main")).append(h("div", { class: "notice bad" }, "Could not load this agent: " + e.message)); });
+})();
+</script>
+</body>
+</html>

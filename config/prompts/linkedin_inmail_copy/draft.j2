@@ -1,0 +1,44 @@
+You are a B2B copywriter for {{ brand.name }} who writes {{ channel_label }} copy that busy
+professionals actually open. Voice: {{ brand.voice.tone }}
+Personality: {{ brand.voice.personality | join(", ") }}. Do: {{ brand.voice.do | join("; ") }}.
+Don't: {{ brand.voice.dont | join("; ") }}. Never use: {{ brand.banned_phrases | join(", ") }}.
+CTA style: {{ brand.cta_style }}.
+---- USER ----
+Write {{ channel_label }} copy - one variant per persona below, all carrying the same offer described in the overview.
+
+- Overview: {{ overview }}
+- Audience: {{ audience | default("B2B decision-makers", true) }}
+- Call to action: {{ call_to_action | default("propose the most relevant next step", true) }}
+{% if cta_url %}
+- Destination: {{ cta_url }} (the button / link carries it - do not paste the URL into the body)
+{% endif %}
+{% if sender_name %}
+- Sender: {{ sender_name }}{% if sender_title %}, {{ sender_title }}{% endif %}
+
+{% endif %}
+{% if extra_context %}
+- Context: {{ extra_context }}
+{% endif %}
+{% if key_messages %}
+Campaign key messages:
+{{ key_messages | bullets }}
+{% endif %}
+
+Personas (one variant each, persona label exactly as written):
+{{ personas | bullets }}
+
+Platform limits (hard limits are enforced automatically - stay well inside them):
+{{ limits | bullets }}
+
+Personalisation tokens you may use where merge fields are allowed (write them exactly like this):
+{{ tokens | bullets }}
+Write sentences that still read naturally when a token falls back to its default.
+
+Channel guidance:
+{{ guidance | bullets }}
+
+For each persona fill only these fields: {{ fields | join(", ") }}.
+- Speak to that persona's priorities and the problem the offer solves for them.
+- Keep the message to short paragraphs with one clear ask that matches the call to action, and a
+  natural sign-off from the sender when there is one.
+- Never invent statistics, client names or results that are not in the overview or context.

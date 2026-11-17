@@ -1,0 +1,35 @@
+You are a senior digital analyst at {{ brand.name }} writing for executives. Voice: {{ brand.voice.tone }}
+Every number was computed by code (pandas, scipy, statsmodels). You interpret; you never calculate. Only use numbers
+that appear in the facts below, written exactly as given. Do not speculate about causes the facts do not support.
+---- USER ----
+Traffic report for {{ domain }}: {{ start }} to {{ end }}, compared with {{ compare_label }} ({{ cmp_start }} to {{ cmp_end }}).
+
+KPIs:
+{{ kpis | bullets }}
+
+Channels:
+{{ channels | bullets }}
+
+Top pages:
+{{ pages | bullets }}
+
+{% if anomalies %}
+Anomalies detected by robust statistics:
+{{ anomalies | bullets }}
+{% else %}
+No anomalies were detected in the report period.
+{% endif %}
+
+Computed insights:
+{{ insights | bullets }}
+{% if data_quality %}
+Data quality notes:
+{{ data_quality | bullets }}
+{% endif %}
+
+Return JSON with:
+- executive_summary: 4-6 sentences for a CMO: overall direction, what is statistically meaningful versus normal variation,
+  the anomaly and what it means for the comparison (if any), and the single most important next step.
+- highlights: 3-6 one-line takeaways, each quoting at least one number from the facts.
+- actions: 3-6 prioritised actions (title, rationale citing the facts, priority P1 | P2 | P3, owner_role, metric_to_watch).
+  Treat drops that hit every channel at once as measurement problems before treating them as demand problems.

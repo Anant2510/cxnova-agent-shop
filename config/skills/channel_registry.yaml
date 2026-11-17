@@ -1,0 +1,154 @@
+# Channel registry (Content Adaptation). One entry per destination: limits, structure, hashtag,
+# emoji and link policy, tone and a default calendar slot. New channels are configuration - add
+# an entry here and the agent, its validator, its fixer and the console pick it up.
+#
+# Platform limits are typical published values - verify against current platform specs before
+# each campaign. House-style values (recommended lengths, hashtag ranges) are brand choices.
+#
+# Keys per channel:
+#   max_chars           hard limit on the final text (hashtags and links included)
+#   recommended_chars   soft target - warning above it
+#   visible_chars       characters shown before truncation ("see more") - the hook must fit
+#   url_chars           every URL counts as this many characters (X)
+#   max_segments        SMS segments allowed (GSM-7: 160 / 153 per segment, UCS-2: 70 / 67)
+#   required_prefix     final text must start with this (e.g. a Markdown H2)
+#   must_include        phrases that must appear (compliance), with opt_out_text as the fix
+#   hashtags            {min, max, placement: end | inline | none}
+#   emoji               {max}
+#   links               {allowed, max, include_cta (append the CTA link when missing), replacement}
+#   slot                preferred weekday + time for the content calendar
+version: "2026.10"
+
+channels:
+  linkedin_post:
+    label: LinkedIn post
+    max_chars: 3000                # verify against current platform specs
+    recommended_chars: 1300
+    visible_chars: 210             # shown before "...see more"
+    structure: Hook line under 210 characters, 2-4 short paragraphs or a short list, a question or clear next step, hashtags at the end.
+    hashtags: {min: 3, max: 5, placement: end}
+    emoji: {max: 3}
+    links: {allowed: true, max: 1, include_cta: true}
+    tone: Professional and human; insight first, no hard sell.
+    format: text
+    utm_channel: organic_social
+    slot: "Tue 09:00"
+
+  x_post:
+    label: X post
+    max_chars: 280                 # verify against current platform specs
+    url_chars: 23                  # t.co wrapping - verify against current platform specs
+    structure: One idea in one or two sentences, the link at the end.
+    hashtags: {min: 0, max: 2, placement: end}
+    emoji: {max: 2}
+    links: {allowed: true, max: 1, include_cta: true}
+    tone: Punchy, plain and conversational.
+    format: text
+    utm_channel: organic_social
+    slot: "Wed 12:00"
+
+  instagram_caption:
+    label: Instagram caption
+    max_chars: 2200                # verify against current platform specs
+    recommended_chars: 900
+    visible_chars: 125             # shown before "more"
+    structure: Hook in the first 125 characters, a short story or tips with line breaks, a call to action pointing to the link in bio, hashtags at the end.
+    hashtags: {min: 3, max: 8, placement: end}   # the platform allows up to 30; house style is fewer
+    emoji: {max: 5}
+    links: {allowed: false, max: 0, replacement: "Link in bio."}   # caption links are not clickable
+    tone: Warm, visual and human.
+    format: text
+    utm_channel: organic_social
+    slot: "Thu 18:00"
+
+  facebook_post:
+    label: Facebook post
+    max_chars: 63206               # verify against current platform specs
+    recommended_chars: 400
+    structure: Friendly hook, one or two short paragraphs, a clear next step with the link.
+    hashtags: {min: 0, max: 2, placement: end}
+    emoji: {max: 3}
+    links: {allowed: true, max: 1, include_cta: true}
+    tone: Friendly and community-minded.
+    format: text
+    utm_channel: organic_social
+    slot: "Fri 11:00"
+
+  email_snippet:
+    label: Email newsletter snippet
+    max_chars: 600
+    structure: A short headline line, two or three sentences, then a call-to-action line with the link.
+    hashtags: {min: 0, max: 0, placement: none}
+    emoji: {max: 0}
+    links: {allowed: true, max: 1, include_cta: true}
+    tone: Helpful and direct.
+    format: text
+    utm_channel: email
+    slot: "Tue 07:30"
+
+  web_page_section:
+    label: Web page section
+    max_chars: 1800
+    required_prefix: "## "
+    structure: A Markdown "## " heading, then 1-3 short paragraphs or a short list. Scannable, no hashtags.
+    hashtags: {min: 0, max: 0, placement: none}
+    emoji: {max: 0}
+    links: {allowed: true, max: 2, include_cta: false}
+    tone: Clear, informative and search-friendly.
+    format: markdown
+    utm_channel: null
+    slot: "Mon 10:00"
+
+  sms:
+    label: SMS
+    max_chars: 160
+    max_segments: 1                # 160 GSM-7 characters; any emoji / curly quote switches to UCS-2 (70)
+    structure: One sentence with the offer and the link, then the opt-out.
+    must_include: [STOP]
+    opt_out_text: "Reply STOP to opt out."
+    hashtags: {min: 0, max: 0, placement: none}
+    emoji: {max: 0}
+    links: {allowed: true, max: 1, include_cta: true}
+    tone: Brief and clear.
+    format: text
+    utm_channel: sms
+    slot: "Sat 10:00"
+
+  whatsapp:
+    label: WhatsApp message
+    max_chars: 1024                # template body limit - verify against current platform specs
+    recommended_chars: 500
+    structure: A personal greeting, the key message in two or three short lines, one link.
+    hashtags: {min: 0, max: 0, placement: none}
+    emoji: {max: 3}
+    links: {allowed: true, max: 1, include_cta: true}
+    tone: Personal and conversational.
+    format: text
+    utm_channel: sms
+    slot: "Thu 12:30"
+
+  youtube_description:
+    label: YouTube description
+    max_chars: 5000                # verify against current platform specs
+    visible_chars: 157             # shown above "...more"
+    structure: Hook in the first 157 characters, a summary paragraph, links, then hashtags.
+    hashtags: {min: 1, max: 3, placement: end}   # the first three show above the title
+    emoji: {max: 3}
+    links: {allowed: true, max: 3, include_cta: true}
+    tone: Descriptive and keyword-rich.
+    format: text
+    utm_channel: organic_social
+    slot: "Sun 15:00"
+
+  push:
+    label: Push notification
+    max_chars: 120
+    recommended_chars: 90
+    structure: One short sentence with a benefit and a verb.
+    hashtags: {min: 0, max: 0, placement: none}
+    emoji: {max: 1}
+    links: {allowed: false, max: 0}   # the deep link is set on the push campaign, not in the text
+    tone: Brief and benefit-led.
+    format: text
+    utm_channel: push
+    slot: "Wed 18:30"

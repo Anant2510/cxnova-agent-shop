@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE tmx SYSTEM "tmx14.dtd">
+<tmx version="1.4">
+  <header creationtool="caf-sample-data" creationtoolversion="1.0" segtype="sentence" o-tmf="caf-tm" adminlang="en" srclang="en" datatype="plaintext" creationdate="20261018T090000Z">
+    <note>Illustrative sample content: fictional, for demonstration only. Replace with the client's own corpus.</note>
+    <prop type="x-brand">Meridian Mutual (fictional)</prop>
+    <prop type="x-do-not-translate">Meridian Mutual; The 2026 Home Risk Outlook</prop>
+  </header>
+  <body>
+    <tu tuid="mm-0001" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">button</prop>
+      <tuv xml:lang="en"><seg>Get a quote</seg></tuv>
+      <tuv xml:lang="de"><seg>Angebot anfordern</seg></tuv>
+      <tuv xml:lang="fr"><seg>Obtenir un devis</seg></tuv>
+      <tuv xml:lang="es"><seg>Solicitar presupuesto</seg></tuv>
+    </tu>
+    <tu tuid="mm-0002" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">headline</prop>
+      <tuv xml:lang="en"><seg>Home insurance that shows up when it matters.</seg></tuv>
+      <tuv xml:lang="de"><seg>Eine Hausversicherung, die da ist, wenn es darauf ankommt.</seg></tuv>
+      <tuv xml:lang="fr"><seg>Une assurance habitation présente quand ça compte vraiment.</seg></tuv>
+      <tuv xml:lang="es"><seg>Un seguro de hogar que responde cuando más importa.</seg></tuv>
+    </tu>
+    <tu tuid="mm-0003" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">email</prop>
+      <tuv xml:lang="en"><seg>Hi {first_name}, your home insurance quote is ready.</seg></tuv>
+      <tuv xml:lang="de"><seg>Hallo {first_name}, Ihr Angebot für die Hausversicherung ist fertig.</seg></tuv>
+      <tuv xml:lang="fr"><seg>Bonjour {first_name}, votre devis d’assurance habitation est prêt.</seg></tuv>
+      <tuv xml:lang="es"><seg>Hola, {first_name}: tu presupuesto de seguro de hogar está listo.</seg></tuv>
+    </tu>
+    <tu tuid="mm-0004" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">ui</prop>
+      <tuv xml:lang="en"><seg>Your policy number is %s.</seg></tuv>
+      <tuv xml:lang="de"><seg>Ihre Versicherungsnummer lautet %s.</seg></tuv>
+      <tuv xml:lang="fr"><seg>Votre numéro de contrat est %s.</seg></tuv>
+      <tuv xml:lang="es"><seg>Tu número de póliza es %s.</seg></tuv>
+    </tu>
+    <tu tuid="mm-0005" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">ui</prop>
+      <tuv xml:lang="en"><seg>Compare plans</seg></tuv>
+      <tuv xml:lang="de"><seg>Tarife vergleichen</seg></tuv>
+      <tuv xml:lang="fr"><seg>Comparer les formules</seg></tuv>
+      <tuv xml:lang="es"><seg>Comparar planes</seg></tuv>
+    </tu>
+    <tu tuid="mm-0006" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">button</prop>
+      <tuv xml:lang="en"><seg>Talk to an advisor</seg></tuv>
+      <tuv xml:lang="de"><seg>Mit einem Berater sprechen</seg></tuv>
+      <tuv xml:lang="fr"><seg>Parler à un conseiller</seg></tuv>
+      <tuv xml:lang="es"><seg>Hablar con un asesor</seg></tuv>
+    </tu>
+    <tu tuid="mm-0007" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">legal</prop>
+      <tuv xml:lang="en"><seg>Cover is subject to the terms, conditions and exclusions of your policy.</seg></tuv>
+      <tuv xml:lang="de"><seg>Der Versicherungsschutz unterliegt den Bedingungen und Ausschlüssen Ihrer Police.</seg></tuv>
+      <tuv xml:lang="fr"><seg>La couverture est soumise aux conditions et exclusions de votre contrat.</seg></tuv>
+      <tuv xml:lang="es"><seg>La cobertura está sujeta a los términos, condiciones y exclusiones de tu póliza.</seg></tuv>
+    </tu>
+    <tu tuid="mm-0008" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">ui</prop>
+      <tuv xml:lang="en"><seg>Start a claim online at https://www.meridian-mutual.example/claims or call us 24/7.</seg></tuv>
+      <tuv xml:lang="de"><seg>Melden Sie einen Schaden online unter https://www.meridian-mutual.example/claims oder rufen Sie uns rund um die Uhr an.</seg></tuv>
+      <tuv xml:lang="fr"><seg>Déclarez un sinistre en ligne sur https://www.meridian-mutual.example/claims ou appelez-nous 24 h/24, 7 j/7.</seg></tuv>
+      <tuv xml:lang="es"><seg>Comunica un siniestro en línea en https://www.meridian-mutual.example/claims o llámanos las 24 horas.</seg></tuv>
+    </tu>
+    <tu tuid="mm-0009" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">promo</prop>
+      <tuv xml:lang="en"><seg>Save 15% when you insure your home and car together.</seg></tuv>
+      <tuv xml:lang="de"><seg>Sparen Sie 15 %, wenn Sie Haus und Auto zusammen versichern.</seg></tuv>
+      <tuv xml:lang="fr"><seg>Économisez 15 % en assurant ensemble votre logement et votre voiture.</seg></tuv>
+      <tuv xml:lang="es"><seg>Ahorra un 15 % al asegurar juntos tu hogar y tu coche.</seg></tuv>
+    </tu>
+    <tu tuid="mm-0010" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">email</prop>
+      <tuv xml:lang="en"><seg>Your renewal date is {renewal_date}.</seg></tuv>
+      <tuv xml:lang="de"><seg>Ihr Verlängerungsdatum ist der {renewal_date}.</seg></tuv>
+      <tuv xml:lang="fr"><seg>Votre date de renouvellement est le {renewal_date}.</seg></tuv>
+      <tuv xml:lang="es"><seg>Tu fecha de renovación es el {renewal_date}.</seg></tuv>
+    </tu>
+    <tu tuid="mm-0011" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">legal</prop>
+      <tuv xml:lang="en"><seg>We never sell your personal data.</seg></tuv>
+      <tuv xml:lang="de"><seg>Wir verkaufen Ihre personenbezogenen Daten niemals.</seg></tuv>
+      <tuv xml:lang="fr"><seg>Nous ne vendons jamais vos données personnelles.</seg></tuv>
+      <tuv xml:lang="es"><seg>Nunca vendemos tus datos personales.</seg></tuv>
+    </tu>
+    <tu tuid="mm-0012" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">legal</prop>
+      <tuv xml:lang="en"><seg>Flood cover is not included as standard.</seg></tuv>
+      <tuv xml:lang="de"><seg>Eine Absicherung gegen Hochwasser ist nicht standardmäßig enthalten.</seg></tuv>
+      <tuv xml:lang="fr"><seg>La garantie inondation n’est pas incluse de base.</seg></tuv>
+      <tuv xml:lang="es"><seg>La cobertura de inundaciones no está incluida de serie.</seg></tuv>
+    </tu>
+    <tu tuid="mm-0013" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">advice</prop>
+      <tuv xml:lang="en"><seg>Photograph every room before you need to make a claim.</seg></tuv>
+      <tuv xml:lang="de"><seg>Fotografieren Sie jeden Raum, bevor Sie einen Schaden melden müssen.</seg></tuv>
+      <tuv xml:lang="fr"><seg>Photographiez chaque pièce avant d’avoir à déclarer un sinistre.</seg></tuv>
+      <tuv xml:lang="es"><seg>Fotografía cada habitación antes de tener que dar un parte.</seg></tuv>
+    </tu>
+    <tu tuid="mm-0014" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">promo</prop>
+      <tuv xml:lang="en"><seg>Download The 2026 Home Risk Outlook.</seg></tuv>
+      <tuv xml:lang="de"><seg>Laden Sie den Bericht „The 2026 Home Risk Outlook“ herunter.</seg></tuv>
+      <tuv xml:lang="fr"><seg>Téléchargez le rapport « The 2026 Home Risk Outlook ».</seg></tuv>
+      <tuv xml:lang="es"><seg>Descarga el informe «The 2026 Home Risk Outlook».</seg></tuv>
+    </tu>
+    <tu tuid="mm-0015" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">email</prop>
+      <tuv xml:lang="en"><seg>Thanks for joining our webinar, {first_name}!</seg></tuv>
+      <tuv xml:lang="de"><seg>Danke, dass Sie an unserem Webinar teilgenommen haben, {first_name}!</seg></tuv>
+      <tuv xml:lang="fr"><seg>Merci d’avoir participé à notre webinaire, {first_name} !</seg></tuv>
+      <tuv xml:lang="es"><seg>¡Gracias por asistir a nuestro webinar, {first_name}!</seg></tuv>
+    </tu>
+    <tu tuid="mm-0016" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">email</prop>
+      <tuv xml:lang="en"><seg>Watch the recording: https://www.meridian-mutual.example/webinars/climate-ready-home/recording</seg></tuv>
+      <tuv xml:lang="de"><seg>Aufzeichnung ansehen: https://www.meridian-mutual.example/webinars/climate-ready-home/recording</seg></tuv>
+      <tuv xml:lang="fr"><seg>Regarder l’enregistrement : https://www.meridian-mutual.example/webinars/climate-ready-home/recording</seg></tuv>
+      <tuv xml:lang="es"><seg>Ver la grabación: https://www.meridian-mutual.example/webinars/climate-ready-home/recording</seg></tuv>
+    </tu>
+    <tu tuid="mm-0017" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">email</prop>
+      <tuv xml:lang="en"><seg>%s days left to renew your policy.</seg></tuv>
+      <tuv xml:lang="de"><seg>Noch %s Tage, um Ihre Police zu verlängern.</seg></tuv>
+      <tuv xml:lang="fr"><seg>Plus que %s jours pour renouveler votre contrat.</seg></tuv>
+      <tuv xml:lang="es"><seg>Quedan %s días para renovar tu póliza.</seg></tuv>
+    </tu>
+    <tu tuid="mm-0018" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">ui</prop>
+      <tuv xml:lang="en"><seg>Unsubscribe</seg></tuv>
+      <tuv xml:lang="de"><seg>Abmelden</seg></tuv>
+      <tuv xml:lang="fr"><seg>Se désabonner</seg></tuv>
+      <tuv xml:lang="es"><seg>Darse de baja</seg></tuv>
+    </tu>
+    <tu tuid="mm-0019" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">ui</prop>
+      <tuv xml:lang="en"><seg>Questions? Call us on {phone_number}.</seg></tuv>
+      <tuv xml:lang="de"><seg>Fragen? Rufen Sie uns unter {phone_number} an.</seg></tuv>
+      <tuv xml:lang="fr"><seg>Des questions ? Appelez-nous au {phone_number}.</seg></tuv>
+      <tuv xml:lang="es"><seg>¿Tienes preguntas? Llámanos al {phone_number}.</seg></tuv>
+    </tu>
+    <tu tuid="mm-0020" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">claims</prop>
+      <tuv xml:lang="en"><seg>Members who report a claim within 24 hours are paid nine days sooner on average.</seg></tuv>
+      <tuv xml:lang="de"><seg>Mitglieder, die einen Schaden innerhalb von 24 Stunden melden, erhalten ihre Zahlung im Durchschnitt neun Tage früher.</seg></tuv>
+      <tuv xml:lang="fr"><seg>Les sociétaires qui déclarent un sinistre sous 24 heures sont indemnisés en moyenne neuf jours plus tôt.</seg></tuv>
+      <tuv xml:lang="es"><seg>Los socios que comunican un siniestro en las primeras 24 horas cobran, de media, nueve días antes.</seg></tuv>
+    </tu>
+    <tu tuid="mm-0021" creationdate="20261002T120000Z" usagecount="0">
+      <prop type="x-domain">insurance-marketing</prop>
+      <prop type="x-context">advice</prop>
+      <tuv xml:lang="en"><seg>Rebuilding costs have risen 19% in three years. Check your rebuild value today.</seg></tuv>
+      <tuv xml:lang="de"><seg>Die Wiederaufbaukosten sind in drei Jahren um 19 % gestiegen. Prüfen Sie noch heute Ihren Wiederaufbauwert.</seg></tuv>
+      <tuv xml:lang="fr"><seg>Les coûts de reconstruction ont augmenté de 19 % en trois ans. Vérifiez dès aujourd’hui votre valeur de reconstruction.</seg></tuv>
+      <tuv xml:lang="es"><seg>Los costes de reconstrucción han subido un 19 % en tres años. Comprueba hoy tu valor de reconstrucción.</seg></tuv>
+    </tu>
+  </body>
+</tmx>

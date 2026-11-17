@@ -1,0 +1,78 @@
+# Experiment decision rules (Experiment Summary; the Bayesian thresholds are also used by Experiment Planning).
+# Statistics are computed in code from raw results (visitors / conversions / revenue per variant and segment);
+# these rules turn the computed facts into ship / iterate / abandon. Rules are evaluated top to bottom and the
+# first rule whose conditions all hold decides.
+#
+# Facts available to `when` conditions (per best treatment vs control):
+#   srm_detected (bool), srm_p, p_value, significant (p < alpha), lift_rel, lift_abs, ci_rel_low, ci_rel_high,
+#   prob_beat_control, expected_loss_rel, sample_reached (visitors >= planned sample), guardrail_breach (bool),
+#   rpv_lift_rel, simpsons_paradox (bool), alpha, mde
+# Condition forms: {fact: <name>, op: "<|<=|>|>=|==|!=", value: <number|bool|fact name>}
+version: "1.0"
+
+alpha: 0.05                 # two-sided; Bonferroni-adjusted per comparison when there are several treatments
+srm_p_threshold: 0.001      # chi-square goodness of fit against the planned allocation
+monte_carlo_draws: 200000   # posterior draws for P(beat control) and expected loss (seeded)
+seed: 20261018
+
+bayesian:
+  prior_strength: 100           # Beta prior centred on the baseline, worth this many visitors (planning)
+  prob_beat_min: 0.95           # P(variant beats control) needed to ship
+  expected_loss_max_rel: 0.001  # expected loss of shipping <= 0.1% of the control conversion rate
+
+guardrails:
+  rpv_max_drop_rel: 0.05        # revenue per visitor must not fall by more than 5% (relative)
+
+rules:
+  - id: invalid_srm
+    decision: iterate
+    label: Invalid result - sample ratio mismatch
+    when: [{fact: srm_detected, op: "==", value: true}]
+    action: Do not use this result. Find the cause of the mismatch (redirects, caching, bot filtering, late-firing tags), fix it and rerun.
+
+  - id: guardrail_breach
+    decision: iterate
+    label: Win on the primary metric but a guardrail broke
+    when: [{fact: guardrail_breach, op: "==", value: true}]
+    action: Do not ship. Rework the variant to protect the guardrail and rerun.
+
+  - id: clear_win
+    decision: ship
+    label: Significant improvement
+    when:
+      - {fact: significant, op: "==", value: true}
+      - {fact: lift_rel, op: ">", value: 0}
+      - {fact: prob_beat_control, op: ">=", value: 0.95}
+      - {fact: expected_loss_rel, op: "<=", value: 0.001}
+    action: Ship the variant to all traffic, then monitor the primary and guardrail metrics for two weeks.
+
+  - id: clear_loss
+    decision: abandon
+    label: Significant decline
+    when:
+      - {fact: significant, op: "==", value: true}
+      - {fact: lift_rel, op: "<", value: 0}
+    action: Keep the control. Record why the change hurt and feed it into the next idea.
+
+  - id: flat_at_power
+    decision: abandon
+    label: No meaningful effect at full sample
+    when:
+      - {fact: significant, op: "==", value: false}
+      - {fact: sample_reached, op: "==", value: true}
+      - {fact: ci_rel_high, op: "<", value: mde}
+    action: Stop the test - an effect as large as the MDE is ruled out. Try a bolder change.
+
+  - id: promising
+    decision: iterate
+    label: Promising but not conclusive
+    when:
+      - {fact: significant, op: "==", value: false}
+      - {fact: prob_beat_control, op: ">=", value: 0.8}
+    action: Keep running to the planned sample, or iterate on the variant to amplify the effect.
+
+  - id: inconclusive
+    decision: iterate
+    label: Inconclusive
+    when: []
+    action: Not enough evidence either way. Check the sample against the plan, then extend the test or redesign the variant.
