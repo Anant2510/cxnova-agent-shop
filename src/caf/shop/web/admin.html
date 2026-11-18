@@ -58,6 +58,11 @@
       const [ov, cs, cat, fl] = await Promise.all([api("/shop/admin/api/overview"), api("/shop/admin/api/customers"), Shop.api("/shop/catalog", { token: "" }), api("/shop/admin/api/flows")]);
       customers = cs; catalog = cat; flows = fl; overview = ov;
       render();
+      if (section === "flows" && !editor) {
+        const draft = draftFromHash();
+        if (draft) { openEditor(null, draft); history.replaceState(null, "", location.pathname + "#flows"); }
+        else if (/[#&]new\b/.test(location.hash)) openEditor(null);
+      }
     } catch (e) { setTok(""); gate(e.status === 401 || e.status === 403 ? "Not accepted: " + e.message : "Could not load: " + e.message); }
   }
   async function refreshFlows() { flows = await api("/shop/admin/api/flows"); }
@@ -243,12 +248,24 @@
       h("p", { class: "small" }, h("strong", null, "Step inputs"), " are optional: without them each agent takes the shared inputs it recognises (url, audience …) and the goal. Bind explicitly with ", h("code", null, "${input.name}"), ", ", h("code", null, "${steps.<step>.output.<field>}"), " or ", h("code", null, "$goal"), "."),
       h("p", { class: "xs muted" }, "The same flows appear in the console's playbook list and in the planner's options, so the operator can run them there too."));
   }
-  function openEditor(f) {
+  function openEditor(f, draft) {
+    // f: an existing flow (built-in ones open read-only); draft: a plan handed over by the console ("Save plan as flow"), unsaved
+    const known = new Set(catalog.agents.map(a => a.id));
     const flow = f ? JSON.parse(JSON.stringify({ id: f.id, name: f.name, description: f.description, inputs: f.inputs, steps: f.steps.map(s => ({ id: s.id, agent: s.agent, purpose: s.purpose || "", inputs: s.inputs || {}, needs: s.needs || [] })), triggers: f.triggers || [], price: f.price_override || null, status: f.status, source: f.source }))
+      : draft ? { id: "", name: draft.name || "", description: draft.description || "", inputs: (draft.inputs || []).filter(i => i && i.name).map(i => ({ name: String(i.name), description: i.description || "", required: !!i.required, example: i.example || "" })),
+          steps: (draft.steps || []).filter(s => s && known.has(s.agent)).map(s => ({ id: String(s.id || s.agent), agent: s.agent, purpose: s.purpose || "", inputs: s.inputs || {}, needs: (s.needs || []).map(String) })), triggers: [], price: null, status: "draft", source: "custom" }
       : { id: "", name: "", description: "", inputs: [{ name: "url", description: "The page or site to work from", required: true, example: "https://www.example.com/" }], steps: [{ id: "step_1", agent: catalog.agents[0].id, purpose: "", inputs: {}, needs: [] }], triggers: [], price: null, status: "draft", source: "custom" };
-    editor = { flow, isNew: !f, problems: null, test: editor && editor.flow.id === flow.id ? editor.test : null, readOnly: !!f && f.source === "builtin" };
+    if (!flow.steps.length) flow.steps.push({ id: "step_1", agent: catalog.agents[0].id, purpose: "", inputs: {}, needs: [] });
+    editor = { flow, isNew: !f, fromConsole: !!draft, problems: null, test: editor && editor.flow.id === flow.id ? editor.test : null, readOnly: !!f && f.source === "builtin" };
     render();
     const el = $("#builder"); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function draftFromHash() {
+    // #flows&draft=<base64url JSON> comes from the console's "Save plan as flow"; #flows&new opens an empty builder
+    const m = /[#&]draft=([A-Za-z0-9_-]+)/.exec(location.hash);
+    if (!m) return null;
+    try { const b64 = m[1].replace(/-/g, "+").replace(/_/g, "/"); return JSON.parse(decodeURIComponent(escape(atob(b64 + "===".slice((b64.length + 3) % 4))))); }
+    catch (e) { toast("Could not read the plan handed over by the console", 4000); return null; }
   }
   function builderPanel() {
     const fl = editor.flow, ro = editor.readOnly;
@@ -286,6 +303,7 @@
       h("div", { class: "panel-head" }, h("h2", null, editor.isNew ? "New flow" : (ro ? "Built-in flow" : "Edit flow")), fl.id ? h("span", { class: "muted small mono" }, fl.id) : null, statusChip(fl.status),
         h("button", { class: "btn sm ghost right", type: "button", onclick: () => { editor = null; render(); } }, "Close")),
       ro ? h("div", { class: "notice" }, "Built-in flows ship with the framework and are always published. Clone this one to change it or to price it differently.") : null,
+      editor.fromConsole ? h("div", { class: "notice" }, "This is the plan from the console. Give it an id and a name, adjust the steps, then save it as a draft or publish it; nothing is stored until you do.") : null,
       h("div", { class: "row", style: "align-items:stretch" },
         field("Id (lowercase, underscores; becomes the tool name run_flow_<id>)", text("id", "launch_kit_uk", { disabled: ro || !editor.isNew, pattern: "[a-z][a-z0-9_]{1,47}" })),
         field("Name", text("name", "UK launch kit")),

@@ -40,10 +40,10 @@ TIERS = ("fast", "balanced", "pro", "complex")
 
 BRIDGE_JS = r"""
 (function () {
-  var KEY = "caf.apiToken";
+  var KEY = "caf.apiToken", ADMIN_KEY = "cxnova.shop.admin";   // the shop admin page keeps the same operator token
   var BASE = location.pathname.replace(/\/console\/?$/, "");   // "" at the root, "/prefix" behind a reverse proxy
-  function getToken() { try { return localStorage.getItem(KEY) || ""; } catch (e) { return ""; } }
-  function setToken(t) { try { localStorage.setItem(KEY, t); } catch (e) {} }
+  function getToken() { try { return localStorage.getItem(KEY) || localStorage.getItem(ADMIN_KEY) || ""; } catch (e) { return ""; } }
+  function setToken(t) { try { if (t) localStorage.setItem(KEY, t); else localStorage.removeItem(KEY); } catch (e) {} }
   var m = /[?&]token=([^&#]+)/.exec(location.search);
   if (m) { setToken(decodeURIComponent(m[1])); try { history.replaceState(null, "", location.pathname + location.hash); } catch (e) {} }
   function fail(code, message) { var e = new Error(message || code); e.code = code; return e; }
@@ -55,10 +55,10 @@ BRIDGE_JS = r"""
     catch (e) { if (e && e.name === "AbortError") throw fail("cancelled", "Stopped."); throw fail("network", "Could not reach the framework server: " + (e && e.message)); }
     if (r.status === 401) {
       if (ask) {
-        var entered = window.prompt("Operator token for this __PRODUCT__ server (CAF_API_TOKEN in its .env):");
+        var entered = window.prompt("Operator token for this __PRODUCT__ server (CAF_API_TOKEN in its .env, or sign in once on the shop admin page):");
         if (entered) { setToken(entered.trim()); return call(path, body, signal, false); }
       }
-      throw fail("not_granted", "This server needs an access token.");
+      throw fail("not_granted", "This server needs the operator token.");
     }
     var data = {};
     try { data = await r.json(); } catch (e) {}
@@ -87,11 +87,15 @@ BRIDGE_JS = r"""
   var hostInfo = null;
   window.claude = {
     host: null,
+    hosted: true,                                   // served by the shop: the shop pages and the operator token apply
+    base: BASE,
+    reconnect: function () { setToken(""); hostInfo = null; window.claude.host = null; },   // forget a stale token, ask again
     use: async function (name) {
       if (name === "downloads") return downloads;
       if (name === "sample") {
-        hostInfo = hostInfo || call("/console/host", null, null, true);
+        if (!hostInfo) hostInfo = call("/console/host", null, null, true).catch(function (e) { hostInfo = null; throw e; });
         var h = await hostInfo;
+        window.claude.server = h || null;            // the server answered (token accepted), live or not
         window.claude.host = h && h.live ? h : null;
         return window.claude.host ? sample() : null;
       }

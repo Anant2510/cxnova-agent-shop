@@ -26,6 +26,7 @@ const CAF = (window.CAF = {
     CAF.playbooks = CAF.boot.playbooks || {};
     // hosted by the shop: the server's current playbooks (the built-in ones plus published custom flows) replace the build's
     const hosted = document.getElementById("caf-host-playbooks");
+    CAF.hosted = !!hosted;   // served by the shop (caf serve): shop pages, the flow builder and the operator token exist
     if (hosted) { try { const books = JSON.parse(hosted.textContent || "{}"); if (books && typeof books === "object" && Object.keys(books).length) CAF.playbooks = books; } catch (e) { /* keep the build's */ } }
     CAF.planner = CAF.boot.planner || {};
     CAF.schemas = CAF.boot.schemas || {};
@@ -350,14 +351,22 @@ CAF.llm = {
       if (!window.claude || typeof window.claude.use !== "function") { CAF.llm.state = "unavailable"; CAF.emit({ type: "llm" }); return; }
       const s = await window.claude.use("sample");
       CAF.llm.sample = s || null;
-      CAF.llm.state = s ? "ready" : "unavailable";
-      // served by `caf serve`: calls go to the framework's own model provider (e.g. Claude on Microsoft Foundry)
+      // served by `caf serve`: calls go to the framework's own model provider (e.g. Claude on Microsoft Foundry); the server
+      // may answer that its provider is offline (CAF_LLM_PROVIDER=offline, no key), which is not a token problem
+      CAF.llm.server = window.claude && window.claude.server ? window.claude.server : null;
+      CAF.llm.state = s ? "ready" : (CAF.llm.server && !CAF.llm.server.live ? "server_offline" : "unavailable");
       CAF.llm.host = window.claude.host || null;
       if (CAF.llm.host && CAF.llm.host.max_concurrent) CAF.llm.max = Math.max(1, Math.min(8, CAF.llm.host.max_concurrent));
-    } catch { CAF.llm.state = "unavailable"; }
+    } catch (e) { CAF.llm.state = e && e.code === "not_granted" ? "not_granted" : "unavailable"; }
     CAF.emit({ type: "llm" });
   },
   live() { return CAF.llm.mode === "live" && !!CAF.llm.sample && CAF.llm.state === "ready"; },
+  async connect() {   // hosted console: forget a stale operator token and ask for it again
+    if (window.claude && typeof window.claude.reconnect === "function") window.claude.reconnect();
+    CAF.llm.state = "checking"; CAF.llm.sample = null; CAF.llm.host = null; CAF.emit({ type: "llm" });
+    await CAF.llm.init();
+    if (CAF.llm.state === "ready") CAF.llm.setMode("live");
+  },
   setMode(m) { CAF.llm.mode = m; U.storage.set("caf.mode", m); CAF.emit({ type: "llm" }); },
   setQuick(q) { CAF.llm.quick = !!q; U.storage.set("caf.quick", !!q); CAF.emit({ type: "llm" }); },
   tier(t) {
