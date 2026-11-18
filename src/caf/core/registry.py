@@ -20,7 +20,9 @@ _CLASSES: dict[str, type[BaseAgent]] = {}
 _INSTANCES: dict[str, BaseAgent] = {}
 _PACK_ORDER: dict[str, int] = {}   # pack agents keep the order their pack lists them in, after the blueprint's
 _LOCK = threading.Lock()
+_LOAD_LOCK = threading.RLock()   # one loader at a time; _LOCK stays free for register() while agent modules import
 _LOADED = False
+_LOADING = False
 
 
 @lru_cache(maxsize=1)
@@ -61,23 +63,38 @@ def register(cls: type[BaseAgent]) -> type[BaseAgent]:
 
 
 def load_agents() -> None:
-    """Import every module under caf.agents so all @register decorators run."""
-    global _LOADED
+    """Import every module under caf.agents so all @register decorators run, then register the agent packs.
+
+    The first callers can be several threads at once (the health probe's workers, the API's thread pool): one of
+    them loads, the others wait for it."""
+    global _LOADED, _LOADING
     if _LOADED:
         return
-    import caf.agents as pkg
+    with _LOAD_LOCK:
+        if _LOADED or _LOADING:   # loaded while this thread waited, or re-entered by an import during the load
+            return
+        _LOADING = True
+        try:
+            import caf.agents as pkg
 
-    for mod in pkgutil.walk_packages(pkg.__path__, prefix="caf.agents."):
-        importlib.import_module(mod.name)
-    # the agents other CX Nova products bring (config/packs/*.yaml): declared, not coded
-    from ..packs import pack_agent_classes
+            for mod in pkgutil.walk_packages(pkg.__path__, prefix="caf.agents."):
+                importlib.import_module(mod.name)
+            # the agents other CX Nova products bring (config/packs/*.yaml): declared, not coded
+            from ..packs import pack_agent_classes
 
-    for i, cls in enumerate(pack_agent_classes()):
-        if cls.spec.id in _CLASSES:
-            raise ValueError(f"pack agent id '{cls.spec.id}' is already taken by another agent")
-        register(cls)
-        _PACK_ORDER[cls.spec.id] = i
-    _LOADED = True
+            seen: set[str] = set()
+            for i, cls in enumerate(pack_agent_classes()):
+                aid = cls.spec.id
+                if aid in seen:
+                    raise ValueError(f"pack agent id '{aid}' is declared twice in config/packs")
+                if aid in _CLASSES and aid not in _PACK_ORDER:   # a pack may not replace a coded agent
+                    raise ValueError(f"pack agent id '{aid}' is already taken by another agent")
+                seen.add(aid)
+                register(cls)
+                _PACK_ORDER[aid] = i
+            _LOADED = True
+        finally:
+            _LOADING = False
 
 
 def get_agent(agent_id: str) -> BaseAgent:
@@ -105,7 +122,7 @@ def blueprint_agents() -> list[BaseAgent]:
 def reload_agents() -> None:
     """Forget the loaded pack agents and load again (tests switch packs on and off)."""
     global _LOADED
-    with _LOCK:
+    with _LOAD_LOCK, _LOCK:
         for aid in list(_PACK_ORDER):
             _CLASSES.pop(aid, None)
             _INSTANCES.pop(aid, None)

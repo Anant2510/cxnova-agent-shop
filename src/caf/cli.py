@@ -216,7 +216,10 @@ def cmd_health(args: argparse.Namespace) -> int:
     else:
         for r in report["agents"]:
             mark = "LIVE" if r["live"] else "DOWN"
-            print(f"  {mark}  {r['agent_id']:<34} {r['status']:<15} {r['duration_ms']:>8.0f} ms  {(r.get('error') or r.get('summary') or '')[:70]}")
+            status = r["status"] + (f" [{r['runner']}]" if r.get("runner") else "")   # pack agents: who served the probe
+            # on a live probe a degraded agent did not get its model answer: say why, not what the fallback produced
+            why = (r.get("degraded_reasons") or [""])[0] if report["mode"] != "offline" and r["status"] == "degraded" else ""
+            print(f"  {mark}  {r['agent_id']:<34} {status:<16} {r['duration_ms']:>8.0f} ms  {(r.get('error') or why or r.get('summary') or '')[:90]}")
         print(f"\n{report['live']}/{report['total']} agents live ({report['mode']} probe, {report['duration_ms'] / 1000:.1f}s)")
     return 0 if report["all_live"] else 1
 

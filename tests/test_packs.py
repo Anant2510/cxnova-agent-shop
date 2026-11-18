@@ -272,3 +272,34 @@ def test_designed_flows_mix_packs_keep_their_canvas_and_can_be_long(client):
     # a product's whole process fits in one flow: the 50-step release clones into an editable draft and validates
     clone = client.post("/shop/admin/api/flows/arm_ai_to_z_release/clone", json={"new_id": "my_release"}, headers=ADMIN).json()
     assert len(clone["steps"]) == 50 and clone["status"] == "draft" and clone["source"] == "custom" and len(clone["stages"]) > 8
+
+
+def test_first_load_from_several_threads_at_once(packs):
+    """`caf health --packs --only a,b` starts with an empty registry and probes from worker threads: they all reach
+    load_agents() together. One must load; the rest must wait for it, not trip over what it registered."""
+    from caf.core import get_agent, reload_agents
+    from caf.health import liveness
+
+    for _ in range(5):
+        reload_agents()
+        gate, errors, got = threading.Barrier(8), [], []
+
+        def first_call(agent_id):
+            try:
+                gate.wait(timeout=10)
+                got.append(get_agent(agent_id).spec.id)
+            except Exception as exc:  # noqa: BLE001
+                errors.append(repr(exc))
+
+        ids = ["arm_front_velocity", "cs_xtender_variants", "utm_generation", "arm_factory_nfr_spec"] * 2
+        threads = [threading.Thread(target=first_call, args=(i,)) for i in ids]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(30)
+        assert not errors, errors
+        assert sorted(got) == sorted(ids)
+
+    reload_agents()   # the command itself, from a cold registry
+    report = liveness(offline=True, packs=True, only=["cs_xtender_variants", "arm_front_velocity"])
+    assert report["live"] == 2 and report["total"] == 2, report["agents"]

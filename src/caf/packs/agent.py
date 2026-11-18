@@ -122,10 +122,12 @@ def serve(pack: Pack, agent: PackAgent, inputs: dict[str, Any], ctx: Any) -> dic
         except HomeError as exc:
             reasons.append(f"{home.name} could not serve it ({exc}); modelled here instead")  # type: ignore[union-attr]
     if served is None and not ctx.llm.offline:
+        failed_before = ctx.meter.errors
         try:
             served = run_model(pack, agent, action, inputs, ctx)
         except Exception as exc:  # a model that fails must not lose the step: the contract's sample stands in, and says so
-            ctx.meter.fail(f"{type(exc).__name__}: {exc}")
+            if ctx.meter.errors == failed_before:   # the model client meters its own failures; a bad reply is ours to count
+                ctx.meter.fail(f"{type(exc).__name__}: {exc}")
             reasons.append(f"the model call failed ({type(exc).__name__}: {str(exc)[:140]}); this is the contract's sample output")
     if served is None:
         served = run_twin(agent, action)

@@ -35,11 +35,12 @@ def probe_agent(agent_id: str, ctx: RunContext) -> dict[str, Any]:
         summary = result.summary
         reasons = (result.provenance or {}).get("degraded_reasons", [])
         metrics = result.metrics
+        runner = (result.provenance or {}).get("runner")   # pack agents: home | model | twin
     except Exception as exc:  # pragma: no cover - run() never raises, belt and braces
-        status, error, checks, summary, reasons, metrics = "error", repr(exc), {}, "", [], {}
+        status, error, checks, summary, reasons, metrics, runner = "error", repr(exc), {}, "", [], {}, None
     return {"agent_id": agent_id, "name": agent.spec.name, "category": agent.spec.category.value, "kind": agent.spec.kind.value,
             "live": status in LIVE, "status": status, "summary": summary, "error": error, "checks": checks,
-            "degraded_reasons": reasons, "duration_ms": round((time.perf_counter() - t0) * 1000, 1),
+            "degraded_reasons": reasons, "runner": runner, "duration_ms": round((time.perf_counter() - t0) * 1000, 1),
             "llm_calls": metrics.get("llm_calls", 0), "graph_nodes": agent.graph_outline().get("nodes", [])}
 
 
