@@ -47,16 +47,41 @@ BRIDGE_JS = r"""
   var m = /[?&]token=([^&#]+)/.exec(location.search);
   if (m) { setToken(decodeURIComponent(m[1])); try { history.replaceState(null, "", location.pathname + location.hash); } catch (e) {} }
   function fail(code, message) { var e = new Error(message || code); e.code = code; return e; }
-  async function call(path, body, signal, ask) {
+  // window.prompt is blocked in some browsers and says nothing when a token is wrong: a small in-page dialog instead
+  function el(tag, style, text) { var n = document.createElement(tag); if (style) n.setAttribute("style", style); if (text) n.textContent = text; return n; }
+  function askToken(problem) {
+    return new Promise(function (resolve) {
+      if (!document.body) { resolve(null); return; }
+      var wrap = el("div", "position:fixed;inset:0;background:rgba(23,32,46,.45);display:flex;align-items:center;justify-content:center;z-index:9999;font:14px/1.5 'IBM Plex Sans',system-ui,-apple-system,sans-serif;color:#17202e");
+      var form = el("form", "background:#fff;border-radius:10px;padding:18px 20px;width:min(460px,calc(100% - 32px));box-shadow:0 8px 30px rgba(0,0,0,.25)");
+      form.appendChild(el("div", "font-weight:600;font-size:15px;margin-bottom:4px", "Connect to the hosted model"));
+      form.appendChild(el("div", "color:#465163;font-size:13px;margin-bottom:12px", "This __PRODUCT__ server runs the model calls; it needs the operator token (CAF_API_TOKEN in the server's .env). Signing in once on the shop admin page also connects the console."));
+      var input = el("input", "width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #c7cfd9;border-radius:6px;font:inherit");
+      input.type = "password"; input.autocomplete = "off"; input.placeholder = "Operator token"; input.setAttribute("aria-label", "Operator token");
+      form.appendChild(input);
+      var err = el("div", "color:#cf3a1e;font-size:12.5px;min-height:18px;margin-top:6px", problem || "");
+      form.appendChild(err);
+      var row = el("div", "display:flex;gap:8px;justify-content:flex-end;margin-top:10px");
+      var cancel = el("button", "padding:7px 12px;border:1px solid #c7cfd9;border-radius:6px;background:#fff;font:inherit;cursor:pointer", "Cancel"); cancel.type = "button";
+      var ok = el("button", "padding:7px 12px;border:1px solid #1f3d7a;border-radius:6px;background:#1f3d7a;color:#fff;font:inherit;cursor:pointer", "Connect"); ok.type = "submit";
+      row.appendChild(cancel); row.appendChild(ok); form.appendChild(row); wrap.appendChild(form); document.body.appendChild(wrap);
+      function done(v) { wrap.remove(); resolve(v); }
+      cancel.onclick = function () { done(null); };
+      form.onsubmit = function (e) { e.preventDefault(); var v = input.value.trim(); if (!v) { err.textContent = "Paste the token first."; return; } done(v); };
+      setTimeout(function () { input.focus(); }, 0);
+    });
+  }
+  async function call(path, body, signal, ask, attempt) {
     var headers = { "Content-Type": "application/json" }, t = getToken();
     if (t) headers.Authorization = "Bearer " + t;
     var r;
     try { r = await fetch(BASE + path, { method: body ? "POST" : "GET", headers: headers, body: body ? JSON.stringify(body) : undefined, signal: signal }); }
     catch (e) { if (e && e.name === "AbortError") throw fail("cancelled", "Stopped."); throw fail("network", "Could not reach the framework server: " + (e && e.message)); }
     if (r.status === 401) {
-      if (ask) {
-        var entered = window.prompt("Operator token for this __PRODUCT__ server (CAF_API_TOKEN in its .env, or sign in once on the shop admin page):");
-        if (entered) { setToken(entered.trim()); return call(path, body, signal, false); }
+      attempt = attempt || 0;
+      if (ask && attempt < 3) {
+        var entered = await askToken(attempt ? "That token was not accepted. Check CAF_API_TOKEN in the server's .env (it changes when the token is rotated)." : (t ? "The stored token is no longer accepted." : ""));
+        if (entered) { setToken(entered); return call(path, body, signal, true, attempt + 1); }
       }
       throw fail("not_granted", "This server needs the operator token.");
     }
