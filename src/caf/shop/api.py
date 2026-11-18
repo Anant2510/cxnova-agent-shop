@@ -58,6 +58,7 @@ class FlowIn(BaseModel):
     steps: list[dict[str, Any]] = Field(description="[{id, agent, purpose, inputs, needs}] in dependency order")
     triggers: list[str] = Field(default_factory=list)
     price: dict[str, Any] | None = None
+    layout: dict[str, dict[str, float]] = Field(default_factory=dict, description="the designer's canvas: {step id: {x, y}}")
     status: str | None = Field(default=None, description="draft | published; unchanged when omitted")
 
 
@@ -132,6 +133,11 @@ def register(app: FastAPI, settings: Any, shop: ShopService, orchestrator: Any =
     def admin_page(request: Request) -> HTMLResponse:
         return page(request, "admin.html")
 
+    @app.get("/shop/designer", response_class=HTMLResponse, include_in_schema=False)
+    def designer_page(request: Request) -> HTMLResponse:
+        """The orchestration designer: agents on a canvas, connections between them, check, test, publish (operator)."""
+        return page(request, "designer.html")
+
     @app.get("/shop/static/{name}", include_in_schema=False)
     def static_file(name: str) -> FileResponse:
         target = (WEB / name).resolve()
@@ -143,7 +149,9 @@ def register(app: FastAPI, settings: Any, shop: ShopService, orchestrator: Any =
     @app.get("/shop/catalog")
     def shop_catalog() -> dict[str, Any]:
         """Every agent and published flow with its indicative price (public)."""
-        return {**shop.listings(), "product": PRODUCT.as_dict()}
+        from ..packs import list_packs
+
+        return {**shop.listings(), "product": PRODUCT.as_dict(), "packs": list_packs()}
 
     @app.get("/shop/catalog/flows/{flow_id}")
     def shop_flow_listing(flow_id: str) -> dict[str, Any]:
@@ -311,7 +319,7 @@ def register(app: FastAPI, settings: Any, shop: ShopService, orchestrator: Any =
     def admin_flows(request: Request) -> list[dict[str, Any]]:
         """Every flow, built-in (read-only) and custom (drafts included), with steps, stages and subscriber counts."""
         require_admin(request)
-        return [shop.flow_listing(f) for f in shop.flows()]
+        return [{**shop.flow_listing(f), "price_override": f.price} for f in shop.flows()]
 
     @app.get("/shop/admin/api/flows/{flow_id}")
     def admin_flow(request: Request, flow_id: str) -> dict[str, Any]:

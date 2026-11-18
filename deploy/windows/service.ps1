@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Runs the CX Nova Agent Shop as a Windows service that starts with the machine.
+  Runs the CX Nova Agent Orchestration Layer as a Windows service that starts with the machine.
 
 .DESCRIPTION
   Elevated PowerShell, from the repository folder:
@@ -63,7 +63,11 @@ function Show-Status {
     $t = Get-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue
     if ($t) { "$Name task: $($t.State)" } else { "$Name is not installed" }
   }
-  try { $h = Invoke-RestMethod "http://127.0.0.1:$Port/health" -TimeoutSec 5; "health: $($h.status), agents $($h.agents_registered)/$($h.agents_expected), provider $($h.llm.provider)" }
+  try {
+    $h = Invoke-RestMethod "http://127.0.0.1:$Port/health" -TimeoutSec 5
+    $all = if ($h.agents_total -and $h.agents_total -gt $h.agents_registered) { " blueprint, $($h.agents_total) with agent packs" } else { "" }
+    "health: $($h.status), agents $($h.agents_registered)/$($h.agents_expected)$all, provider $($h.llm.provider)"
+  }
   catch { "health: not answering on port $Port yet (give it 20 seconds after a start, then check logs\service.log)" }
 }
 
@@ -74,7 +78,7 @@ if ($Uninstall) {
   Stop-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue
   Unregister-ScheduledTask -TaskName $Name -Confirm:$false -ErrorAction SilentlyContinue
   Get-Process -Name caf -ErrorAction SilentlyContinue | Stop-Process -Force
-  Remove-NetFirewallRule -DisplayName "CX Nova Agent Shop ($Port)" -ErrorAction SilentlyContinue
+  Remove-NetFirewallRule -DisplayName "CX Nova Agent Orchestration Layer ($Port)" -ErrorAction SilentlyContinue
   Write-Host "Removed $Name"
   exit 0
 }
@@ -103,8 +107,8 @@ if ($nssm) {
   $out = Invoke-Nssm install $Name $caf serve --host $bind --port $Port
   if ($script:NssmExit -ne 0) { throw "NSSM could not install the service: $out" }
   Invoke-Nssm set $Name AppDirectory $root | Out-Null
-  Invoke-Nssm set $Name DisplayName "CX Nova Agent Shop" | Out-Null
-  Invoke-Nssm set $Name Description "CX Nova Agent Shop: storefront, agent console, API, MCP and A2A (Coforge Agentic Framework)" | Out-Null
+  Invoke-Nssm set $Name DisplayName "CX Nova Agent Orchestration Layer" | Out-Null
+  Invoke-Nssm set $Name Description "CX Nova Agent Orchestration Layer: storefront, agent console, API, MCP and A2A (Coforge Agentic Framework)" | Out-Null
   Invoke-Nssm set $Name Start SERVICE_AUTO_START | Out-Null
   Invoke-Nssm set $Name AppStdout (Join-Path $root "logs\service.log") | Out-Null
   Invoke-Nssm set $Name AppStderr (Join-Path $root "logs\service.log") | Out-Null
@@ -124,14 +128,14 @@ if ($nssm) {
   $settings = New-ScheduledTaskSettingsSet -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero) -StartWhenAvailable -MultipleInstances IgnoreNew
   $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
   Unregister-ScheduledTask -TaskName $Name -Confirm:$false -ErrorAction SilentlyContinue
-  Register-ScheduledTask -TaskName $Name -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Description "CX Nova Agent Shop (Coforge Agentic Framework)" | Out-Null
+  Register-ScheduledTask -TaskName $Name -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Description "CX Nova Agent Orchestration Layer (Coforge Agentic Framework)" | Out-Null
   Start-ScheduledTask -TaskName $Name
   Write-Host "Installed scheduled task $Name (starts at boot, restarts if it stops); logs in logs\service.log"
   Write-Host "Tip: install NSSM (https://nssm.cc) and re-run this script for a real Windows service." -ForegroundColor DarkGray
 }
 
-if (-not (Get-NetFirewallRule -DisplayName "CX Nova Agent Shop ($Port)" -ErrorAction SilentlyContinue)) {
-  New-NetFirewallRule -DisplayName "CX Nova Agent Shop ($Port)" -Direction Inbound -Protocol TCP -LocalPort $Port -Action Allow | Out-Null
+if (-not (Get-NetFirewallRule -DisplayName "CX Nova Agent Orchestration Layer ($Port)" -ErrorAction SilentlyContinue)) {
+  New-NetFirewallRule -DisplayName "CX Nova Agent Orchestration Layer ($Port)" -Direction Inbound -Protocol TCP -LocalPort $Port -Action Allow | Out-Null
   Write-Host "Opened Windows Firewall for TCP $Port (also open it in the Azure network security group if people connect from outside)"
 }
 Start-Sleep -Seconds 10

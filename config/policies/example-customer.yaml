@@ -1,4 +1,4 @@
-# A customer's policy for the CX Nova Agent Shop (run mode 2: Coforge hosts the agents, the customer's model answers).
+# A customer's policy for the CX Nova Agent Orchestration Layer (run mode 2: Coforge hosts the agents, the customer's model answers).
 # Load it with:  caf shop policy meridian-mutual --file config/policies/example-customer.yaml
 # or paste it as JSON in the admin console. The customer's admin owns and signs this document.
 

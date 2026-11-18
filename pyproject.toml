@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "coforge-agentic-framework"
 version = "1.1.0"
-description = "CX Nova Agent Shop: rent vendor-neutral marketing agents, run them from your tools on the model your policy allows. Built on the Coforge Agentic Framework (LangGraph, 28 agents)."
+description = "CX Nova Agent Orchestration Layer: rent vendor-neutral marketing agents, run them from your tools on the model your policy allows. Built on the Coforge Agentic Framework (LangGraph, 28 agents)."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "LicenseRef-Proprietary"

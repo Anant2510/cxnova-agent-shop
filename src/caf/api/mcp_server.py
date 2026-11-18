@@ -140,7 +140,7 @@ def build_mcp(orchestrator: Any = None) -> Any:
     from ..orchestrator import Orchestrator
 
     orch = orchestrator or Orchestrator(service_settings())
-    server = ShopMCPServer("cxnova-agent-shop", instructions="Run the agents in your subscription directly (run_<agent>), run a rented "
+    server = ShopMCPServer("cxnova-orchestration", instructions="Run the agents in your subscription directly (run_<agent>), run a rented "
                                                             "orchestration flow (run_flow_<flow>), or orchestrate a goal across them.")
     server.shop_settings = orch.settings
     shop = _shop(orch.settings)

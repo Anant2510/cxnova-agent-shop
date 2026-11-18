@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Designer · {{PRODUCT}}</title>
+<link rel="icon" href="{{BASE}}/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="{{BASE}}/shop/static/shop.css">
+<style>
+  /* The designer: agents on the left, the flow on a canvas, the selected step on the right. */
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { position: static; flex: none; }
+  .flowbar { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: var(--sheet); border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
+  .flowbar .title { font-weight: 600; font-size: 15px; max-width: 34ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .flowbar .id { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+  .flowbar .spacer { flex: 1; }
+  .work { flex: 1; min-height: 0; display: grid; grid-template-columns: 272px minmax(0, 1fr) 336px; }
+  .side { background: var(--sheet); overflow: auto; }
+  .side.left { border-right: 1px solid var(--rule); }
+  .side.right { border-left: 1px solid var(--rule); }
+  .side .pad { padding: 12px 14px; }
+  .side h3 { font-size: 13px; }
+  @media (max-width: 1000px) { body { overflow: auto; } .work { grid-template-columns: 1fr; } .side { max-height: 46vh; } #stage { height: 62vh; } }
+
+  /* palette */
+  .pal-search { position: sticky; top: 0; background: var(--sheet); padding: 12px 14px 8px; z-index: 2; border-bottom: 1px solid var(--rule); }
+  .pack > summary { list-style: none; cursor: pointer; padding: 9px 14px; font-weight: 600; font-size: 13px; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--rule); background: var(--wash); position: sticky; top: 53px; z-index: 1; }
+  .pack > summary::-webkit-details-marker { display: none; }
+  .pack > summary .n { margin-left: auto; font-weight: 400; color: var(--ink-3); font-size: 12px; }
+  .pack > summary::before { content: "▸"; color: var(--ink-3); font-size: 11px; }
+  .pack[open] > summary::before { content: "▾"; }
+  .group-name { padding: 8px 14px 2px; font-size: 11.5px; color: var(--ink-3); font-weight: 600; }
+  .pal-item { display: grid; grid-template-columns: 4px 1fr auto; gap: 8px; align-items: center; width: 100%; text-align: left; background: none; border: 0; padding: 6px 12px 6px 14px; cursor: grab; color: var(--ink); }
+  .pal-item:hover, .pal-item:focus-visible { background: var(--ai-soft); }
+  .pal-item .bar { width: 4px; height: 26px; border-radius: 2px; }
+  .pal-item .nm { font-size: 13px; line-height: 1.25; }
+  .pal-item .sub { font-size: 11px; color: var(--ink-3); display: block; }
+  .pal-item .plus { color: var(--ai); font-weight: 600; opacity: 0; }
+  .pal-item:hover .plus, .pal-item:focus-visible .plus { opacity: 1; }
+
+  /* canvas */
+  #stage { position: relative; overflow: hidden; background-color: var(--paper); background-image: radial-gradient(var(--rule-2) 1px, transparent 1px); background-size: 22px 22px; cursor: default; touch-action: none; }
+  #stage.panning { cursor: grabbing; }
+  #world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  #wires { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+  #wires path.wire { fill: none; stroke: var(--ink-3); stroke-width: 1.6; pointer-events: stroke; cursor: pointer; }
+  #wires path.hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: pointer; }
+  #wires path.wire.sel { stroke: var(--ai); stroke-width: 2.6; }
+  #wires path.temp { fill: none; stroke: var(--ai); stroke-width: 2; stroke-dasharray: 5 4; }
+  .node { position: absolute; width: 224px; background: var(--sheet); border: 1px solid var(--rule-2); border-radius: 8px; box-shadow: var(--shadow); cursor: grab; user-select: none; display: grid; grid-template-columns: 5px 1fr; }
+  .node .bar { border-radius: 7px 0 0 7px; }
+  .node .body { padding: 8px 10px 9px; min-width: 0; }
+  .node .nm { font-weight: 600; font-size: 13px; line-height: 1.25; display: flex; gap: 6px; align-items: flex-start; }
+  .node .nm span.t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .node .meta { font-size: 11px; color: var(--ink-3); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .node .meta code { font-size: 11px; }
+  .node .act { font-size: 11px; color: var(--ai); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .node.sel { border-color: var(--ai); box-shadow: 0 0 0 2px var(--ai-soft), var(--shadow); }
+  .node.target { border-color: var(--ai); background: var(--ai-soft); }
+  .node.ro { cursor: default; }
+  .port { position: absolute; top: 50%; width: 13px; height: 13px; margin-top: -7px; border-radius: 50%; background: var(--sheet); border: 2px solid var(--ink-3); }
+  .port.in { left: -7px; }
+  .port.out { right: -7px; cursor: crosshair; }
+  .port.out:hover { border-color: var(--ai); background: var(--ai); }
+  .canvas-tools { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 4px; background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; padding: 4px; box-shadow: var(--shadow); }
+  .canvas-hint { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); text-align: center; color: var(--ink-3); max-width: 420px; pointer-events: none; }
+  .canvas-hint strong { display: block; color: var(--ink-2); font-size: 16px; margin-bottom: 6px; }
+  .problems { position: absolute; left: 12px; bottom: 12px; max-width: min(560px, calc(100% - 220px)); }
+
+  /* inspector */
+  .insp label.f { margin-bottom: 10px; }
+  .insp .rowline { display: flex; gap: 6px; align-items: center; }
+  .insp table input[type=text] { padding: 4px 6px; font-size: 12.5px; }
+  .insp .bind { display: grid; grid-template-columns: 1fr; gap: 3px; margin-bottom: 8px; }
+  .insp .bind .k { font-size: 12px; color: var(--ink-2); display: flex; gap: 6px; align-items: baseline; }
+  .insp .bind .k code { font-size: 12px; }
+  .insp .bind input { font-family: var(--mono); font-size: 12px; padding: 5px 7px; }
+  .insp hr { border: 0; border-top: 1px solid var(--rule); margin: 14px 0; }
+  .chiplist { display: flex; gap: 4px; flex-wrap: wrap; }
+  .chip button { border: 0; background: none; cursor: pointer; color: inherit; padding: 0 0 0 2px; font-size: 12px; }
+  dialog .list { max-height: 60vh; overflow: auto; display: grid; gap: 2px; }
+  dialog .list button { text-align: left; background: none; border: 0; padding: 8px 10px; border-radius: 6px; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 8px; color: var(--ink); }
+  dialog .list button:hover { background: var(--ai-soft); }
+  dialog .list .grp { font-size: 11.5px; color: var(--ink-3); font-weight: 600; padding: 10px 10px 2px; }
+</style>
+</head>
+<body data-product="{{PRODUCT}}" data-company="{{COMPANY}}">
+<div id="top"></div>
+<div class="flowbar" id="flowbar"></div>
+<div class="work">
+  <aside class="side left" id="palette" aria-label="Agents"></aside>
+  <div id="stage" aria-label="Flow canvas">
+    <div id="world"><svg id="wires" width="10" height="10" aria-hidden="true"></svg></div>
+    <div class="canvas-hint" id="hint"></div>
+    <div class="problems" id="problems"></div>
+    <div class="canvas-tools" id="tools"></div>
+  </div>
+  <aside class="side right insp" id="inspector" aria-label="Step and flow settings"></aside>
+</div>
+<dialog id="dlg"></dialog>
+<script src="{{BASE}}/shop/static/shop.js"></script>
+<script>
+(function () {
+  const { h, $, $$, clear, toast, money, catColor, topbar, BASE } = Shop;
+  $("#top").replaceWith(topbar("designer"));
+  const KEY = "cxnova.shop.admin";
+  const getTok = () => { try { return localStorage.getItem(KEY) || ""; } catch (e) { return ""; } };
+  const setTok = (t) => { try { t ? localStorage.setItem(KEY, t) : localStorage.removeItem(KEY); } catch (e) {} };
+  const api = (path, opts) => Shop.api(path, Object.assign({ token: getTok() }, opts || {}));
+  const NODE_W = 224, COL = 300, ROW = 104;
+  const S = { agents: [], byId: {}, packs: [], flows: [], flow: null, isNew: true, readOnly: false, dirty: false, sel: null,
+              view: { x: 40, y: 30, k: 1 }, test: null, problems: null, details: {}, q: "" };
+  const stage = $("#stage"), world = $("#world"), wires = $("#wires");
+
+  // ---------------------------------------------------------------- small helpers
+  // append children the way h() does: arrays flattened, null and false left out (Element.append would print them)
+  function put(el, ...kids) { for (const c of kids.flat(Infinity)) { if (c === null || c === undefined || c === false) continue; el.append(c.nodeType ? c : document.createTextNode(String(c))); } return el; }
+  const agent = (id) => S.byId[id] || { id, name: id.replace(/_/g, " "), category: "", pack_name: "", actions: [] };
+  const step = (id) => S.flow.steps.find(s => s.id === id);
+  const pos = (id) => S.flow.layout[id] || (S.flow.layout[id] = { x: 60, y: 60 });
+  function dialog(title, body) {
+    const d = $("#dlg");
+    clear(d).append(h("div", { class: "stack" }, h("div", { class: "row" }, h("h2", null, title), h("button", { class: "btn sm ghost right", type: "button", onclick: () => d.close() }, "Close")), body));
+    d.showModal();
+    return d;
+  }
+  function ask(title, label, value, hint) {   // one text answer, in the page (no browser prompt); null when closed without one
+    return new Promise((resolve) => {
+      const d = $("#dlg"), input = h("input", { type: "text", value: value || "" });
+      let done = false;
+      const finish = (v) => { if (done) return; done = true; d.removeEventListener("cancel", onCancel); if (d.open) d.close(); resolve(v); };
+      const onCancel = () => finish(null);   // Esc
+      clear(d).append(h("form", { class: "stack", onsubmit: (e) => { e.preventDefault(); finish(input.value.trim() || null); } },
+        h("div", { class: "row" }, h("h2", null, title), h("button", { class: "btn sm ghost right", type: "button", onclick: () => finish(null) }, "Close")),
+        h("label", { class: "f" }, label, input), hint ? h("p", { class: "xs muted" }, hint) : h("span"),
+        h("div", { class: "row" }, h("button", { class: "btn primary", type: "submit" }, "OK"))));
+      d.addEventListener("cancel", onCancel);
+      d.showModal();
+      setTimeout(() => { input.focus(); input.select(); }, 0);
+    });
+  }
+  function touch() { S.dirty = true; S.problems = null; renderBar(); }
+  function uniqueStepId(agentId, self) {
+    const ids = new Set(S.flow.steps.filter(s => s !== self).map(s => s.id));
+    const base = agentId.replace(/^(cs|arm)_/, "").replace(/^(factory|sitecore)_/, "").split("_").slice(0, 2).join("_").slice(0, 24) || "step";
+    let id = base, n = 2;
+    while (ids.has(id)) id = base + "_" + n++;
+    return id;
+  }
+  function levels() {   // the stage each step runs in: one after the last step it needs
+    const lv = {}, visiting = new Set();
+    const of = (id) => { if (lv[id]) return lv[id]; if (visiting.has(id)) return 1; visiting.add(id); const s = step(id); const v = 1 + Math.max(0, ...(s ? s.needs : []).filter(n => step(n)).map(of)); visiting.delete(id); return (lv[id] = v); };
+    S.flow.steps.forEach(s => of(s.id));
+    return lv;
+  }
+  function ordered() {   // dependency order for saving: by stage, then top to bottom on the canvas
+    const lv = levels();
+    return S.flow.steps.slice().sort((a, b) => lv[a.id] - lv[b.id] || pos(a.id).y - pos(b.id).y || pos(a.id).x - pos(b.id).x);
+  }
+  function reaches(from, to) {   // does `to` already depend on `from` (directly or not)?
+    const seen = new Set(), walk = (id) => { if (id === from) return true; if (seen.has(id)) return false; seen.add(id); const s = step(id); return !!s && s.needs.some(walk); };
+    return walk(to);
+  }
+
+  // ---------------------------------------------------------------- loading
+  function gate(message) {
+    $("#flowbar").style.display = "none"; $(".work").style.display = "none";
+    const box = h("main", { class: "wrap", id: "gate" }, h("section", { class: "panel gate stack" },
+      h("h1", { style: "font-size:20px" }, "Orchestration designer"),
+      h("p", { class: "muted small" }, "Composing and publishing flows is the operator's job: enter this server's operator token (CAF_API_TOKEN). On the server itself, with no token configured, press Open."),
+      message ? h("div", { class: "notice warn" }, message) : null,
+      h("form", { class: "stack", onsubmit: (e) => { e.preventDefault(); setTok($("#tok").value.trim()); $("#gate").remove(); load(); } },
+        h("label", { class: "f" }, "Operator token", h("input", { type: "password", id: "tok", autocomplete: "off" })),
+        h("button", { class: "btn primary", type: "submit" }, "Open"))));
+    document.body.insertBefore(box, $("#dlg"));
+  }
+  async function load() {
+    try {
+      const [cat, flows] = await Promise.all([Shop.api("/shop/catalog", { token: "" }), api("/shop/admin/api/flows")]);
+      S.agents = cat.agents; S.packs = cat.packs || []; S.flows = flows;
+      S.byId = Object.fromEntries(cat.agents.map(a => [a.id, a]));
+    } catch (e) { setTok(""); return gate(e.status === 401 || e.status === 403 ? "Not accepted: " + e.message : "Could not load: " + e.message); }
+    $("#flowbar").style.display = ""; $(".work").style.display = "";
+    const want = /[#&]flow=([a-z0-9_]+)/.exec(location.hash), draft = /[#&]draft=([A-Za-z0-9_-]+)/.exec(location.hash);
+    if (draft) { try { const b = draft[1].replace(/-/g, "+").replace(/_/g, "/"); newFlow(JSON.parse(decodeURIComponent(escape(atob(b + "===".slice((b.length + 3) % 4)))))); history.replaceState(null, "", location.pathname); } catch (e) { newFlow(); toast("Could not read the plan handed over by the console", 4000); } }
+    else if (want && S.flows.some(f => f.id === want[1])) openFlow(want[1]);
+    else newFlow();
+    renderPalette();
+  }
+  function setFlow(f, opts) {
+    S.flow = f; S.isNew = !!opts.isNew; S.readOnly = !!opts.readOnly; S.dirty = !!opts.dirty; S.sel = null; S.test = null; S.problems = null;
+    f.layout = f.layout || {};
+    if (f.steps.some(s => !f.layout[s.id])) arrange(false);
+    renderAll(); fit();
+  }
+  function newFlow(draft) {
+    const known = draft ? (draft.steps || []).filter(s => S.byId[s.agent]) : [];
+    setFlow({ id: "", name: (draft && draft.name) || "", description: (draft && draft.description) || "", triggers: [], price: null, status: "draft", source: "custom", layout: {},
+      inputs: draft && draft.inputs && draft.inputs.length ? draft.inputs.filter(i => i && i.name) : [{ name: "url", description: "The page or site to work from", required: false, example: "" }],
+      steps: known.map(s => ({ id: String(s.id || s.agent), agent: s.agent, purpose: s.purpose || "", inputs: s.inputs || {}, needs: (s.needs || []).map(String) })) }, { isNew: true, dirty: !!draft });
+    history.replaceState(null, "", location.pathname);
+  }
+  function openFlow(id) {
+    const f = S.flows.find(x => x.id === id);
+    if (!f) return toast("No flow " + id);
+    setFlow(JSON.parse(JSON.stringify({ id: f.id, name: f.name, description: f.description || "", inputs: f.inputs || [], triggers: f.triggers || [], price: f.price_override || null, status: f.status, source: f.source,
+      pack_name: f.pack_name, version: f.version, layout: f.layout || {}, steps: f.steps.map(s => ({ id: s.id, agent: s.agent, purpose: s.purpose || "", inputs: s.inputs || {}, needs: s.needs || [] })) })),
+      { isNew: false, readOnly: f.source === "builtin" });
+    history.replaceState(null, "", location.pathname + "#flow=" + f.id);
+  }
+  async function refreshFlows() { S.flows = await api("/shop/admin/api/flows"); }
+
+  // ---------------------------------------------------------------- the flow bar
+  function renderBar() {
+    const f = S.flow, ro = S.readOnly;
+    const chip = (text, cls) => h("span", { class: "chip " + cls }, text);
+    put(clear($("#flowbar")), 
+      h("button", { class: "btn sm", type: "button", onclick: openDialog }, "Open"),
+      h("button", { class: "btn sm", type: "button", onclick: () => guard(() => newFlow()) }, "New"),
+      h("span", { class: "title", title: f.name }, f.name || "Untitled flow"), f.id ? h("span", { class: "id" }, f.id + (f.version ? " · v" + f.version : "")) : null,
+      ro ? chip(f.pack_name ? f.pack_name + " · read-only" : "built-in · read-only", "") : chip(f.status, f.status === "published" ? "good" : "warn"),
+      S.dirty && !ro ? chip("unsaved changes", "ai") : null,
+      h("span", { class: "muted small" }, f.steps.length + " steps · " + stageCount() + " stages"),
+      h("span", { class: "spacer" }),
+      h("button", { class: "btn sm", type: "button", onclick: check, disabled: !f.steps.length }, "Check"),
+      h("button", { class: "btn sm", type: "button", onclick: testRun, disabled: !f.steps.length, title: "Runs every step once with sample inputs on this server's model" }, S.test && S.test.running ? "Running…" : "Test run"),
+      ro ? h("button", { class: "btn sm primary", type: "button", onclick: cloneFlow }, "Clone to edit") : [
+        h("button", { class: "btn sm", type: "button", onclick: () => save(null), disabled: !f.steps.length }, S.isNew ? "Save draft" : "Save"),
+        h("button", { class: "btn sm primary", type: "button", onclick: () => save(true), disabled: !f.steps.length }, f.status === "published" ? "Save and republish" : "Publish"),
+        !S.isNew && f.status === "published" ? h("button", { class: "btn sm", type: "button", onclick: unpublish }, "Unpublish") : null,
+        !S.isNew ? h("button", { class: "btn sm", type: "button", onclick: cloneFlow }, "Clone") : null]);
+  }
+  const stageCount = () => Math.max(0, ...Object.values(levels()));
+  function guard(fn) { if (!S.dirty || S.readOnly || window.confirm("Leave this flow without saving the changes?")) fn(); }
+  function openDialog() {
+    const groups = [["Your flows", S.flows.filter(f => f.source === "custom")], ["Built-in playbooks", S.flows.filter(f => f.source === "builtin" && !f.pack)]];
+    S.packs.forEach(p => groups.push([p.name + " flows", S.flows.filter(f => f.pack === p.id)]));
+    const list = h("div", { class: "list" });
+    groups.forEach(([name, rows]) => { if (!rows.length) return; list.append(h("div", { class: "grp" }, name));
+      rows.forEach(f => list.append(h("button", { type: "button", onclick: () => { $("#dlg").close(); guard(() => openFlow(f.id)); } },
+        h("span", null, h("strong", null, f.name), h("span", { class: "xs muted", style: "display:block" }, (f.description || "").slice(0, 110))),
+        h("span", { class: "xs muted" }, f.steps.length + " steps" + (f.source === "custom" ? " · " + f.status : ""))))); });
+    dialog("Open a flow", list);
+  }
+
+  // ---------------------------------------------------------------- palette
+  function renderPalette() {
+    const q = S.q.toLowerCase();
+    const match = (a) => !q || (a.name + " " + a.summary + " " + a.id + " " + (a.accelerator || "") + " " + a.category_label).toLowerCase().includes(q);
+    const packs = [{ id: "blueprint", name: "Marketing blueprint" }, ...S.packs];
+    const root = clear($("#palette"));
+    root.append(h("div", { class: "pal-search" }, h("input", { type: "text", placeholder: "Find an agent", value: S.q, "aria-label": "Find an agent", oninput: (e) => { S.q = e.target.value; renderPalette(); const i = $(".pal-search input"); i.focus(); i.setSelectionRange(i.value.length, i.value.length); } })));
+    packs.forEach((p, pi) => {
+      const mine = S.agents.filter(a => (a.pack || "blueprint") === p.id && match(a));
+      if (!mine.length) return;
+      const groups = new Map();
+      mine.forEach(a => { const g = p.id === "blueprint" ? a.category_label : (a.accelerator || a.category_label); if (!groups.has(g)) groups.set(g, []); groups.get(g).push(a); });
+      const det = h("details", { class: "pack", open: !!q || pi === 0 }, h("summary", null, p.name, h("span", { class: "n" }, mine.length + " agents")));
+      groups.forEach((rows, g) => { det.append(h("div", { class: "group-name" }, g));
+        rows.forEach(a => det.append(h("button", { class: "pal-item", type: "button", draggable: "true", title: a.summary, disabled: S.readOnly,
+          ondragstart: (e) => { e.dataTransfer.setData("text/agent", a.id); e.dataTransfer.effectAllowed = "copy"; },
+          onclick: () => addStep(a.id) },
+          h("span", { class: "bar", style: "background:" + catColor(a.category) }), h("span", { class: "nm" }, a.name, p.id === "blueprint" ? null : h("span", { class: "sub" }, a.category_label)), h("span", { class: "plus", "aria-hidden": "true" }, "+")))); });
+      root.append(det);
+    });
+    if (!root.querySelector(".pack")) root.append(h("p", { class: "pad muted small" }, "No agent matches “" + S.q + "”."));
+  }
+  stage.addEventListener("dragover", (e) => { if (!S.readOnly) e.preventDefault(); });
+  stage.addEventListener("drop", (e) => { const id = e.dataTransfer.getData("text/agent"); if (!id || S.readOnly) return; e.preventDefault(); const p = toWorld(e.clientX, e.clientY); addStep(id, { x: p.x - NODE_W / 2, y: p.y - 30 }); });
+
+  // ---------------------------------------------------------------- editing the flow
+  function addStep(agentId, at) {
+    if (S.readOnly) return toast("This flow is read-only: clone it to change it");
+    if (S.flow.steps.length >= 64) return toast("A flow has at most 64 steps");
+    // clicked in the list: it runs after the selected step (quick chaining); dropped on the canvas: placed there, unconnected
+    const a = agent(agentId), prev = !at && S.sel && S.sel.type === "node" ? step(S.sel.id) : null;
+    const s = { id: uniqueStepId(agentId), agent: agentId, purpose: "", inputs: {}, needs: prev ? [prev.id] : [] };
+    if (a.actions && a.actions.length > 1) s.inputs.action = a.actions[0];
+    S.flow.steps.push(s);
+    if (at) S.flow.layout[s.id] = at;
+    else if (prev) { const p = pos(prev.id); S.flow.layout[s.id] = freeSpot(p.x + COL, p.y); }
+    else S.flow.layout[s.id] = freeSpot(60 + (S.flow.steps.length > 1 ? 0 : 0), 60);
+    S.sel = { type: "node", id: s.id }; touch(); renderCanvas(); renderInspector();
+  }
+  function freeSpot(x, y) { while (S.flow.steps.some(s => { const p = S.flow.layout[s.id]; return p && Math.abs(p.x - x) < NODE_W && Math.abs(p.y - y) < 80; })) y += ROW; return { x, y }; }
+  function removeStep(id) {
+    S.flow.steps = S.flow.steps.filter(s => s.id !== id); S.flow.steps.forEach(s => { s.needs = s.needs.filter(n => n !== id); }); delete S.flow.layout[id];
+    S.sel = null; touch(); renderCanvas(); renderInspector();
+  }
+  function renameStep(s, next) {
+    next = next.toLowerCase().replace(/[^a-z0-9_]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 32);
+    if (!next || next === s.id) return;
+    if (S.flow.steps.some(x => x !== s && x.id === next)) return toast("Another step is already called " + next);
+    const old = s.id; s.id = next; S.flow.layout[next] = S.flow.layout[old]; delete S.flow.layout[old];
+    S.flow.steps.forEach(x => { x.needs = x.needs.map(n => n === old ? next : n); });
+    if (S.sel && S.sel.id === old) S.sel.id = next;
+    touch(); renderCanvas(); renderInspector();
+  }
+  function connect(from, to) {
+    if (S.readOnly || from === to) return;
+    const t = step(to);
+    if (!t || t.needs.includes(from)) return;
+    if (reaches(to, from)) return toast("That would make a loop: " + from + " already runs after " + to);
+    t.needs.push(from); touch(); renderCanvas(); renderInspector();
+  }
+  function disconnect(from, to) { const t = step(to); if (!t) return; t.needs = t.needs.filter(n => n !== from); S.sel = null; touch(); renderCanvas(); renderInspector(); }
+  function arrange(render) {
+    // stages left to right; a long process wraps into bands so it reads like a page instead of one endless line
+    const lv = levels(), cols = {}, PER_BAND = 6;
+    ordered().forEach(s => { (cols[lv[s.id]] = cols[lv[s.id]] || []).push(s.id); });
+    const stages = Object.keys(cols).map(Number).sort((a, b) => a - b);
+    let top = 50;
+    for (let b = 0; b * PER_BAND < stages.length; b++) {
+      const band = stages.slice(b * PER_BAND, (b + 1) * PER_BAND);
+      band.forEach((l, c) => cols[l].forEach((id, i) => { S.flow.layout[id] = { x: 60 + c * COL, y: top + i * ROW }; }));
+      top += Math.max(...band.map(l => cols[l].length)) * ROW + 56;
+    }
+    if (render !== false) { if (!S.readOnly) touch(); renderCanvas(); fit(); }
+  }
+
+  // ---------------------------------------------------------------- canvas
+  const toWorld = (cx, cy) => { const r = stage.getBoundingClientRect(); return { x: (cx - r.left - S.view.x) / S.view.k, y: (cy - r.top - S.view.y) / S.view.k }; };
+  function applyView() { world.style.transform = "translate(" + S.view.x + "px," + S.view.y + "px) scale(" + S.view.k + ")"; }
+  function fit() {
+    const ids = S.flow.steps.map(s => s.id);
+    if (!ids.length) { S.view = { x: 40, y: 30, k: 1 }; return applyView(); }
+    const xs = ids.map(id => pos(id).x), ys = ids.map(id => pos(id).y);
+    const w = Math.max(...xs) + NODE_W - Math.min(...xs) + 80, hgt = Math.max(...ys) + 90 - Math.min(...ys) + 80;
+    const k = Math.max(0.25, Math.min(1, stage.clientWidth / w, stage.clientHeight / hgt));
+    S.view = { k, x: 40 * k - Math.min(...xs) * k + Math.max(0, (stage.clientWidth - w * k) / 2), y: 30 * k - Math.min(...ys) * k };
+    applyView();
+  }
+  function zoom(f, cx, cy) {
+    const r = stage.getBoundingClientRect(); cx = cx === undefined ? r.width / 2 : cx - r.left; cy = cy === undefined ? r.height / 2 : cy - r.top;
+    const k = Math.max(0.25, Math.min(1.6, S.view.k * f));
+    S.view.x = cx - (cx - S.view.x) * (k / S.view.k); S.view.y = cy - (cy - S.view.y) * (k / S.view.k); S.view.k = k; applyView();
+  }
+  function wirePath(a, b) {
+    const dx = b.x >= a.x ? Math.max(40, (b.x - a.x) / 2) : 70;   // a line back to the next band keeps a short turn
+    return "M" + a.x + "," + a.y + " C" + (a.x + dx) + "," + a.y + " " + (b.x - dx) + "," + b.y + " " + b.x + "," + b.y; }
+  const outPt = (id) => { const el = world.querySelector('.node[data-id="' + id + '"]'), p = pos(id); return { x: p.x + NODE_W, y: p.y + (el ? el.offsetHeight / 2 : 34) }; };
+  const inPt = (id) => { const el = world.querySelector('.node[data-id="' + id + '"]'), p = pos(id); return { x: p.x, y: p.y + (el ? el.offsetHeight / 2 : 34) }; };
+  function drawWires() {
+    const NS = "http://www.w3.org/2000/svg";
+    while (wires.firstChild) wires.removeChild(wires.firstChild);
+    const defs = document.createElementNS(NS, "defs");
+    defs.innerHTML = '<marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker>';
+    wires.appendChild(defs);
+    S.flow.steps.forEach(t => t.needs.forEach(from => {
+      if (!step(from)) return;
+      const d = wirePath(outPt(from), inPt(t.id));
+      const sel = S.sel && S.sel.type === "edge" && S.sel.from === from && S.sel.to === t.id;
+      const hit = document.createElementNS(NS, "path"); hit.setAttribute("d", d); hit.setAttribute("class", "hit");
+      const path = document.createElementNS(NS, "path"); path.setAttribute("d", d); path.setAttribute("class", "wire" + (sel ? " sel" : "")); path.setAttribute("marker-end", "url(#arr)");
+      const pick = (e) => { e.stopPropagation(); S.sel = { type: "edge", from, to: t.id }; drawWires(); markSelection(); renderInspector(); };
+      hit.addEventListener("pointerdown", pick); path.addEventListener("pointerdown", pick);
+      wires.appendChild(path); wires.appendChild(hit);
+    }));
+  }
+  function markSelection() { $$(".node", world).forEach(n => n.classList.toggle("sel", !!S.sel && S.sel.type === "node" && S.sel.id === n.dataset.id)); }
+  function statusOf(id) { const t = S.test && S.test.steps && S.test.steps.find(x => x.id === id); return !t ? "" : ["ok", "degraded", "needs_approval"].includes(t.status) ? (t.status === "ok" ? "good" : "warn") : t.status === "skipped" ? "" : "bad"; }
+  function renderCanvas() {
+    $$(".node", world).forEach(n => n.remove());
+    S.flow.steps.forEach(s => {
+      const a = agent(s.agent), p = pos(s.id), st = statusOf(s.id);
+      const el = h("div", { class: "node" + (S.readOnly ? " ro" : ""), dataset: { id: s.id }, style: "left:" + p.x + "px;top:" + p.y + "px", tabindex: "0", role: "button", "aria-label": a.name + ", step " + s.id },
+        h("span", { class: "bar", style: "background:" + catColor(a.category) }),
+        h("div", { class: "body" },
+          h("div", { class: "nm" }, h("span", { class: "t" }, a.name), S.test ? h("span", { class: "lamp " + st, title: st || "not run", style: "margin-top:5px;flex:none" }) : null),
+          h("div", { class: "meta" }, h("code", null, s.id), " · ", a.pack && a.pack !== "blueprint" ? a.pack_name : a.category_label),
+          s.inputs && s.inputs.action ? h("div", { class: "act" }, String(s.inputs.action).replace(/_/g, " ")) : null),
+        h("span", { class: "port in", "aria-hidden": "true" }), h("span", { class: "port out", title: "Drag to the step that runs after this one" }));
+      el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); S.sel = { type: "node", id: s.id }; markSelection(); drawWires(); renderInspector(); } });
+      world.appendChild(el);
+    });
+    drawWires(); markSelection();
+    const hint = clear($("#hint"));
+    if (!S.flow.steps.length) hint.append(h("strong", null, "Put the first agent on the canvas"), "Click an agent on the left, or drag it here. Each agent you add after that runs after the step you have selected; drag from a step's right-hand dot to another step to connect them yourself.");
+    renderProblems(); renderBar();
+  }
+  function renderProblems() {
+    const box = clear($("#problems")), p = S.problems;
+    if (!p) return;
+    box.append(p.ok ? h("div", { class: "notice good" }, "Ready: " + p.agents.length + " agents in " + p.stages.length + " stages. Steps in the same stage run in parallel.")
+      : h("div", { class: "notice bad" }, h("strong", null, "Not ready yet"), h("ul", { style: "margin:4px 0 0;padding-left:18px" }, p.problems.map(x => h("li", null, x)))));
+  }
+  // pointer work on the canvas: move a step, draw a connection, pan
+  let drag = null;
+  stage.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || e.target.closest(".canvas-tools") || e.target.closest(".problems")) return;
+    const node = e.target.closest(".node"), port = e.target.closest(".port.out");
+    if (port && node && !S.readOnly) {
+      const NS = "http://www.w3.org/2000/svg", temp = document.createElementNS(NS, "path"); temp.setAttribute("class", "temp"); wires.appendChild(temp);
+      drag = { kind: "wire", from: node.dataset.id, temp };
+    } else if (node) {
+      const p = pos(node.dataset.id), w = toWorld(e.clientX, e.clientY);
+      drag = { kind: "node", id: node.dataset.id, el: node, dx: w.x - p.x, dy: w.y - p.y, moved: false };
+    } else { drag = { kind: "pan", sx: e.clientX, sy: e.clientY, vx: S.view.x, vy: S.view.y, moved: false }; }
+    stage.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    if (drag.kind === "node") {
+      if (S.readOnly && !drag.moved) { /* a read-only flow can still be rearranged to read it; nothing is saved */ }
+      const w = toWorld(e.clientX, e.clientY), p = pos(drag.id), nx = Math.round(w.x - drag.dx), ny = Math.round(w.y - drag.dy);
+      if (!drag.moved && Math.abs(nx - p.x) + Math.abs(ny - p.y) < 3) return;
+      drag.moved = true; p.x = nx; p.y = ny; drag.el.style.left = nx + "px"; drag.el.style.top = ny + "px"; drawWires();
+    } else if (drag.kind === "wire") {
+      const w = toWorld(e.clientX, e.clientY); drag.temp.setAttribute("d", wirePath(outPt(drag.from), w));
+      const over = document.elementFromPoint(e.clientX, e.clientY), n = over && over.closest ? over.closest(".node") : null;
+      $$(".node.target", world).forEach(x => x.classList.remove("target"));
+      if (n && n.dataset.id !== drag.from) n.classList.add("target");
+    } else { const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy; if (Math.abs(dx) + Math.abs(dy) > 3) { drag.moved = true; stage.classList.add("panning"); } S.view.x = drag.vx + dx; S.view.y = drag.vy + dy; applyView(); }
+  });
+  stage.addEventListener("pointerup", (e) => {
+    if (!drag) return;
+    const d = drag; drag = null; stage.classList.remove("panning");
+    try { stage.releasePointerCapture(e.pointerId); } catch (err) {}
+    if (d.kind === "node") { if (d.moved) { if (!S.readOnly) touch(); } else { S.sel = { type: "node", id: d.id }; markSelection(); drawWires(); renderInspector(); } }
+    else if (d.kind === "wire") { d.temp.remove(); $$(".node.target", world).forEach(x => x.classList.remove("target")); const over = document.elementFromPoint(e.clientX, e.clientY), n = over && over.closest ? over.closest(".node") : null; if (n) connect(d.from, n.dataset.id); }
+    else if (!d.moved && S.sel) { S.sel = null; markSelection(); drawWires(); renderInspector(); }
+  });
+  stage.addEventListener("wheel", (e) => { e.preventDefault(); if (e.ctrlKey || e.metaKey) zoom(e.deltaY < 0 ? 1.1 : 0.9, e.clientX, e.clientY); else { S.view.x -= e.deltaX; S.view.y -= e.deltaY; applyView(); } }, { passive: false });
+  document.addEventListener("keydown", (e) => {
+    if (!S.sel || S.readOnly || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) || $("#dlg").open) return;
+    if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); S.sel.type === "node" ? removeStep(S.sel.id) : disconnect(S.sel.from, S.sel.to); }
+  });
+  clear($("#tools")).append(
+    h("button", { class: "btn sm ghost", type: "button", title: "Zoom out", onclick: () => zoom(0.85) }, "−"),
+    h("button", { class: "btn sm ghost", type: "button", title: "Zoom in", onclick: () => zoom(1.18) }, "+"),
+    h("button", { class: "btn sm ghost", type: "button", title: "Show the whole flow", onclick: fit }, "Fit"),
+    h("button", { class: "btn sm ghost", type: "button", title: "Lay the steps out by stage, left to right", onclick: () => arrange() }, "Tidy up"));
+
+  // ---------------------------------------------------------------- inspector
+  async function details(agentId) { if (!S.details[agentId]) { try { S.details[agentId] = await Shop.api("/shop/catalog/" + encodeURIComponent(agentId), { token: "" }); } catch (e) { S.details[agentId] = { input_schema: { properties: {} } }; } } return S.details[agentId]; }
+  function renderInspector() {
+    const box = clear($("#inspector")), pad = h("div", { class: "pad" }); box.append(pad);
+    if (S.sel && S.sel.type === "edge") return put(pad, h("h3", null, "Connection"), h("p", { class: "small", style: "margin:8px 0" }, h("code", null, S.sel.to), " runs after ", h("code", null, S.sel.from), " and can use its output."),
+      S.readOnly ? null : h("button", { class: "btn sm danger", type: "button", onclick: () => disconnect(S.sel.from, S.sel.to) }, "Remove connection"));
+    if (S.sel && S.sel.type === "node" && step(S.sel.id)) return stepInspector(pad, step(S.sel.id));
+    flowInspector(pad);
+  }
+  function stepInspector(pad, s) {
+    const a = agent(s.agent), ro = S.readOnly, others = S.flow.steps.filter(x => x.id !== s.id && !reaches(s.id, x.id) && !s.needs.includes(x.id));
+    const t = S.test && S.test.steps && S.test.steps.find(x => x.id === s.id);
+    put(pad,
+      h("div", { class: "row", style: "align-items:flex-start;gap:8px" }, h("span", { style: "width:5px;align-self:stretch;border-radius:3px;background:" + catColor(a.category) }),
+        h("div", { style: "flex:1;min-width:0" }, h("h3", { style: "font-size:15px" }, a.name), h("p", { class: "xs muted" }, [a.pack_name || "Marketing blueprint", a.accelerator, a.category_label].filter(Boolean).join(" · ")))),
+      h("p", { class: "small", style: "margin:8px 0 12px;color:var(--ink-2)" }, a.summary || ""),
+      h("label", { class: "f" }, "Step name (used in bindings)", h("input", { type: "text", value: s.id, disabled: ro, onchange: (e) => renameStep(s, e.target.value) })),
+      a.actions && a.actions.length ? h("label", { class: "f" }, "What it does in this step", h("select", { disabled: ro, onchange: (e) => { s.inputs.action = e.target.value; touch(); renderCanvas(); } },
+        a.actions.map(x => h("option", { value: x, selected: (s.inputs.action || a.actions[0]) === x }, x.replace(/_/g, " "))))) : null,
+      h("label", { class: "f" }, "Why this step is here", h("input", { type: "text", value: s.purpose || "", disabled: ro, placeholder: "shown to whoever runs or rents the flow", oninput: (e) => { s.purpose = e.target.value; S.dirty = true; } })),
+      h("div", { class: "f", style: "display:grid;gap:4px;font-size:12.5px;color:var(--ink-2);font-weight:500;margin-bottom:10px" }, "Runs after",
+        h("div", { class: "chiplist" }, s.needs.length ? s.needs.map(n => h("span", { class: "chip ai" }, n, ro ? null : h("button", { type: "button", title: "Remove", "aria-label": "Stop waiting for " + n, onclick: () => disconnect(n, s.id) }, "✕"))) : h("span", { class: "xs muted", style: "font-weight:400" }, "nothing: it starts the flow")),
+        ro || !others.length ? null : h("select", { style: "margin-top:4px", onchange: (e) => { if (e.target.value) connect(e.target.value, s.id); } }, h("option", { value: "" }, "Add a step it must wait for…"), others.map(x => h("option", { value: x.id }, x.id + " (" + agent(x.agent).name + ")")))));
+    const bind = h("div", null, h("p", { class: "xs muted" }, "Loading the agent's inputs…")); put(pad, h("hr"), h("h3", null, "Inputs"), h("p", { class: "xs muted", style: "margin:4px 0 10px" }, "Leave a field empty and the agent takes the flow's shared input of the same name, the goal, and the work of the steps before it."), bind);
+    details(s.agent).then(d => {
+      if (!S.sel || S.sel.id !== s.id) return;
+      const props = (d.input_schema && d.input_schema.properties) || {}, req = new Set((d.input_schema && d.input_schema.required) || []);
+      const listId = "sugg-" + s.id, sugg = ["$goal", ...S.flow.inputs.filter(i => i.name).map(i => "${input." + i.name + "}"), ...s.needs.map(n => "${steps." + n + ".output" + ((agent((step(n) || {}).agent).pack || "blueprint") !== "blueprint" ? ".result" : "") + "}")];
+      clear(bind).append(h("datalist", { id: listId }, sugg.map(x => h("option", { value: x }))));
+      const names = Object.keys(props).filter(k => k !== "action");
+      if (!names.length) bind.append(h("p", { class: "small muted" }, "This agent takes no inputs."));
+      names.forEach(k => { const p = props[k], cur = s.inputs[k];
+        bind.append(h("div", { class: "bind" }, h("span", { class: "k" }, h("code", null, k), req.has(k) ? h("span", { class: "chip ai" }, "required") : null),
+          h("input", { type: "text", list: listId, disabled: S.readOnly, value: cur === undefined ? "" : (typeof cur === "string" ? cur : JSON.stringify(cur)), placeholder: (p.description || "").slice(0, 70), title: p.description || "",
+            onchange: (e) => { const v = e.target.value.trim(); if (!v) delete s.inputs[k]; else { let val = v; if (/^[\[{]/.test(v) || /^(true|false|-?\d+(\.\d+)?)$/.test(v)) { try { val = JSON.parse(v); } catch (err) { /* keep the text */ } } s.inputs[k] = val; } touch(); } }))); });
+    });
+    if (t) put(pad, h("hr"), h("h3", null, "Last test run"), h("p", { class: "small", style: "margin:6px 0" }, h("span", { class: "chip " + (statusOf(s.id) || "bad") }, t.status), " ", (t.result && (t.result.error || t.result.summary) || "")),
+      t.result && t.result.provenance && t.result.provenance.degraded_reasons ? h("ul", { class: "xs muted", style: "padding-left:16px;margin:0" }, t.result.provenance.degraded_reasons.map(r => h("li", null, r))) : null,
+      t.result && t.result.output ? h("details", null, h("summary", { class: "xs", style: "cursor:pointer" }, "Output"), h("pre", { class: "xs", style: "max-height:260px" }, JSON.stringify(t.result.output, null, 2).slice(0, 6000))) : null);
+    put(pad, h("hr"), h("div", { class: "row" }, h("a", { class: "btn sm ghost", href: BASE + "/shop/agents/" + a.id, target: "_blank", rel: "noopener" }, "Agent details"),
+      ro ? null : h("button", { class: "btn sm danger right", type: "button", onclick: () => removeStep(s.id) }, "Remove step")));
+  }
+  function flowInspector(pad) {
+    const f = S.flow, ro = S.readOnly, price = f.price || {};
+    const set = (k) => (e) => { f[k] = e.target.value; S.dirty = true; if (k === "name" || k === "id") renderBar(); };
+    const priceInput = (k, ph) => h("input", { type: "text", value: price[k] === undefined || price[k] === null ? "" : price[k], placeholder: ph, disabled: ro, oninput: (e) => { f.price = f.price || {}; const v = e.target.value.trim(); f.price[k] = v === "" ? null : (isNaN(Number(v)) ? v : Number(v)); S.dirty = true; } });
+    put(pad, h("h3", { style: "font-size:15px;margin-bottom:10px" }, "Flow"),
+      ro ? h("div", { class: "notice", style: "margin-bottom:10px" }, (f.pack_name ? "This is " + f.pack_name + "'s own process. " : "This flow ships with the framework. ") + "Clone it to change the steps, the price or the name.") : null,
+      h("label", { class: "f" }, "Name", h("input", { type: "text", value: f.name, disabled: ro, placeholder: "UK launch kit", oninput: set("name") })),
+      h("label", { class: "f" }, "Id (the tool becomes run_flow_<id>)", h("input", { type: "text", value: f.id, disabled: ro || !S.isNew, placeholder: "launch_kit_uk", pattern: "[a-z][a-z0-9_]{1,47}", oninput: set("id") })),
+      h("label", { class: "f" }, "What the customer gets", h("textarea", { style: "min-height:64px;font-family:var(--font);font-size:13px", disabled: ro, oninput: set("description") }, f.description || "")),
+      h("hr"), h("div", { class: "rowline" }, h("h3", null, "Shared inputs"), ro ? null : h("button", { class: "btn sm right", type: "button", onclick: () => { f.inputs.push({ name: "", description: "", required: false, example: "" }); S.dirty = true; renderInspector(); } }, "Add")),
+      h("p", { class: "xs muted", style: "margin:4px 0 8px" }, "What whoever runs the flow sends. Every step can use them."),
+      f.inputs.length ? h("table", null, h("tbody", null, f.inputs.map((inp, i) => h("tr", null,
+        h("td", { style: "padding:3px 4px 3px 0;border:0" }, h("input", { type: "text", value: inp.name, placeholder: "name", disabled: ro, "aria-label": "Input name", oninput: (e) => { inp.name = e.target.value.trim(); S.dirty = true; } }),
+          h("input", { type: "text", value: inp.example || "", placeholder: "example (used by test runs)", disabled: ro, style: "margin-top:3px", "aria-label": "Example", oninput: (e) => { inp.example = e.target.value; S.dirty = true; } })),
+        h("td", { style: "padding:3px 0;border:0;white-space:nowrap;vertical-align:top" }, h("label", { class: "xs", title: "The flow refuses to run without it" }, h("input", { type: "checkbox", checked: !!inp.required, disabled: ro, onchange: (e) => { inp.required = e.target.checked; S.dirty = true; } }), " needed"),
+          ro ? null : h("button", { class: "btn sm ghost", type: "button", title: "Remove input", onclick: () => { f.inputs.splice(i, 1); S.dirty = true; renderInspector(); } }, "✕")))))) : h("p", { class: "small muted" }, "None."),
+      h("hr"), h("details", null, h("summary", { class: "small", style: "cursor:pointer;font-weight:600" }, "Price and routing"),
+        h("div", { style: "margin-top:10px" }, h("label", { class: "f" }, "Monthly", priceInput("monthly", "default")), h("label", { class: "f" }, "Runs included", priceInput("included_runs", "default")), h("label", { class: "f" }, "Per extra run", priceInput("per_run", "default")),
+          h("label", { class: "f" }, "Phrases that route a goal to this flow", h("input", { type: "text", value: (f.triggers || []).join(", "), disabled: ro, placeholder: "launch kit, product launch", oninput: (e) => { f.triggers = e.target.value.split(",").map(x => x.trim()).filter(Boolean); S.dirty = true; } })))),
+      h("hr"), h("p", { class: "xs muted" }, "Publishing lists the flow for rent and gives it one tool (run_flow_<id>), one endpoint (POST /flows/<id>/run) and one A2A skill. Select a step to set what it does; select a connection to remove it."),
+      !S.isNew && !ro ? h("div", { class: "row", style: "margin-top:10px" }, h("a", { class: "btn sm ghost", href: BASE + "/shop/flows/" + f.id, target: "_blank", rel: "noopener" }, "Storefront page"),
+        h("button", { class: "btn sm danger right", type: "button", onclick: deleteFlow }, "Delete flow")) : null);
+  }
+
+  // ---------------------------------------------------------------- check, save, publish, test
+  function payload() {
+    const f = S.flow, body = { id: f.id.trim(), name: f.name.trim(), description: f.description || "", triggers: f.triggers || [], layout: {},
+      inputs: f.inputs.filter(i => i.name).map(i => ({ name: i.name, description: i.description || "", required: !!i.required, example: i.example || "" })),
+      steps: ordered().map(s => ({ id: s.id, agent: s.agent, purpose: s.purpose || "", inputs: s.inputs || {}, needs: s.needs.filter(n => step(n)) })) };
+    body.steps.forEach(s => { const p = pos(s.id); body.layout[s.id] = { x: Math.round(p.x), y: Math.round(p.y) }; });
+    if (f.price && Object.values(f.price).some(v => v !== null && v !== "")) body.price = f.price;
+    return body;
+  }
+  async function check() {
+    const body = payload(); if (!body.id) body.id = "draft_flow"; if (!body.name) body.name = "Draft";
+    try { S.problems = await api("/shop/admin/api/flows/validate", { body }); } catch (e) { S.problems = { ok: false, problems: [e.message], stages: [] }; }
+    renderProblems();
+  }
+  async function ensureNamed() {
+    if (!S.flow.name.trim()) { const n = await ask("Name this flow", "Name", "", "What a customer will see on the storefront."); if (!n) return false; S.flow.name = n; }
+    if (!S.flow.id.trim()) { const sug = S.flow.name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").replace(/^([^a-z])/, "f_$1").slice(0, 40);
+      const id = await ask("Give it an id", "Id (lowercase, underscores)", sug, "The tool becomes run_flow_<id>. It cannot be changed later."); if (!id) return false; S.flow.id = id; }
+    return true;
+  }
+  async function save(publish) {
+    if (S.readOnly) return false;
+    if (!(await ensureNamed())) { renderAll(); return false; }
+    const body = payload();
+    try {
+      const saved = await api("/shop/admin/api/flows/" + encodeURIComponent(body.id) + (publish ? "?publish=true" : ""), { method: "PUT", body });
+      await refreshFlows(); const keepTest = S.test, sel = S.sel; openFlow(saved.id); S.test = keepTest; S.sel = sel && sel.type === "node" && step(sel.id) ? sel : null; renderAll();
+      toast(publish ? "Published: run_flow_" + saved.id + " is live" : "Saved as " + saved.status + " (v" + saved.version + ")"); return true;
+    } catch (e) { S.problems = { ok: false, problems: String(e.message).replace(/^flow has problems: /, "").split("; "), stages: [] }; renderAll(); return false; }
+  }
+  async function unpublish() { try { await api("/shop/admin/api/flows/" + encodeURIComponent(S.flow.id) + "/unpublish", { method: "POST" }); await refreshFlows(); openFlow(S.flow.id); toast("Unpublished: the tool and the listing are gone"); } catch (e) { toast(e.message, 6000); } }
+  async function cloneFlow() {
+    const id = await ask("Clone this flow", "Id for the copy (lowercase, underscores)", (S.flow.id || "flow") + "_v2", "The copy opens as a draft you can change.");
+    if (!id) return;
+    try { const layout = S.flow.layout; const c = await api("/shop/admin/api/flows/" + encodeURIComponent(S.flow.id) + "/clone", { body: { new_id: id, name: S.flow.name + " (copy)" } }); await refreshFlows(); openFlow(c.id); S.flow.layout = Object.assign({}, layout, S.flow.layout); renderAll(); toast("Cloned as a draft"); }
+    catch (e) { toast(e.message, 6000); }
+  }
+  async function deleteFlow() {
+    if (!window.confirm("Delete “" + S.flow.name + "”? Customers renting it lose it and its tool disappears.")) return;
+    try { await api("/shop/admin/api/flows/" + encodeURIComponent(S.flow.id), { method: "DELETE" }); await refreshFlows(); newFlow(); toast("Deleted"); } catch (e) { toast(e.message, 6000); }
+  }
+  async function testRun() {
+    if (S.test && S.test.running) return;
+    if (!S.readOnly && (S.dirty || S.isNew)) { if (!(await save(null))) return; }
+    S.test = { running: true }; renderBar();
+    try { S.test = await api("/shop/admin/api/flows/" + encodeURIComponent(S.flow.id) + "/test", { method: "POST", body: {} }); toast(S.test.passed + " of " + S.test.total + " steps passed"); }
+    catch (e) { S.test = null; toast("Test run failed: " + e.message, 6000); }
+    renderAll();
+  }
+  function renderAll() { renderBar(); renderCanvas(); renderInspector(); renderPalette(); applyView(); }
+  window.addEventListener("beforeunload", (e) => { if (S.dirty && !S.readOnly) { e.preventDefault(); e.returnValue = ""; } });
+  window.addEventListener("resize", () => drawWires());
+
+  if (!getTok() && location.hostname !== "127.0.0.1" && location.hostname !== "localhost") gate(); else load();
+})();
+</script>
+</body>
+</html>

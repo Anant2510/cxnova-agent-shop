@@ -1,4 +1,4 @@
-"""Product branding: the shop is sold as CX Nova Agent Shop by Coforge; the engine underneath is the framework.
+"""Product branding: the CX Nova Agent Orchestration Layer by Coforge; the engine underneath is the framework.
 
 Override per deployment with CAF_PRODUCT_NAME, CAF_PRODUCT_SHORT, CAF_COMPANY and CAF_PRODUCT_TAGLINE.
 """
@@ -11,10 +11,10 @@ from dataclasses import asdict, dataclass
 
 @dataclass(frozen=True)
 class Product:
-    name: str = "CX Nova Agent Shop"
+    name: str = "CX Nova Agent Orchestration Layer"
     short: str = "CX Nova"
     company: str = "Coforge"
-    tagline: str = "Marketing and experimentation agents you rent, run from your tools, on the model your policy allows."
+    tagline: str = "Every CX Nova agent in one place: compose them into flows, run them from your tools, on the model your policy allows."
     engine: str = "Coforge Agentic Framework"
     # Campaign Studio's palette: indigo (ai) on paper and ink
     color_primary: str = "#1f3d7a"

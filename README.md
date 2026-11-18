@@ -1,11 +1,16 @@
-# CX Nova Agent Shop
+# CX Nova Agent Orchestration Layer
 
-**Marketing and experimentation agents you rent, run from your tools, on the model your policy allows.** The shop
-sells the 28 agents of the Coforge Agentic Framework below and the orchestration flows composed from them (the 8
-built-in playbooks plus any the operator builds in the admin console): a storefront with indicative prices,
-customer accounts with API keys, subscriptions per agent or per flow, a model policy per customer (its own LLM
-deployment, masking, allowed websites, limits), usage metering, and an operator admin console with a flow builder.
-A customer key on REST, MCP or A2A sees and runs only what that customer rents; a rented flow is one MCP tool. See [Agent Shop](#agent-shop) below and
+**One layer for every CX Nova agent: design a flow on a canvas, publish it, rent it, run it from your tools on the
+model your policy allows.** The layer carries 97 agents: the 28 blueprint agents of the Coforge Agentic Framework
+below, plus two **agent packs**, Campaign Studio (18 agents) and the ARM SDLC Factory (51 agents). Flows are
+composed from any of them in the **orchestration designer** (`/shop/designer`): agents are nodes, a wire means
+"runs after", and the inspector sets what each step is asked to do. 21 flows ship built in (8 playbooks, 4 Campaign
+Studio stages, 9 ARM SDLC stages including the 50-step AI-to-Z release).
+
+Around that: a storefront with indicative prices, customer accounts with API keys, subscriptions per agent or per
+flow, a model policy per customer (its own LLM deployment, masking, allowed websites, limits), usage metering, and
+an operator admin console. A customer key on REST, MCP or A2A sees and runs only what that customer rents; a rented
+flow is one MCP tool. See [Orchestration layer](#orchestration-layer), [Agent packs](#agent-packs) and
 [docs/DEPLOY_VM.md](docs/DEPLOY_VM.md) for the deployment on the CX Nova VM.
 
 ## Coforge Agentic Framework (the engine)
@@ -110,6 +115,39 @@ variation previews).
 
 Liveness evidence for every agent: [`docs/LIVENESS.md`](docs/LIVENESS.md) (regenerate with `python3 scripts/liveness_report.py [--live]`).
 
+## Agent packs
+
+A pack brings another CX Nova product's agents into this layer without re-implementing them. It is one YAML file
+in `config/packs/` (plus an optional `<pack>.contracts.json` with sample outputs); every agent in it becomes a
+registered agent with the same contract as the blueprint agents, so it shows up in the catalog, the designer, the
+storefront, REST, MCP, A2A and the console.
+
+| Pack | Agents | Flows | Where it comes from |
+|---|---|---|---|
+| Campaign Studio (`cs_*`) | 18 | 4 (foresight, variants, checks, brief to measure) | `config/packs/campaign_studio.yaml`, written by hand from the studio's agent catalogue |
+| ARM SDLC Factory (`arm_*`) | 51 | 9 (one per team stage, plus the 50-step AI-to-Z release) | generated: `python3 scripts/build_pack_arm.py --from <factory>/config` |
+
+Every pack agent takes `action` (one of the things it can do), `request` (plain words), the inputs its pack
+declares and `context`, and answers `{action, runner, summary, result, artifacts, human_followups, dry_run}`.
+`runner` says who did the work:
+
+1. **home**: the agent's own product ran it, when the pack has a home adapter and it is connected. Campaign
+   Studio has one: set `CAF_PACK_CAMPAIGN_STUDIO_URL` and `CAF_PACK_CAMPAIGN_STUDIO_PASSCODE`, and pass
+   `campaign_id`. Operator runs only; a customer's run never acts inside the operator's product.
+2. **model**: this layer's model, working from the pack's skill prompt, checklist and standards, on the tier the
+   pack names (and the customer's own deployment when the policy says so).
+3. **twin**: with no model (offline), the contract's sample output, marked as a sample.
+
+Actions that change another system (publish, send, platform writes) are marked `needs_home`: unless the home
+product serves them they come back as a dry run with the follow-up a person has to do. The ARM SDLC Factory has no
+run-one-agent API, so its agents are modelled here.
+
+Packs do not change routing by goal: the planner and the router still choose among the 28 blueprint agents, the 8
+playbooks and the flows you publish. Pack agents and the packs' own flows run when named, inside a flow you design,
+or from the console's registry.
+`CAF_PACKS_DISABLED=*` (or a list of pack ids) switches packs off; `caf health --packs` probes them
+(`--packs --live` makes one model call per pack agent).
+
 ## Orchestrator
 
 * **Routing.** Name an agent or playbook explicitly, or let the **planner** (the model, given the live catalog and
@@ -171,25 +209,31 @@ satisfy the same output contract. Model steps go to Claude through the page's `s
 model. Prompt parity between Jinja2 and Nunjucks is enforced by `tests/test_prompt_parity.py`, and every browser
 agent is tested headless under a strict no-eval CSP by `console/test/harness.py`.
 
-## Agent Shop
+## Orchestration layer
 
-`caf serve` is the shop: the storefront at `/shop`, the agent console at `/console`, the customer's account at
-`/shop/account`, the operator's admin console at `/shop/admin`, and the API, MCP and A2A surfaces underneath.
+`caf serve` is the layer: the storefront at `/shop`, the orchestration designer at `/shop/designer`, the agent
+console at `/console`, the customer's account at `/shop/account`, the operator's admin console at `/shop/admin`,
+and the API, MCP and A2A surfaces underneath.
 
 | Piece | What it does |
 | --- | --- |
+| Orchestration designer (`/shop/designer`, operator token) | A canvas: pick agents from the palette (grouped by pack), click to chain them or drag them in, drag from one node's port to another to say "runs after", and set each step's action, purpose and input bindings in the inspector (suggestions for `$goal`, `${input.x}`, `${steps.s.output...}`). Check validates the flow, Test run executes it and lights each node, Save and Publish put it on sale. Built-in flows open read-only; Clone makes an editable copy. The console's "Save plan as flow" opens the plan here |
 | Storefront (`/shop`, `/shop/agents/{id}`, `/shop/flows/{id}`) | Every agent and published flow with its contract, steps and stages, model steps, connectors and indicative price (`config/shop_catalog.yaml`); an access-request form |
-| Orchestration flows | Admin → Flows: compose a flow from agents (steps, what each needs, optional input bindings, shared inputs, price), check it, test-run it, publish it. A published flow is a storefront item, a playbook for the router, the planner and the console, the MCP tool `run_flow_<id>`, `POST /flows/{id}/run` and the A2A skill `flow:<id>`; unpublishing removes all of that. Built-in playbooks are flows too (read-only; clone to change). CLI: `caf shop flows list / show / save / publish / clone / test` |
+| Orchestration flows | A published flow is a storefront item, a playbook for the router, the planner and the console, the MCP tool `run_flow_<id>`, `POST /flows/{id}/run` and the A2A skill `flow:<id>`; unpublishing removes all of that. Admin → Flows lists your flows, the built-in playbooks and each pack's flows. CLI: `caf shop flows list / show / save / publish / clone / test` |
 | Customers, keys, subscriptions | `caf shop add / key / subscribe --agents a,b --flows f`, or the admin console. Keys are `cxn_...`, stored as hashes, shown once. A flow is rented as a whole: the customer runs the flow (every agent in it, for runs of the flow), not its agents one by one |
 | Entitlements | With a customer key, `/agents`, `/flows`, `/playbooks`, the MCP tool list, the A2A card and every run are limited to the subscription; a planned step outside it is skipped and reported |
-| Run modes | 1 Coforge Cloud (the shop's model), 2 Coforge Cloud with the customer's model, 3 Customer Cloud (this same image in the customer's environment) |
+| Run modes | 1 Coforge Cloud (the layer's model), 2 Coforge Cloud with the customer's model, 3 Customer Cloud (this same image in the customer's environment) |
 | Customer policy | `config/policies/example-customer.yaml`: provider, endpoint, credential (`api_key_env` on the server, or inline and encrypted with `CAF_SECRET_KEY`), routing tiers → the customer's deployments, masking before the model (email, phone, policy and card numbers, IBAN), images on/off, allowed websites, approvals, runs per day and tokens per month |
 | Metering | Every agent run: customer, agent, version, surface, run mode, provider, tokens, duration, outcome. `caf shop usage`, `/shop/me/usage`, the admin usage view |
 | Agent check | `caf shop check <customer>` runs the subscribed agents' self-tests on the customer's model and keeps the pass table on the account |
 | Branding | CX Nova (Campaign Studio's palette, IBM Plex); `CAF_PRODUCT_NAME`, `CAF_COMPANY` override it |
 
 Roles on the API: the operator token (`CAF_API_TOKEN`) is admin; a customer key is that customer; with no token
-configured, local calls are admin. The shop's records live in `data/shop.db` (`CAF_DATA_DIR`).
+configured, local calls are admin. The layer's records live in `data/shop.db` (`CAF_DATA_DIR`). The product was
+called CX Nova Agent Shop before; the URL paths (`/shop/...`), the `/agentshop` prefix on the VM and the Windows
+service name `CXNovaAgentShop` keep that name so existing links and installs go on working. The MCP server is now
+named `cxnova-orchestration`: a client configured under the old name keeps working, since the name in a client's
+config is only a label.
 
 ## Web console
 
@@ -200,6 +244,10 @@ calls run on the framework's own provider (for example Claude on Microsoft Found
 routing tier of each step (fast/balanced on Sonnet, pro/complex on Opus) and the effort for that tier. The API key never
 reaches the browser. Files the agents produce are downloaded by the browser; the status chip reads
 "Claude on Microsoft Foundry connected" (or the provider in use).
+
+The hosted console lists the pack agents in a group per pack below the 28 blueprint agents. Blueprint agents run in
+the browser with their model steps on the server; pack agents and pack flows run on the server (`POST
+/agents/{id}/run`) and report `runtime: server` with the runner that served them.
 
 Access: with no `CAF_API_TOKEN`, the server answers only this computer (`127.0.0.1`). To serve other people, set a long
 random `CAF_API_TOKEN` and listen on all interfaces; the page asks for the token once (or open
@@ -231,16 +279,24 @@ make package                                            # source zip in dist/ (n
   `config/model_routing.yaml`.
 * **Add a connector provider:** subclass the kind's interface, decorate with `@connector(kind, provider)`, select it in
   `settings.yaml`.
-* **Add a playbook:** edit `config/playbooks.yaml`.
+* **Add a playbook:** edit `config/playbooks.yaml`, or design it in `/shop/designer` and publish it.
+* **Add an agent pack:** add `config/packs/<pack>.yaml` (pack head, `agents:` with their actions, inputs and skill
+  prompt, optional `flows:`) and restart. `config/packs/campaign_studio.yaml` is the hand-written reference;
+  `scripts/build_pack_arm.py` shows how to generate one from another product's own configuration. A home adapter
+  (running an agent inside its own product) is code: see `run_home` in `src/caf/packs/agent.py`.
 
 ## What was verified, and what needs your credentials
 
-* Verified in this build: every agent's full graph, the orchestrator, all 8 playbooks, the API/MCP/A2A surfaces and
-  every local connector, using the offline model and the demo data (547 tests); axe-core and Playwright paths in
+* Verified in this build: every blueprint agent's full graph, the orchestrator, all 8 playbooks, the API/MCP/A2A
+  surfaces and every local connector, using the offline model and the demo data; axe-core and Playwright paths in
   Chromium; vendor adapters' request/response shapes against mocked APIs; all 28 browser twins and all 8 playbooks in
   Chromium (offline and mock-Claude paths); statistics recomputed against scipy/statsmodels; an independent security
-  review (findings fixed and covered by `tests/test_security.py`).
-* Needs your environment: real model calls (set a provider key and run `caf health --live`), and vendor adapters
+  review (findings fixed and covered by `tests/test_security.py`). Agent packs (`tests/test_packs.py`): all 97
+  agents registered and answering, the three runners (home against a stand-in studio, model against a stand-in
+  model, twin offline), dry runs, every surface, and designed flows including a 50-step clone. The designer was
+  driven end to end in Chromium.
+* Needs your environment: real model calls (set a provider key and run `caf health --live`; add `--packs` for the
+  pack agents), the Campaign Studio home runner against the real studio, and vendor adapters
   against live tenants (GA4, Adobe Analytics/Target/AJO/AEM, Optimizely, Braze, Jira ...). Open questions per vendor
   API are listed in `docs/CONNECTORS.md`.
 

@@ -14,11 +14,12 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from ..core import all_agents, get_agent
+from ..core import blueprint_agents, get_agent
 from ..core.textutil import tfidf_similarity, tokens
 from .playbooks import Playbook, StepDef, load_playbooks
 
-MAX_STEPS = 12
+MAX_STEPS = 64          # a flow or a plan a caller supplies (a product's whole process fits)
+PLANNER_MAX_STEPS = 12  # what the model planner is asked to stay within
 
 
 class PlanStep(BaseModel):
@@ -56,8 +57,8 @@ def _playbook_doc(p: Playbook) -> str:
 
 
 def score_candidates(goal: str) -> tuple[list[tuple[float, str]], list[tuple[float, str]]]:
-    agents = all_agents()
-    books = list(load_playbooks().values())
+    agents = blueprint_agents()   # the routers choose among the blueprint's agents; pack agents run when named
+    books = [p for p in load_playbooks().values() if p.auto_route]
     a_scores = tfidf_similarity(goal, [_agent_doc(a) for a in agents]) if agents else []
     p_scores = tfidf_similarity(goal, [_playbook_doc(p) for p in books]) if books else []
     g = goal.lower()
@@ -137,7 +138,7 @@ def validate_plan(plan: Plan) -> tuple[Plan, list[str]]:
 
 def catalog_for_planner() -> list[dict[str, Any]]:
     out = []
-    for a in all_agents():
+    for a in blueprint_agents():
         fields = []
         for name, f in a.Input.model_fields.items():
             req = "required" if f.is_required() else "optional"
@@ -150,7 +151,7 @@ def catalog_for_planner() -> list[dict[str, Any]]:
 def playbooks_for_planner() -> list[dict[str, Any]]:
     return [{"id": p.id, "name": p.name, "description": p.description,
              "steps": [f"{s.id}: {s.agent}" + (f" (needs {', '.join(s.needs)})" if s.needs else "") for s in p.steps]}
-            for p in load_playbooks().values()]
+            for p in load_playbooks().values() if p.auto_route]
 
 
 def route_and_plan(goal: str, ctx: Any, *, agent: str | None = None, playbook: str | None = None,

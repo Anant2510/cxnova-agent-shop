@@ -115,6 +115,14 @@ BRIDGE_JS = r"""
     hosted: true,                                   // served by the shop: the shop pages and the operator token apply
     base: BASE,
     reconnect: function () { setToken(""); hostInfo = null; window.claude.host = null; },   // forget a stale token, ask again
+    // an agent with no browser runtime (the agent packs') runs on this server
+    runAgent: function (id, inputs, o) {
+      o = o || {};
+      var options = {};
+      if (o.offline) options.offline = true;
+      if (o.tier) options.tier_override = o.tier;
+      return call("/agents/" + encodeURIComponent(id) + "/run", { inputs: inputs || {}, options: options, upstream: o.upstream || null }, o.signal, true);
+    },
     use: async function (name) {
       if (name === "downloads") return downloads;
       if (name === "sample") {
@@ -161,6 +169,28 @@ def _host_playbooks_tag() -> str:
     return f'<script type="application/json" id="caf-host-playbooks">{data}</script>'
 
 
+_PACK_TAG: dict[str, str] = {}
+
+
+def _host_agents_tag() -> str:
+    """The agent packs' agents with their contracts, for the console's registry and runner (built once per process)."""
+    if "tag" not in _PACK_TAG:
+        try:
+            from ..core import catalog
+            from ..packs import list_packs
+
+            agents = [a for a in catalog(full=True) if a.get("pack", "blueprint") != "blueprint"]
+            for a in agents:  # the console needs the contract, not the diagrams
+                a.pop("graph", None)
+                a.pop("output_schema", None)
+                a["output_schema"] = {"type": "object"}
+            data = json.dumps({"packs": list_packs(), "agents": agents}, separators=(",", ":"), default=str).replace("</", "<\\/")
+            _PACK_TAG["tag"] = f'<script type="application/json" id="caf-host-agents">{data}</script>' if agents else ""
+        except Exception:
+            _PACK_TAG["tag"] = ""
+    return _PACK_TAG["tag"]
+
+
 def console_page(settings: Any) -> str | None:
     """console-local.html with the host bridge injected before the console's own scripts (cached by mtime), plus the
     server's current playbooks (so flows published in the shop show up in the console without a rebuild)."""
@@ -176,7 +206,7 @@ def console_page(settings: Any) -> str | None:
                 else bridge + html
             _PAGE.update(mtime=mtime, html=html)
         html = _PAGE["html"]
-    return html.replace("<!--HOST-PLAYBOOKS-->", _host_playbooks_tag(), 1)
+    return html.replace("<!--HOST-PLAYBOOKS-->", _host_playbooks_tag() + _host_agents_tag(), 1)
 
 
 def parse_json_reply(text: str) -> Any:

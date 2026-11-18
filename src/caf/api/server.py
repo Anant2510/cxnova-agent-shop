@@ -36,7 +36,7 @@ from .. import __version__
 from ..config import get_settings
 from ..connectors import ConnectorHub
 from ..config import as_bool
-from ..core import RunContext, catalog, get_agent
+from ..core import LLM, RunContext, catalog, get_agent
 from ..core.security import PolicyError, service_settings, validate_run_id
 from ..branding import PRODUCT
 from ..health import liveness, summary
@@ -49,7 +49,8 @@ from . import a2a, console_host
 
 class RunAgentRequest(BaseModel):
     inputs: dict[str, Any] = Field(default_factory=dict)
-    options: dict[str, Any] = Field(default_factory=dict, description="e.g. {'auto_approve': true, 'tier_override': 'fast'}")
+    options: dict[str, Any] = Field(default_factory=dict, description="e.g. {'auto_approve': true, 'tier_override': 'fast', 'offline': true}")
+    upstream: dict[str, Any] | None = Field(default=None, description="Work of earlier steps the agent may read: {step_id: {agent_id, output}}")
 
 
 class OrchestrateRequest(BaseModel):
@@ -74,7 +75,7 @@ class ApprovalRequest(BaseModel):
 
 
 PUBLIC_PATHS = {"/", "/console", "/health", "/docs", "/docs/oauth2-redirect", "/redoc", "/openapi.json", "/.well-known/agent-card.json",
-                "/shop", "/shop/account", "/shop/admin", "/shop/catalog", "/shop/requests", "/favicon.svg", "/favicon.ico"}
+                "/shop", "/shop/account", "/shop/admin", "/shop/designer", "/shop/catalog", "/shop/requests", "/favicon.svg", "/favicon.ico"}
 PUBLIC_PREFIXES = ("/shop/static/", "/shop/catalog/", "/shop/agents/", "/shop/flows/")
 LOOPBACK = {"127.0.0.1", "::1", "localhost", "testclient"}
 
@@ -274,20 +275,30 @@ def create_app() -> FastAPI:
 
     @app.get("/health/agents")
     def health_agents(offline: bool = Query(True, description="Probe with the offline model (no model cost)"),
-                      refresh: bool = False) -> dict[str, Any]:
+                      refresh: bool = False, packs: bool = Query(False, description="Probe the pack agents too")) -> dict[str, Any]:
         cache = app.state.health_cache
-        if cache is None or refresh or cache.get("mode") != ("offline" if offline else "live"):
-            report = liveness(offline=offline)
-            report["mode"] = "offline" if offline else "live"
+        mode = ("offline" if offline else "live") + ("+packs" if packs else "")
+        if cache is None or refresh or cache.get("mode") != mode:
+            report = liveness(offline=offline, packs=packs)
+            report["mode"] = mode
             app.state.health_cache = report
         return app.state.health_cache
 
     # ------------------------------------------------------------------ agents
     @app.get("/agents")
-    def list_agents(request: Request, full: bool = False) -> list[dict[str, Any]]:
-        """The catalog. A customer key lists only the agents in that customer's subscription."""
+    def list_agents(request: Request, full: bool = False, pack: str | None = None) -> list[dict[str, Any]]:
+        """The catalog: the blueprint's agents and every agent pack's (`pack=blueprint|campaign_studio|arm_sdlc` narrows
+        it). A customer key lists only the agents in that customer's subscription."""
         allowed = shop.entitled_agents(customer(request))
-        return [a for a in catalog(full=full) if a["id"] in allowed]
+        return [a for a in catalog(full=full) if a["id"] in allowed and (not pack or a.get("pack") == pack)]
+
+    @app.get("/packs")
+    def packs() -> list[dict[str, Any]]:
+        """The agent packs in this layer: the product each comes from, how many agents and flows it brings, and
+        whether that product is connected (so its agents can run at home)."""
+        from ..packs import list_packs
+
+        return list_packs()
 
     @app.get("/agents/{agent_id}")
     def describe_agent(request: Request, agent_id: str) -> dict[str, Any]:
@@ -314,7 +325,11 @@ def create_app() -> FastAPI:
             ctx = shop.context_for(cust, surface="api", options=req.options)
         except ShopError as exc:
             raise HTTPException(exc.status, str(exc)) from exc
-        result = agent.run(inputs, ctx, options=req.options)
+        if req.options.get("offline"):  # no model: deterministic stages and placeholders (a pack agent answers with its twin)
+            ctx.llm = LLM(settings.llm, tracer=ctx.tracer, provider="offline")
+            ctx.connectors.llm = ctx.llm
+        upstream = {k: v for k, v in (req.upstream or {}).items() if isinstance(v, dict)} or None
+        result = agent.run(inputs, ctx, upstream=upstream, options=req.options)
         shop.record_result(cust, ctx.run_id, result, surface="api", provider=ctx.llm.provider)
         data = result.model_dump(mode="json")
         data["run_id"] = ctx.run_id

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Starts the CX Nova Agent Shop in the foreground (what the service runs).
+  Starts the CX Nova Agent Orchestration Layer in the foreground (what the service runs).
   Settings come from .env (CAF_HOST, CAF_PORT, CAF_ROOT_PATH, the model provider, tokens).
 #>
 param([string]$BindHost = "", [int]$Port = 0)

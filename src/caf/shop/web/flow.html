@@ -59,7 +59,7 @@
     if (!f.inputs.length) sample.url = "https://www.example.com/";
     return [
       ["MCP tool", "Tool: " + f.tool + "\nArguments: " + JSON.stringify({ args: sample }, null, 2) + "\n\nOr the generic tool run_flow with {\"flow_id\": \"" + f.id + "\", \"inputs\": " + JSON.stringify(sample) + "}"],
-      ["MCP client config (Claude, Copilot Studio, Agentforce)", JSON.stringify({ mcpServers: { "cxnova-agent-shop": { type: "http", url: base + "/mcp", headers: { Authorization: "Bearer <your key>" } } } }, null, 2)],
+      ["MCP client config (Claude, Copilot Studio, Agentforce)", JSON.stringify({ mcpServers: { "cxnova-orchestration": { type: "http", url: base + "/mcp", headers: { Authorization: "Bearer <your key>" } } } }, null, 2)],
       ["REST", "curl -X POST " + base + "/flows/" + f.id + "/run \\\n  -H 'Authorization: Bearer <your key>' -H 'Content-Type: application/json' \\\n  -d '" + JSON.stringify({ inputs: sample }) + "'"],
       ["A2A", "JSON-RPC message/send to " + base + "/a2a with a data part\n" + JSON.stringify({ flow: f.id, inputs: sample }, null, 2) + "\nThe agent card lists the flow as skill flow:" + f.id + "."],
     ];

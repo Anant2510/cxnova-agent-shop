@@ -1,4 +1,4 @@
-"""CX Nova Agent Shop: customers rent the framework's agents and orchestration flows and run them under their own policy."""
+"""CX Nova Agent Orchestration Layer: customers rent the framework's agents and orchestration flows and run them under their own policy."""
 
 from .flows import Flow, FlowInput, FlowStep, validate_flow
 from .policy import CustomerPolicy, PolicyConfigError, load_policy, mask_text

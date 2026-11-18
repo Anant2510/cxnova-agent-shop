@@ -66,10 +66,10 @@ class ShopService:
         whole (see run_flow); single agents are rented as agents, or with an "all" subscription.
         """
         if customer is None:
-            return set(expected_agent_ids())
+            return {a.spec.id for a in all_agents()}   # the blueprint's agents and every pack's
         subs = self.store.list_subscriptions(customer["id"], active_only=True)
         if any(s["kind"] == "all" for s in subs):
-            return set(expected_agent_ids())
+            return {a.spec.id for a in all_agents()}   # the blueprint's agents and every pack's
         return {s["item_id"] for s in subs if s["kind"] == "agent"}
 
     def entitled_flows(self, customer: dict[str, Any] | None) -> list[str]:
@@ -191,7 +191,7 @@ class ShopService:
         """Run every subscribed agent's self-test on the customer's model and keep the result on the customer record."""
         from ..health import probe_agent
 
-        ids = only or sorted(self.entitled_agents(customer)) or expected_agent_ids()
+        ids = only or sorted(self.entitled_agents(customer)) or expected_agent_ids()   # nothing rented yet: the blueprint's
         ctx = self.context_for(customer, run_id=new_run_id(f"check-{customer['id'][:10]}"), surface="check",
                                options={"tier_override": tier} if tier else None)
         started = datetime.now(timezone.utc)
@@ -416,7 +416,8 @@ class ShopService:
         for entry in catalog():
             a = agents_by_id[entry["id"]]
             agents.append({**entry, "description": a.spec.description, "use_cases": a.spec.use_cases, "produces": a.spec.produces,
-                           "version": a.spec.version, "model_tiers": sorted(tiers_by_agent.get(entry["id"], set())),
+                           "version": a.spec.version,
+                           "model_tiers": sorted(tiers_by_agent.get(entry["id"]) or ({a.spec.tier.value} if a.spec.pack != "blueprint" else set())),
                            "price": self.price_of("agent", entry["id"])})
         flows = [self.flow_listing(f) for f in self.flows() if f.published]
         cfg = self.catalog_config()
@@ -428,7 +429,13 @@ class ShopService:
 
         agent = get_agent(agent_id)
         desc = agent.describe()
-        steps = [r for r in get_router(self.settings).table([agent]) if r["agent"] == agent_id]
+        router = get_router(self.settings)
+        steps = [r for r in router.table([agent]) if r["agent"] == agent_id]
+        if agent.spec.pack != "blueprint":  # a pack agent's model steps are its actions (one modelled call each)
+            for action in agent.spec.actions:
+                d = router.decide(agent_id, action["id"], agent_tier=agent.spec.tier)
+                steps.append({"agent": agent_id, "step": action["id"], "work": "modelled from the pack's skill", "tier": d.tier,
+                              "effort": d.effort or "-", "source": d.source, "why": "; ".join(d.reasons)})
         return {**desc, "model_steps": steps, "price": self.price_of("agent", agent_id)}
 
     # ------------------------------------------------------------------------------- connection details
@@ -446,7 +453,7 @@ class ShopService:
             "mcp": {"url": f"{base}/mcp",
                     "tools": [f"run_{a}" for a in allowed] + [f"run_flow_{f}" for f in flows] + ["list_agents", "list_flows", "run_flow",
                                                                                                  "orchestrate", "approve_actions"],
-                    "client_config": {"mcpServers": {"cxnova-agent-shop": {"type": "http", "url": f"{base}/mcp",
+                    "client_config": {"mcpServers": {"cxnova-orchestration": {"type": "http", "url": f"{base}/mcp",
                                                                          "headers": {"Authorization": "Bearer <your key>"}}}}},
             "a2a": {"agent_card": f"{base}/.well-known/agent-card.json", "endpoint": f"{base}/a2a",
                     "skills": [f"agent:{a}" for a in allowed] + [f"flow:{f}" for f in flows]},

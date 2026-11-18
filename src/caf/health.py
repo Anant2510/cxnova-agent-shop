@@ -44,13 +44,14 @@ def probe_agent(agent_id: str, ctx: RunContext) -> dict[str, Any]:
 
 
 def liveness(*, offline: bool | None = None, max_workers: int = 4, only: list[str] | None = None,
-             tier: str | None = None) -> dict[str, Any]:
-    """Probe every agent from its self-test. `tier` forces one model tier for every step (e.g. 'fast' for a cheap live check)."""
+             tier: str | None = None, packs: bool = False) -> dict[str, Any]:
+    """Probe every blueprint agent from its self-test (`packs=True`: the pack agents too, one model call each when
+    live). `tier` forces one model tier for every step (e.g. 'fast' for a cheap live check)."""
     settings = get_settings()
     use_offline = offline if offline is not None else os.environ.get("CAF_HEALTH_OFFLINE", "1") == "1"
     llm = LLM(settings.llm, provider="offline" if use_offline else None)
     ctx = RunContext.create(new_run_id("health"), settings, llm=llm, options={"tier_override": tier} if tier else None)
-    ids = only or expected_agent_ids()
+    ids = only or ([a.spec.id for a in all_agents()] if packs else expected_agent_ids())
     t0 = time.perf_counter()
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         rows = list(pool.map(lambda a: probe_agent(a, ctx), ids))
@@ -65,7 +66,11 @@ def summary() -> dict[str, Any]:
     from .orchestrator import coverage, validate_playbooks
 
     settings = get_settings()
-    registered = [a.spec.id for a in all_agents()]
+    from .packs import list_packs
+
+    everyone = all_agents()
+    expected = set(expected_agent_ids())
+    registered = [a.spec.id for a in everyone if a.spec.id in expected]   # the blueprint's agents; packs are counted beside them
     cov = coverage()
     return {
         "service": "coforge-agentic-framework",
@@ -73,6 +78,9 @@ def summary() -> dict[str, Any]:
         "llm": LLM(settings.llm).describe(),
         "agents_expected": len(expected_agent_ids()),
         "agents_registered": len(registered),
+        "agents_total": len(everyone),
+        "packs": [{"id": p["id"], "name": p["name"], "agents": p["agents"], "flows": p["flows"],
+                   "home_connected": bool(p["home"] and p["home"]["connected"])} for p in list_packs()],
         "missing": missing_agents(),
         "playbook_problems": validate_playbooks(),
         "agents_without_playbook": [a for a in expected_agent_ids() if a not in cov],

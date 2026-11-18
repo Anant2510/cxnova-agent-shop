@@ -63,7 +63,7 @@ const UI = (window.CAFUI = {
     U.$("#mode-offline").setAttribute("aria-pressed", String(CAF.llm.mode === "offline"));
   },
   renderLiveChip() {
-    const ids = CAF.order; const h = CAF.health;
+    const ids = CAF.localIds(); const h = CAF.health;   // the probe covers the agents that run in this page; pack agents run on the server
     const live = ids.filter((id) => h[id] && h[id].live).length;
     const checked = ids.filter((id) => h[id]).length;
     U.$("#live-count").textContent = `${live}/${ids.length}`;
@@ -76,6 +76,7 @@ const UI = (window.CAFUI = {
     const last = UI.agentResults[id];
     if (last && last.status) return last.status === "error" ? "error" : last.status === "ok" ? "live" : last.status;
     const h = CAF.health[id];
+    if (!h && CAF.remote[id]) return "live";   // registered on the server (its own health check proves it); not probed from the page
     if (!h) return "idle";
     if (h.running) return "running";
     if (!h.live) return "error";
@@ -85,7 +86,7 @@ const UI = (window.CAFUI = {
     const q = (U.$("#agent-search").value || "").toLowerCase().trim();
     const root = U.$("#cats"); root.innerHTML = "";
     for (const cat of CAF.categories) {
-      const ids = CAF.order.filter((id) => CAF.catalog[id].category === cat.id);
+      const ids = CAF.localIds().filter((id) => CAF.catalog[id].category === cat.id);   // pack agents have their own groups below
       const shown = ids.filter((id) => !q || `${CAF.catalog[id].name} ${CAF.catalog[id].summary} ${(CAF.catalog[id].keywords || []).join(" ")}`.toLowerCase().includes(q));
       if (!shown.length) continue;
       const box = U.el("div", { class: "cat" }, U.el("div", { class: "cat-title" }, U.el("i", { class: `cat-${cat.id}` }), cat.label, U.el("span", { class: "count", text: `${ids.filter((id) => CAF.health[id] && CAF.health[id].live).length}/${ids.length}` })));
@@ -94,6 +95,24 @@ const UI = (window.CAFUI = {
         const row = U.el("button", { class: "agent-row", "aria-current": String(UI.selected === id), title: a.summary, onclick: () => { UI.selectAgent(id); UI.switchTab("agent"); } },
           U.el("span", { class: `lamp ${UI.agentStatus(id)}` }), U.el("span", { class: "name", text: a.name }), U.el("span", { class: `kind ${a.kind}`, text: a.kind === "deterministic" ? "CODE" : a.kind.toUpperCase() }));
         box.append(row);
+      }
+      root.append(box);
+    }
+    // the agent packs (other CX Nova products' agents): one folded group per pack, by accelerator
+    for (const pack of CAF.packs) {
+      const ids = CAF.order.filter((id) => CAF.catalog[id].pack === pack.id);
+      const shown = ids.filter((id) => !q || `${CAF.catalog[id].name} ${CAF.catalog[id].summary} ${CAF.catalog[id].accelerator || ""}`.toLowerCase().includes(q));
+      if (!shown.length) continue;
+      const open = !!q || shown.includes(UI.selected) || U.storage.get(`caf.pack.${pack.id}`, false);
+      const box = U.el("details", { class: "cat pack" }, U.el("summary", { class: "cat-title" }, U.el("i", { class: "cat-pack" }), pack.name, U.el("span", { class: "count", text: `${ids.length}` })));
+      if (open) box.setAttribute("open", "");
+      box.addEventListener("toggle", () => U.storage.set(`caf.pack.${pack.id}`, box.open));
+      let group = null;
+      for (const id of shown) {
+        const a = CAF.catalog[id];
+        if ((a.accelerator || "") !== group) { group = a.accelerator || ""; if (group) box.append(U.el("div", { class: "pack-group", text: group })); }
+        box.append(U.el("button", { class: "agent-row", "aria-current": String(UI.selected === id), title: a.summary, onclick: () => { UI.selectAgent(id); UI.switchTab("agent"); } },
+          U.el("span", { class: `lamp ${UI.agentStatus(id)}` }), U.el("span", { class: "name", text: a.name }), U.el("span", { class: "kind llm", text: "PACK" })));
       }
       root.append(box);
     }
@@ -117,8 +136,8 @@ const UI = (window.CAFUI = {
       U.el("label", { class: "field" }, U.el("span", { text: "Goal" }), goal), examples,
       U.el("details", {}, U.el("summary", { class: "small muted", text: "Shared inputs (page URL, audience, industry, competitors ...)" }), U.el("div", { class: "stack", style: "margin-top:10px" }, inputs)),
       U.el("div", { class: "row" }, sel, U.el("button", { class: "btn", id: "btn-plan", onclick: () => UI.plan() }, "Plan"), U.el("button", { class: "btn primary", id: "btn-run", onclick: () => UI.runPlan() }, "Run plan"),
-        CAF.hosted ? U.el("button", { class: "btn", id: "btn-save-flow", title: "Open this plan in the shop's flow builder: edit the steps, publish it, rent it out", onclick: () => UI.saveAsFlow() }, "Save plan as flow") : null,
-        CAF.hosted ? U.el("a", { class: "btn ghost", id: "btn-compose", href: UI.shopBase() + "/shop/admin#flows&new", target: "_blank", rel: "noopener", title: "Compose a new flow from the agents in the shop admin" }, "Compose a flow ↗") : null,
+        CAF.hosted ? U.el("button", { class: "btn", id: "btn-save-flow", title: "Open this plan in the designer: change the steps on the canvas, publish it, rent it out", onclick: () => UI.saveAsFlow() }, "Save plan as flow") : null,
+        CAF.hosted ? U.el("a", { class: "btn ghost", id: "btn-compose", href: UI.shopBase() + "/shop/designer", target: "_blank", rel: "noopener", title: "Compose a flow on the canvas: agents as steps, lines between them" }, "Open the designer ↗") : null,
         U.el("button", { class: "btn ghost", id: "btn-stop", hidden: true, onclick: () => UI.run && UI.run.controller && UI.run.controller.abort() }, "Stop"),
         U.el("label", { class: "check-inline", title: "Every model step uses the quick tier: about a second per call instead of tens of seconds" }, quick, "Fast mode"),
         U.el("label", { class: "check-inline", title: "Execute publish actions without waiting (mandatory gates still wait)" }, auto, "Auto-approve")),
@@ -147,7 +166,7 @@ const UI = (window.CAFUI = {
       inputs: Object.keys(shared).filter((k) => shared[k] && (!Array.isArray(shared[k]) || shared[k].length)).map((k) => ({ name: k, description: "", required: k === "url", example: Array.isArray(shared[k]) ? shared[k].join(", ") : String(shared[k]) })),
       steps: UI.run.plan.steps.map((s) => ({ id: s.id, agent: s.agent, purpose: s.purpose || "", inputs: s.inputs || {}, needs: s.needs || [] })) };
     const packed = btoa(unescape(encodeURIComponent(JSON.stringify(draft)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-    window.open(UI.shopBase() + "/shop/admin#flows&draft=" + packed, "_blank", "noopener");
+    window.open(UI.shopBase() + "/shop/designer#draft=" + packed, "_blank", "noopener");
   },
   async plan(silent = false) {
     const goal = U.$("#goal").value.trim(); if (!goal) return;
@@ -248,7 +267,7 @@ const UI = (window.CAFUI = {
     UI.selected = id; U.storage.set("caf.agent", id);
     if (rerender) UI.renderRegistry();
     const a = CAF.catalog[id]; const v = U.$("#view-agent"); v.innerHTML = "";
-    const cat = CAF.categories.find((c) => c.id === a.category);
+    const cat = CAF.categories.find((c) => c.id === a.category) || { id: a.category, label: [a.pack_name, a.accelerator, a.category_label].filter(Boolean).join(" · ") };
     const nodes = (a.graph && a.graph.nodes) || [];
     v.append(U.el("div", { class: "panel stack" },
       U.el("div", { class: "agent-hero" }, U.el("div", { class: "stack" }, U.el("div", { class: "row" }, U.el("span", { class: `cat-dot cat-${a.category}` }), U.el("span", { class: "eyebrow", text: cat.label })),
@@ -275,6 +294,16 @@ const UI = (window.CAFUI = {
       U.el("div", { class: "row" }, btn, U.el("span", { class: "hint", text: a.kind === "deterministic" ? "Runs entirely in your browser - no model call." : CAF.llm.live() ? "Model steps run on Claude; deterministic steps run in your browser." : "Model steps use the offline model until Claude is connected." }))));
     v.append(out);
     if (UI.agentResults[id]) UI.renderResult(UI.agentResults[id], out); else out.append(U.el("div", { class: "empty", text: "Run the agent to see its output, checks and artifacts." }));
+  },
+  /** What served a result, for its meta line: the browser runtime reports a word, the server an object. */
+  modelLabel(res) {
+    const p = res.provenance || {}; const runner = (res.output || {}).runner;
+    if (runner === "home") return ((p.home || {}).name || "home product");
+    if (runner === "twin") return "none (sample twin)";
+    const l = p.llm;
+    if (!l) return "n/a";
+    if (typeof l === "string") return l;
+    return l.offline ? "offline" : [l.provider, l.model].filter(Boolean).join(" ") || "n/a";
   },
   form(schema, initial) {
     const root = schema || {}; const props = root.properties || {}; const required = new Set(root.required || []);
@@ -327,7 +356,7 @@ const UI = (window.CAFUI = {
     const counts = { pass: 0, warn: 0, fail: 0, info: 0 }; (res.checks || []).forEach((c) => (counts[c.status] = (counts[c.status] || 0) + 1));
     root.append(U.el("div", { class: "result-head" }, U.el("div", { class: "stack", style: "gap:4px" }, U.el("div", { class: "row" }, U.el("span", { class: `pill ${res.status}`, text: res.status.replace(/_/g, " ") }), U.el("strong", { text: res.summary || "" }))),
       U.el("div", { class: "metrics" }, U.el("span", {}, U.el("b", { text: U.fmtMs((res.metrics || {}).duration_ms || 0) })), U.el("span", {}, "model calls ", U.el("b", { text: String((res.metrics || {}).llm_calls || 0) })),
-        U.el("span", {}, "checks ", U.el("b", { text: `${counts.pass}✓ ${counts.warn}! ${counts.fail}✗` })), U.el("span", { text: `runtime: ${(res.provenance || {}).runtime || "python"} · model: ${(res.provenance || {}).llm || "n/a"}` }))));
+        U.el("span", {}, "checks ", U.el("b", { text: `${counts.pass}✓ ${counts.warn}! ${counts.fail}✗` })), U.el("span", { text: `runtime: ${(res.provenance || {}).runtime || "python"} · model: ${UI.modelLabel(res)}` }))));
     if (res.error) root.append(U.el("div", { class: "errbox", text: res.error }));
     const reasons = (res.provenance || {}).degraded_reasons || [];
     if (reasons.length) root.append(U.el("div", { class: "warnbox", text: `Degraded: ${reasons.join(" · ")}` }));
@@ -408,7 +437,7 @@ const UI = (window.CAFUI = {
   /* ---------------------------------------------------------------- health */
   renderHealth() {
     const v = U.$("#view-health"); v.innerHTML = "";
-    const ids = CAF.order; const h = CAF.health;
+    const ids = CAF.localIds(); const h = CAF.health;
     const live = ids.filter((id) => h[id] && h[id].live).length, degraded = ids.filter((id) => h[id] && h[id].live && h[id].status === "degraded" && !h[id].offlineOnly).length, down = ids.filter((id) => h[id] && !h[id].live && !h[id].running).length;
     const offlineOnly = ids.filter((id) => h[id] && h[id].offlineOnly).length;
     const last = U.storage.get("caf.liveProbe", null);
@@ -434,7 +463,7 @@ const UI = (window.CAFUI = {
   },
   async probe(mode = "offline") {
     UI.healthMode = mode;
-    const ids = CAF.order; const queue = [...ids]; const conc = mode === "live" ? 2 : 4;
+    const ids = CAF.localIds(); const queue = [...ids]; const conc = mode === "live" ? 2 : 4;
     ids.forEach((id) => { CAF.health[id] = { ...(CAF.health[id] || {}), running: true }; });
     CAF.emit({ type: "health" });
     const work = async () => {

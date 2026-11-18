@@ -35,6 +35,10 @@ class Playbook(BaseModel):
     triggers: list[str] = Field(default_factory=list)
     inputs: list[str] = Field(default_factory=list, description="Shared run inputs this playbook uses")
     steps: list[StepDef]
+    auto_route: bool = Field(default=True, description="False: never picked by the routers or the planner; run by name only")
+    pack: str = Field(default="", description="the agent pack that ships this flow (a product's own process)")
+    pack_name: str = ""
+    input_defs: list[dict[str, Any]] = Field(default_factory=list, description="[{name, description, required, example}] when declared")
 
 
 @lru_cache(maxsize=1)
@@ -44,7 +48,15 @@ def builtin_playbooks() -> dict[str, Playbook]:
     if not path.exists():
         return {}
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    return {pid: Playbook(id=pid, **body) for pid, body in (raw.get("playbooks") or {}).items()}
+    books = {pid: Playbook(id=pid, **body) for pid, body in (raw.get("playbooks") or {}).items()}
+    try:  # the flows the agent packs ship (config/packs/*.yaml): a product's own process, runnable by name
+        from ..packs import pack_playbooks
+
+        for pid, pb in pack_playbooks().items():
+            books.setdefault(pid, pb)
+    except Exception as exc:
+        log.warning("pack flows unavailable: %s", exc)
+    return books
 
 
 _EXTRA_SOURCE: Callable[[], dict[str, Playbook]] | None = None

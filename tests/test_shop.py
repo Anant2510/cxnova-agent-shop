@@ -181,7 +181,7 @@ def test_tokens_roles_and_public_pages(client):
     # public: storefront, listing pages, catalog, access requests
     for path in ("/shop", "/shop/agents/email_creation", "/shop/account", "/shop/admin", "/shop/static/shop.css", "/favicon.svg"):
         assert client.get(path).status_code == 200, path
-    assert "CX Nova Agent Shop" in client.get("/shop").text
+    assert "CX Nova Agent Orchestration Layer" in client.get("/shop").text
     root = client.get("/", headers={"accept": "text/html"}, follow_redirects=False)
     assert root.headers["location"] == "/shop"
     cat = client.get("/shop/catalog").json()
@@ -225,7 +225,7 @@ def test_mcp_and_a2a_follow_the_subscription(client):
     assert not ok["result"].get("isError")
     # A2A: the card lists only the subscribed skills; a message runs under the customer's context
     card = client.get("/.well-known/agent-card.json", headers=hdr).json()
-    assert [s["id"] for s in card["skills"]] == ["utm_generation"] and card["name"].startswith("CX Nova Agent Shop")
+    assert [s["id"] for s in card["skills"]] == ["utm_generation"] and card["name"].startswith("CX Nova Agent Orchestration Layer")
     skills = [s["id"] for s in client.get("/.well-known/agent-card.json").json()["skills"]]
     assert len(skills) == 36 and "flow:website_audit" in skills  # the operator's card: 28 agents and 8 built-in flows
     assert client.get("/a2a/agents/email_creation/agent-card.json", headers=hdr).status_code == 403
@@ -431,3 +431,29 @@ def test_shop_cli_round_trip(shop_env, capsys, tmp_path):
     assert main(["shop", "customers"]) == 0
     out = capsys.readouterr().out
     assert "ok   utm_generation" in out and "2/2 agents passed" in out and "acme" in out
+
+
+def test_every_page_script_parses(tmp_path):
+    """One stray character in an inline script leaves a whole page blank; node --check catches it without a browser."""
+    import re
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    web = Path(__file__).resolve().parents[1] / "src" / "caf" / "shop" / "web"
+    checked = 0
+    for page in sorted(web.glob("*.html")):
+        for i, m in enumerate(re.finditer(r"<script(?![^>]*\bsrc=)([^>]*)>(.*?)</script>", page.read_text(encoding="utf-8"), re.S)):
+            if "application/json" in m.group(1) or not m.group(2).strip():
+                continue
+            f = tmp_path / f"{page.stem}_{i}.js"
+            f.write_text(m.group(2), encoding="utf-8")
+            r = subprocess.run([node, "--check", str(f)], capture_output=True, text=True)
+            assert r.returncode == 0, f"{page.name} script {i}: {r.stderr[:400]}"
+            checked += 1
+    r = subprocess.run([node, "--check", str(web / "shop.js")], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr[:400]
+    assert checked >= 5

@@ -59,9 +59,11 @@ def collect_catalog() -> dict:
 
     settings = get_settings()
     return {
-        "catalog": catalog(full=True),
+        # the blueprint's agents have a browser runtime; pack agents (config/packs) run on the server and reach a hosted
+        # console at serve time (caf-host-agents), so the stand-alone page stays the 28-agent console
+        "catalog": [a for a in catalog(full=True) if a.get("pack", "blueprint") == "blueprint"],
         "skills": SkillStore(settings.skills_dirs).all(),
-        "playbooks": {pid: p.model_dump() for pid, p in load_playbooks().items()},
+        "playbooks": {pid: p.model_dump() for pid, p in load_playbooks().items() if not p.pack},
         "planner": {"agents": catalog_for_planner(), "playbooks": playbooks_for_planner()},
         "schemas": {"plan": Plan.model_json_schema(), "synthesize": RunSynthesis.model_json_schema()},
         "routing": routing_table(settings),
@@ -76,7 +78,7 @@ def routing_table(settings) -> dict:
 
     router = get_router(settings)
     out: dict = {}
-    for row in router.table(all_agents()):
+    for row in router.table([a for a in all_agents() if a.spec.pack == "blueprint"]):
         entry = router.steps.get(f"{row['agent']}.{row['step']}") or {}
         out.setdefault(row["agent"], {})[row["step"]] = {"tier": row["tier"], "work": row["work"], "follow": bool(entry.get("follow_request"))}
     return out

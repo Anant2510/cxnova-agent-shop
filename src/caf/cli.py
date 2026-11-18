@@ -175,6 +175,7 @@ def cmd_health(args: argparse.Namespace) -> int:
     from .config import get_settings
     from .health import liveness
 
+    only = [a.strip() for a in args.only.split(",") if a.strip()] if getattr(args, "only", None) else None
     if args.live:
         provider = get_settings().llm.resolved_provider()
         if provider == "offline":
@@ -207,9 +208,9 @@ def cmd_health(args: argparse.Namespace) -> int:
         print(f"Key accepted: {ping['model']} answered in {ping['ms']} ms.", file=sys.stderr)
         print(f"Live probe on {provider}" + (" (every model step on the fast tier)" if tier else " (each agent on its own tier)")
               + ": real model calls, so this uses API credit and takes a few minutes.", file=sys.stderr)
-        report = liveness(offline=False, tier=tier)
+        report = liveness(offline=False, tier=tier, packs=args.packs, only=only)
     else:
-        report = liveness(offline=True)
+        report = liveness(offline=True, packs=args.packs, only=only)
     if args.json:
         _print(report)
     else:
@@ -419,6 +420,8 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(fn=cmd_models)
     p = sub.add_parser("health"); p.add_argument("--live", action="store_true", help="probe with the configured model provider")
     p.add_argument("--fast", action="store_true", help="with --live: run every model step on the fast tier (cheaper, quicker)")
+    p.add_argument("--packs", action="store_true", help="probe the pack agents too (Campaign Studio, ARM SDLC Factory ...): one model call each when live")
+    p.add_argument("--only", help="comma-separated agent ids to probe")
     p.add_argument("--json", action="store_true"); p.set_defaults(fn=cmd_health)
     p = sub.add_parser("serve", help="REST + MCP + A2A service")
     p.add_argument("--host", default=os.environ.get("CAF_HOST", "127.0.0.1"), help="bind address (0.0.0.0 to serve other machines; set CAF_API_TOKEN)")

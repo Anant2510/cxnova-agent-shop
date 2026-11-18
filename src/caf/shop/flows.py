@@ -68,6 +68,9 @@ class Flow(BaseModel):
     source: str = Field(default="custom", description="custom (editable, in the shop's database) | builtin (config/playbooks.yaml)")
     version: int = 1
     price: dict[str, Any] | None = Field(default=None, description="monthly, included_runs, per_run; shop defaults when empty")
+    pack: str = Field(default="", description="built-in flows: the agent pack that ships it (a product's own process)")
+    pack_name: str = ""
+    layout: dict[str, dict[str, float]] = Field(default_factory=dict, description="the designer's canvas: {step id: {x, y}}")
     created_at: str | None = None
     updated_at: str | None = None
     published_at: str | None = None
@@ -118,7 +121,8 @@ class Flow(BaseModel):
         return {"id": self.id, "name": self.name, "description": self.description, "status": self.status, "source": self.source,
                 "version": self.version, "inputs": [i.model_dump() for i in self.inputs], "agents": self.agents(),
                 "steps": [s.model_dump() for s in self.steps], "stages": self.stages(), "triggers": self.triggers,
-                "tool": f"run_flow_{self.id}", "updated_at": self.updated_at, "published_at": self.published_at}
+                "tool": f"run_flow_{self.id}", "updated_at": self.updated_at, "published_at": self.published_at,
+                "pack": self.pack, "pack_name": self.pack_name, "layout": self.layout}
 
 
 def validate_flow(flow: Flow) -> list[str]:
@@ -151,8 +155,11 @@ def validate_flow(flow: Flow) -> list[str]:
 
 
 def flow_from_playbook(pb: Any) -> Flow:
+    defs = [d for d in (getattr(pb, "input_defs", None) or []) if d.get("name")]
+    inputs = [FlowInput(name=d["name"], description=str(d.get("description") or ""), required=bool(d.get("required")),
+                        example=str(d.get("example") or "")) for d in defs] or [FlowInput(name=n) for n in pb.inputs]
     return Flow(id=pb.id, name=pb.name, description=pb.description, triggers=list(pb.triggers),
-                inputs=[FlowInput(name=n) for n in pb.inputs], status="published", source="builtin",
+                inputs=inputs, status="published", source="builtin", pack=getattr(pb, "pack", "") or "", pack_name=getattr(pb, "pack_name", "") or "",
                 steps=[FlowStep(id=s.id, agent=s.agent, purpose=s.purpose, inputs=dict(s.inputs), needs=list(s.needs)) for s in pb.steps])
 
 

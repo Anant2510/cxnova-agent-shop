@@ -1,4 +1,4 @@
-# CX Nova Agent Shop: what the storefront shows beside each agent and orchestration flow.
+# CX Nova Agent Orchestration Layer: what the storefront shows beside each agent and orchestration flow.
 #
 # Prices are INDICATIVE list prices for the storefront and proposals. They are not charged automatically:
 # the shop meters runs and tokens per customer (caf shop usage), and the invoice is built from those records.

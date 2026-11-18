@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Installs the CX Nova Agent Shop on a Windows server (first time, or after a fresh clone).
+  Installs the CX Nova Agent Orchestration Layer on a Windows server (first time, or after a fresh clone).
 
 .DESCRIPTION
   Run from the repository folder in an elevated PowerShell:
@@ -27,7 +27,7 @@ param(
 $ErrorActionPreference = "Stop"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 Set-Location $root
-Write-Host "CX Nova Agent Shop: installing in $root" -ForegroundColor Cyan
+Write-Host "CX Nova Agent Orchestration Layer: installing in $root" -ForegroundColor Cyan
 $env:PYTHONUTF8 = "1"
 
 function Find-Python {

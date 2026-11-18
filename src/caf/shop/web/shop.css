@@ -1,10 +1,12 @@
-/* CX Nova Agent Shop: Campaign Studio's design tokens (paper and ink, indigo for what people do). */
+/* CX Nova Agent Orchestration Layer: Campaign Studio's design tokens (paper and ink, indigo for what people do). */
 :root {
   --paper: #f3f5f7; --sheet: #ffffff; --ink: #17202e; --ink-2: #465163; --ink-3: #778194;
   --rule: #dde2e8; --rule-2: #c7cfd9; --wash: #eaeef3;
   --ai: #1f3d7a; --ai-2: #2c56a8; --ai-soft: #e6ecf7; --ai-ink: #ffffff;
   --shu: #cf3a1e; --shu-soft: #fbe8e3; --matsu: #2b6a4c; --matsu-soft: #e3efe8; --kin: #a86b0c; --kin-soft: #fbf0db;
   --cat-strategy: #6d46c9; --cat-content: #08807a; --cat-web: #b64c15; --cat-experimentation: #2563c9;
+  --cat-design: #b0307a; --cat-engineering: #1f5fbf; --cat-quality: #2b6a4c; --cat-operations: #5a6475;
+  --cat-compliance: #a3341c; --cat-activation: #a86b0c; --cat-analytics: #0e7490; --cat-platform: #7a4b8f;
   --font: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --r-ctl: 6px; --r-panel: 10px; --shadow: 0 1px 2px rgba(23,32,46,.05), 0 2px 8px rgba(23,32,46,.06);
@@ -67,7 +69,9 @@ label.f { display: grid; gap: 4px; font-size: 12.5px; color: var(--ink-2); font-
 .lamp { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); display: inline-block; }
 .lamp.good { background: var(--matsu); } .lamp.bad { background: var(--shu); } .lamp.warn { background: var(--kin); }
 .cat { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; }
-.cat.strategy { color: var(--cat-strategy); } .cat.content { color: var(--cat-content); } .cat.website { color: var(--cat-web); } .cat.experimentation { color: var(--cat-experimentation); }
+.cat.strategy { color: var(--cat-strategy); } .cat.content { color: var(--cat-content); } .cat.website, .cat.web { color: var(--cat-web); } .cat.experimentation { color: var(--cat-experimentation); }
+.cat.design { color: var(--cat-design); } .cat.engineering { color: var(--cat-engineering); } .cat.quality { color: var(--cat-quality); } .cat.operations { color: var(--cat-operations); }
+.cat.compliance { color: var(--cat-compliance); } .cat.activation { color: var(--cat-activation); } .cat.analytics { color: var(--cat-analytics); } .cat.platform { color: var(--cat-platform); }
 
 /* panels and cards */
 .panel { background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--r-panel); padding: 16px; box-shadow: var(--shadow); }

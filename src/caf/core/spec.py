@@ -13,6 +13,15 @@ class Category(str, Enum):
     CONTENT = "content"
     WEB = "web"
     EXPERIMENTATION = "experimentation"
+    # categories the agent packs add (config/packs/*.yaml: Campaign Studio, ARM SDLC Factory ...)
+    DESIGN = "design"
+    ENGINEERING = "engineering"
+    QUALITY = "quality"
+    OPERATIONS = "operations"
+    COMPLIANCE = "compliance"
+    ACTIVATION = "activation"
+    ANALYTICS = "analytics"
+    PLATFORM = "platform"
 
 
 CATEGORY_LABELS = {
@@ -20,7 +29,17 @@ CATEGORY_LABELS = {
     Category.CONTENT: "Content creation",
     Category.WEB: "Website optimization",
     Category.EXPERIMENTATION: "End-to-end testing",
+    Category.DESIGN: "Design and UX",
+    Category.ENGINEERING: "Engineering and build",
+    Category.QUALITY: "Quality and testing",
+    Category.OPERATIONS: "Release and operations",
+    Category.COMPLIANCE: "Compliance and approvals",
+    Category.ACTIVATION: "Activation and send",
+    Category.ANALYTICS: "Analytics and measurement",
+    Category.PLATFORM: "Platform agents",
 }
+
+BLUEPRINT_PACK = "blueprint"   # the 28 agents of the Coforge Independent Blueprint (python classes under caf.agents)
 
 
 class AgentKind(str, Enum):
@@ -55,6 +74,15 @@ class AgentSpec(BaseModel):
     primary_inputs: list[str] | None = Field(default=None, description="Input fields the orchestrator fills with the run goal "
                                              "when a step leaves them empty ([] = never; None = heuristic)")
     version: str = "1.0.0"
+    # where the agent comes from: the blueprint, or an agent pack (config/packs/<pack>.yaml)
+    pack: str = BLUEPRINT_PACK
+    pack_name: str = "Marketing blueprint"
+    accelerator: str = Field(default="", description="The CX Nova accelerator or product family the agent belongs to")
+    actions: list[dict[str, Any]] = Field(default_factory=list, description="Pack agents: the actions the agent performs "
+                                          "[{id, title, produces}]; the step's `action` input picks one")
+    runners: list[str] = Field(default_factory=list, description="Pack agents: how a run can be served (remote, model, twin)")
+    auto_route: bool = Field(default=True, description="False: the routers and the planner never pick it by themselves; "
+                             "it runs when a flow or a caller names it")
     # filled from config/blueprint.yaml
     description: str = ""
     use_cases: list[str] = Field(default_factory=list)

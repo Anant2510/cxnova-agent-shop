@@ -1,4 +1,4 @@
-# CX Nova Agent Shop (Coforge Agentic Framework): storefront + console + API + MCP + A2A (open http://<host>:8080/)
+# CX Nova Agent Orchestration Layer (Coforge Agentic Framework): storefront + console + API + MCP + A2A (open http://<host>:8080/)
 # docker build -t coforge-agentic-framework .            (add --build-arg WITH_BROWSER=1 for Playwright/Chromium)
 FROM python:3.12-slim
 

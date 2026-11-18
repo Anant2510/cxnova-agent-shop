@@ -6,6 +6,7 @@ const CAF = (window.CAF = {
   version: "1.0.0",
   boot: null, catalog: {}, order: [], skills: {}, playbooks: {}, planner: {}, schemas: {},
   impl: {}, health: {}, runs: [], listeners: new Set(),
+  remote: {}, packs: [],   // hosted console: agents of the agent packs (Campaign Studio, ARM SDLC ...) run on the server
   categories: [
     { id: "strategy", label: "Strategy and planning" },
     { id: "content", label: "Content creation" },
@@ -28,6 +29,9 @@ const CAF = (window.CAF = {
     const hosted = document.getElementById("caf-host-playbooks");
     CAF.hosted = !!hosted;   // served by the shop (caf serve): shop pages, the flow builder and the operator token exist
     if (hosted) { try { const books = JSON.parse(hosted.textContent || "{}"); if (books && typeof books === "object" && Object.keys(books).length) CAF.playbooks = books; } catch (e) { /* keep the build's */ } }
+    const packed = document.getElementById("caf-host-agents");   // the agent packs' agents, from the server that hosts this console
+    if (packed) { try { const data = JSON.parse(packed.textContent || "{}"); CAF.packs = data.packs || [];
+      for (const a of data.agents || []) if (!CAF.catalog[a.id]) { CAF.catalog[a.id] = a; CAF.order.push(a.id); CAF.remote[a.id] = true; } } catch (e) { /* the blueprint's agents still work */ } }
     CAF.planner = CAF.boot.planner || {};
     CAF.schemas = CAF.boot.schemas || {};
     CAF.routing = CAF.boot.routing || {}; // {agent: {template: {tier, work, follow}}} from config/model_routing.yaml
@@ -577,6 +581,7 @@ CAF.runAgent = async function runAgent(id, input = {}, opts = {}) {
   const base = { agent_id: id, run_id: runId, status: "error", summary: "", output: {}, checks: [], artifacts: [], warnings: [], pending_actions: [], provenance: {}, metrics: {}, error: null };
   if (!desc) return { ...base, error: `Unknown agent '${id}'` };
   const impl = CAF.impl[id];
+  if (!impl && CAF.remote[id]) return CAF.runRemote(id, input, { ...opts, runId }, base, t0);
   if (!impl) return { ...base, summary: `${desc.name} has no browser runtime`, error: "This agent has no browser runtime in the console" };
   const vin = CAF.schema.validate(desc.input_schema, U.clone(input) || {});
   if (!vin.ok) return { ...base, summary: `${desc.name}: invalid input`, error: `Invalid input: ${vin.errors.join("; ")}` };
@@ -612,6 +617,28 @@ CAF.runAgent = async function runAgent(id, input = {}, opts = {}) {
     _ctx: ctx,
   };
   CAF.emit({ type: "agent.end", agent: id, runId, step: opts.stepId, result: res });
+  return res;
+};
+
+/* A pack agent has no browser twin: the server that hosts the console runs it (on its model, or as the pack's twin when the
+   console is in Offline mode) and the result comes back in the same shape as a browser run. */
+CAF.localIds = () => CAF.order.filter((id) => !CAF.remote[id]);
+CAF.runRemote = async function runRemote(id, input, opts, base, t0) {
+  const desc = CAF.catalog[id];
+  CAF.emit({ type: "agent.start", agent: id, runId: base.run_id, step: opts.stepId });
+  let res;
+  try {
+    if (!window.claude || typeof window.claude.runAgent !== "function") throw new Error("This agent runs on the server: open the console from the orchestration layer");
+    const offline = !!opts.forceOffline || CAF.llm.mode === "offline";
+    const r = await window.claude.runAgent(id, input || {}, { upstream: opts.upstream || null, signal: opts.signal, offline, tier: (opts.quick || CAF.llm.quick) ? "fast" : null });
+    const out = r.output || {};
+    res = { ...base, ...r, run_id: base.run_id, server_run_id: r.run_id, view: null,
+      artifacts: (out.artifacts || []).map((a, i) => ({ name: `${a.type || "artifact"}${i ? "-" + (i + 1) : ""}.json`, mime: "application/json", content: JSON.stringify(a.content === undefined ? a : a.content, null, 2), description: a.name || "" })),
+      provenance: { ...(r.provenance || {}), runtime: "server" }, metrics: { ...(r.metrics || {}), duration_ms: Math.round(performance.now() - t0) } };
+  } catch (e) {
+    res = { ...base, summary: `${desc.name} failed`, error: (opts.signal && opts.signal.aborted) ? "Stopped" : ((e && e.message) || String(e)), metrics: { duration_ms: Math.round(performance.now() - t0), llm_calls: 0 } };
+  }
+  CAF.emit({ type: "agent.end", agent: id, runId: base.run_id, step: opts.stepId, result: res });
   return res;
 };
 
