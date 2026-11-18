@@ -49,7 +49,12 @@ CREATE TABLE IF NOT EXISTS access_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL, name TEXT NOT NULL, company TEXT DEFAULT '',
     email TEXT NOT NULL, items TEXT DEFAULT '[]', run_mode TEXT DEFAULT '', message TEXT DEFAULT '',
     status TEXT NOT NULL DEFAULT 'new');
+CREATE TABLE IF NOT EXISTS flows (
+    id TEXT PRIMARY KEY, data TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'draft', version INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
 """
+
+SUBSCRIPTION_KINDS = ("agent", "playbook", "flow", "all")   # playbook and flow are the same thing: a flow id
 
 
 def now_iso() -> str:
@@ -82,6 +87,9 @@ class ShopStore:
         con = sqlite3.connect(self.path, timeout=30)
         try:
             con.executescript(SCHEMA)
+            # earlier releases called a rented flow a "playbook" subscription
+            con.execute("UPDATE OR IGNORE subscriptions SET kind='flow' WHERE kind='playbook'")
+            con.execute("DELETE FROM subscriptions WHERE kind='playbook'")
             con.commit()
         finally:
             con.close()
@@ -203,7 +211,7 @@ class ShopStore:
 
     # ------------------------------------------------------------------------------- subscriptions
     def set_subscriptions(self, customer_id: str, items: list[dict[str, Any]], *, replace: bool = True) -> list[dict[str, Any]]:
-        """items: [{kind: agent|playbook|all, item_id, ends_at?}] ('all' covers every agent and playbook)."""
+        """items: [{kind: agent|flow|all, item_id, ends_at?}] ('all' covers every agent and flow; 'playbook' = 'flow')."""
         self.get_customer(customer_id)
         ts = now_iso()
         with self._db() as db:
@@ -211,8 +219,10 @@ class ShopStore:
                 db.execute("DELETE FROM subscriptions WHERE customer_id=?", (customer_id,))
             for item in items:
                 kind = str(item.get("kind") or "agent")
-                if kind not in ("agent", "playbook", "all"):
-                    raise ShopError("subscription kind must be agent, playbook or all")
+                if kind not in SUBSCRIPTION_KINDS:
+                    raise ShopError("subscription kind must be agent, flow or all")
+                if kind == "playbook":
+                    kind = "flow"
                 item_id = str(item.get("item_id") or ("*" if kind == "all" else ""))
                 if not item_id:
                     raise ShopError("subscription needs item_id")
@@ -322,3 +332,59 @@ class ShopStore:
             cur = db.execute("UPDATE access_requests SET status=? WHERE id=?", (status, request_id))
             if cur.rowcount == 0:
                 raise ShopError("unknown request", 404)
+
+    # ------------------------------------------------------------------------------- flows (custom orchestrations)
+    @staticmethod
+    def _flow(row: sqlite3.Row) -> dict[str, Any]:
+        d = json.loads(row["data"])
+        d.update(id=row["id"], status=row["status"], version=row["version"], created_at=row["created_at"], updated_at=row["updated_at"])
+        return d
+
+    def list_flows(self) -> list[dict[str, Any]]:
+        with self._db() as db:
+            rows = db.execute("SELECT * FROM flows ORDER BY created_at").fetchall()
+        return [self._flow(r) for r in rows]
+
+    def get_flow(self, flow_id: str) -> dict[str, Any] | None:
+        with self._db() as db:
+            row = db.execute("SELECT * FROM flows WHERE id=?", (flow_id,)).fetchone()
+        return self._flow(row) if row else None
+
+    def save_flow(self, flow: dict[str, Any]) -> dict[str, Any]:
+        """Insert or update a custom flow (the dict is the Flow model dumped). The version goes up on every change."""
+        flow_id = flow["id"]
+        ts = now_iso()
+        with self._db() as db:
+            row = db.execute("SELECT version, created_at, status FROM flows WHERE id=?", (flow_id,)).fetchone()
+            data = {k: v for k, v in flow.items() if k not in ("id", "status", "version", "created_at", "updated_at")}
+            if row is None:
+                db.execute("INSERT INTO flows(id,data,status,version,created_at,updated_at) VALUES(?,?,?,?,?,?)",
+                           (flow_id, json.dumps(data), flow.get("status") or "draft", 1, ts, ts))
+            else:
+                db.execute("UPDATE flows SET data=?, status=?, version=?, updated_at=? WHERE id=?",
+                           (json.dumps(data), flow.get("status") or row["status"], int(row["version"]) + 1, ts, flow_id))
+        return self.get_flow(flow_id)  # type: ignore[return-value]
+
+    def set_flow_status(self, flow_id: str, status: str, *, published_at: str | None = None) -> dict[str, Any]:
+        with self._db() as db:
+            row = db.execute("SELECT data FROM flows WHERE id=?", (flow_id,)).fetchone()
+            if row is None:
+                raise ShopError(f"unknown flow '{flow_id}'", 404)
+            data = json.loads(row["data"])
+            if published_at is not None:
+                data["published_at"] = published_at
+            db.execute("UPDATE flows SET data=?, status=?, updated_at=? WHERE id=?", (json.dumps(data), status, now_iso(), flow_id))
+        return self.get_flow(flow_id)  # type: ignore[return-value]
+
+    def delete_flow(self, flow_id: str) -> None:
+        with self._db() as db:
+            cur = db.execute("DELETE FROM flows WHERE id=?", (flow_id,))
+            if cur.rowcount == 0:
+                raise ShopError(f"unknown flow '{flow_id}'", 404)
+            db.execute("DELETE FROM subscriptions WHERE kind='flow' AND item_id=?", (flow_id,))
+
+    def flow_subscribers(self, flow_id: str) -> list[str]:
+        with self._db() as db:
+            rows = db.execute("SELECT DISTINCT customer_id FROM subscriptions WHERE kind='flow' AND item_id=? AND status='active'",
+                              (flow_id,)).fetchall()
+        return [r["customer_id"] for r in rows]

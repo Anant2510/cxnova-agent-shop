@@ -1,10 +1,11 @@
 # CX Nova Agent Shop
 
 **Marketing and experimentation agents you rent, run from your tools, on the model your policy allows.** The shop
-sells the 28 agents and 8 playbooks of the Coforge Agentic Framework below: a storefront with indicative prices,
-customer accounts with API keys, subscriptions per agent or bundle, a model policy per customer (its own LLM
-deployment, masking, allowed websites, limits), usage metering, and an operator admin console. A customer key
-on REST, MCP or A2A sees and runs only what that customer rents. See [Agent Shop](#agent-shop) below and
+sells the 28 agents of the Coforge Agentic Framework below and the orchestration flows composed from them (the 8
+built-in playbooks plus any the operator builds in the admin console): a storefront with indicative prices,
+customer accounts with API keys, subscriptions per agent or per flow, a model policy per customer (its own LLM
+deployment, masking, allowed websites, limits), usage metering, and an operator admin console with a flow builder.
+A customer key on REST, MCP or A2A sees and runs only what that customer rents; a rented flow is one MCP tool. See [Agent Shop](#agent-shop) below and
 [docs/DEPLOY_VM.md](docs/DEPLOY_VM.md) for the deployment on the CX Nova VM.
 
 ## Coforge Agentic Framework (the engine)
@@ -130,8 +131,8 @@ Liveness evidence for every agent: [`docs/LIVENESS.md`](docs/LIVENESS.md) (regen
 
 | Surface | Where | Notes |
 |---|---|---|
-| REST | `caf serve` then `/docs` | `/agents`, `/agents/{id}/run`, `/orchestrate`, `/runs/{id}`, `/runs/{id}/approvals`, `/runs/{id}/artifacts/...`, `/health`, `/health/agents`, `/playbooks`, `/connectors`, `/r/{code}` short links |
-| MCP | `/mcp` (streamable HTTP) or `caf mcp` (stdio) | `run_<agent_id>` for every agent, plus `orchestrate`, `approve_actions`, `list_agents` |
+| REST | `caf serve` then `/docs` | `/agents`, `/agents/{id}/run`, `/flows`, `/flows/{id}/run`, `/orchestrate`, `/runs/{id}`, `/runs/{id}/approvals`, `/runs/{id}/artifacts/...`, `/health`, `/health/agents`, `/playbooks`, `/connectors`, `/r/{code}` short links |
+| MCP | `/mcp` (streamable HTTP) or `caf mcp` (stdio) | `run_<agent_id>` for every agent, `run_flow_<flow_id>` for every published flow, plus `list_agents`, `list_flows`, `run_flow`, `orchestrate`, `approve_actions`; with a customer key the tool list is that customer's subscription |
 | A2A | `/.well-known/agent-card.json`, `POST /a2a` | Orchestrator card listing every agent as a skill; JSON-RPC `message/send`, `tasks/get` |
 | CLI | `caf` | `agents`, `describe`, `run`, `orchestrate`, `playbooks`, `health`, `serve`, `mcp`, `export-catalog` |
 | Console | `caf serve` then `/` (or `/console`) | The orchestrator UI: browser twins of all agents, model calls on the server's provider (see below) |
@@ -177,9 +178,10 @@ agent is tested headless under a strict no-eval CSP by `console/test/harness.py`
 
 | Piece | What it does |
 | --- | --- |
-| Storefront (`/shop`, `/shop/agents/{id}`) | Every agent and bundle with its contract, model steps, connectors and indicative price (`config/shop_catalog.yaml`); an access-request form |
-| Customers, keys, subscriptions | `caf shop add / key / subscribe`, or the admin console. Keys are `cxn_...`, stored as hashes, shown once |
-| Entitlements | With a customer key, `/agents`, `/playbooks`, the MCP tool list, the A2A card and every run are limited to the subscription; a planned step outside it is skipped and reported |
+| Storefront (`/shop`, `/shop/agents/{id}`, `/shop/flows/{id}`) | Every agent and published flow with its contract, steps and stages, model steps, connectors and indicative price (`config/shop_catalog.yaml`); an access-request form |
+| Orchestration flows | Admin → Flows: compose a flow from agents (steps, what each needs, optional input bindings, shared inputs, price), check it, test-run it, publish it. A published flow is a storefront item, a playbook for the router, the planner and the console, the MCP tool `run_flow_<id>`, `POST /flows/{id}/run` and the A2A skill `flow:<id>`; unpublishing removes all of that. Built-in playbooks are flows too (read-only; clone to change). CLI: `caf shop flows list / show / save / publish / clone / test` |
+| Customers, keys, subscriptions | `caf shop add / key / subscribe --agents a,b --flows f`, or the admin console. Keys are `cxn_...`, stored as hashes, shown once. A flow is rented as a whole: the customer runs the flow (every agent in it, for runs of the flow), not its agents one by one |
+| Entitlements | With a customer key, `/agents`, `/flows`, `/playbooks`, the MCP tool list, the A2A card and every run are limited to the subscription; a planned step outside it is skipped and reported |
 | Run modes | 1 Coforge Cloud (the shop's model), 2 Coforge Cloud with the customer's model, 3 Customer Cloud (this same image in the customer's environment) |
 | Customer policy | `config/policies/example-customer.yaml`: provider, endpoint, credential (`api_key_env` on the server, or inline and encrypted with `CAF_SECRET_KEY`), routing tiers → the customer's deployments, masking before the model (email, phone, policy and card numbers, IBAN), images on/off, allowed websites, approvals, runs per day and tokens per month |
 | Metering | Every agent run: customer, agent, version, surface, run mode, provider, tokens, duration, outcome. `caf shop usage`, `/shop/me/usage`, the admin usage view |

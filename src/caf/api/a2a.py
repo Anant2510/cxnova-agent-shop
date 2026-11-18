@@ -18,15 +18,26 @@ def agent_skill(agent: Any) -> dict[str, Any]:
             "examples": s.use_cases[:3], "inputModes": ["application/json", "text/plain"], "outputModes": ["application/json"]}
 
 
-def orchestrator_card(base_url: str, allowed: set[str] | None = None) -> dict[str, Any]:
+def flow_skill(flow: dict[str, Any]) -> dict[str, Any]:
+    """A rented orchestration flow as an A2A skill: send a data part {"flow": "<id>", "inputs": {...}} to run it."""
+    inputs = ", ".join(i["name"] for i in flow.get("inputs", [])) or "url, audience ..."
+    return {"id": f"flow:{flow['id']}", "name": flow["name"], "description": flow.get("description") or flow["name"],
+            "tags": ["flow", *flow.get("agents", [])[:8]],
+            "examples": [f'data part: {{"flow": "{flow["id"]}", "inputs": {{{inputs}}}}}'],
+            "inputModes": ["application/json", "text/plain"], "outputModes": ["application/json"]}
+
+
+def orchestrator_card(base_url: str, allowed: set[str] | None = None, flows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     from ..branding import PRODUCT
 
     agents = [a for a in all_agents() if allowed is None or a.spec.id in allowed]
+    flows = flows or []
     return {
         "protocolVersion": PROTOCOL_VERSION,
         "name": f"{PRODUCT.name} Orchestrator",
         "description": f"Plans and runs multi-agent marketing workflows across {len(agents)} vendor-neutral agents "
-                       "(strategy, content, website optimisation, experimentation).",
+                       f"(strategy, content, website optimisation, experimentation)"
+                       + (f" and {len(flows)} ready-made orchestration flows." if flows else "."),
         "url": f"{base_url}/a2a",
         "preferredTransport": "JSONRPC",
         "version": __import__("caf").__version__,
@@ -34,7 +45,7 @@ def orchestrator_card(base_url: str, allowed: set[str] | None = None) -> dict[st
         "capabilities": {"streaming": False, "pushNotifications": False, "stateTransitionHistory": True},
         "defaultInputModes": ["text/plain", "application/json"],
         "defaultOutputModes": ["application/json", "text/markdown"],
-        "skills": [agent_skill(a) for a in agents],
+        "skills": [agent_skill(a) for a in agents] + [flow_skill(f) for f in flows],
     }
 
 
@@ -58,8 +69,10 @@ def _text_of(message: dict[str, Any]) -> tuple[str, dict[str, Any]]:
 
 
 def handle_jsonrpc(body: dict[str, Any], orchestrator: Any, agent_id: str | None = None, *, ctx: Any = None,
-                   run_owner: Any = None) -> dict[str, Any]:
-    """`ctx`: a prepared RunContext (a shop customer's); `run_owner(run_id) -> bool` limits tasks/get to that caller's runs."""
+                   run_owner: Any = None, run_flow: Any = None) -> dict[str, Any]:
+    """`ctx`: a prepared RunContext (a shop customer's) or a callable making one; `run_owner(run_id) -> bool` limits
+    tasks/get to that caller's runs; `run_flow(flow_id, inputs, goal) -> view` runs a rented flow named in a data part
+    ({"flow": "<id>"} or {"playbook": "<id>"})."""
     rid = body.get("id")
     method = body.get("method")
     if method not in ("message/send", "tasks/get"):
@@ -76,8 +89,18 @@ def handle_jsonrpc(body: dict[str, Any], orchestrator: Any, agent_id: str | None
     goal, data = _text_of(params.get("message") or {})
     if not goal and not data:
         return {"jsonrpc": "2.0", "id": rid, "error": {"code": -32602, "message": "message needs a text or data part"}}
-    view = orchestrator.start(goal or data.get("goal", ""), inputs=data.get("inputs", data), agent=agent_id or data.get("agent"),
-                              playbook=data.get("playbook"), ctx=ctx)
+    flow_id = data.get("flow") or data.get("playbook")
+    if flow_id and run_flow is not None and not agent_id:
+        try:
+            view = run_flow(flow_id, data.get("inputs", {k: v for k, v in data.items() if k not in ("flow", "playbook", "goal")}), goal or data.get("goal"))
+        except Exception as exc:
+            code = -32001 if getattr(exc, "status", 400) == 404 else -32000
+            return {"jsonrpc": "2.0", "id": rid, "error": {"code": code, "message": str(exc)}}
+    else:
+        if callable(ctx):
+            ctx = ctx()
+        view = orchestrator.start(goal or data.get("goal", ""), inputs=data.get("inputs", data), agent=agent_id or data.get("agent"),
+                                  playbook=flow_id, ctx=ctx)
     if view.get("run_id") is None:  # needs_clarification: nothing ran, answer with a message (no task)
         tips = "; ".join((view.get("final") or {}).get("next_steps", []))
         return {"jsonrpc": "2.0", "id": rid, "result": {"kind": "message", "role": "agent", "messageId": uuid.uuid4().hex,

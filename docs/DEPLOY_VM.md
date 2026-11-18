@@ -27,7 +27,9 @@ git push -u origin main
 ```
 
 `.gitignore` keeps `.env`, `data/`, `runs/`, `.venv/` and the zip snapshots out. `console/dist/` (the built
-console) is committed on purpose, so the VM needs no Node.js.
+console) is committed on purpose, so the VM needs no Node.js: install and update use it as committed and never
+rebuild it on their own (`-RebuildConsole` does, when Node.js is there). Flows published in the admin console
+reach the console's playbook list without a rebuild.
 
 ## 2. Install on the VM
 
@@ -110,11 +112,28 @@ From the VM (the CLI needs no token) or from the admin console:
 
 ```powershell
 .venv\Scripts\caf shop add meridian-mutual "Meridian Mutual" --contact marketing-ops@meridian-mutual.example
-.venv\Scripts\caf shop subscribe meridian-mutual --playbooks website_audit,campaign_launch
+.venv\Scripts\caf shop subscribe meridian-mutual --flows website_audit,campaign_launch --agents utm_generation
 .venv\Scripts\caf shop key meridian-mutual --label "marketing ops"      # the key is shown once
 .venv\Scripts\caf shop policy meridian-mutual --file config\policies\example-customer.yaml   # optional: its own model
 .venv\Scripts\caf shop check meridian-mutual                             # every subscribed agent on its model
 .venv\Scripts\caf shop usage meridian-mutual
+```
+
+## 8. Composing and renting a flow
+
+Admin console → **Flows** → **New flow**: pick the agents as steps, tick what each step needs (steps that need
+nothing more run in parallel), name the shared inputs the customer will send, **Check**, **Test run** (sample
+inputs, on this server's model), then **Save & publish**. The flow is now a storefront card with its own page
+(`.../agentshop/shop/flows/<id>`), a playbook in the console, the MCP tool `run_flow_<id>`, the endpoint
+`POST /flows/<id>/run` and the A2A skill `flow:<id>`. Rent it to a customer on its Subscriptions tab; renting the
+flow covers every agent in it for runs of the flow. The same from the CLI:
+
+```powershell
+.venv\Scripts\caf shop flows list
+.venv\Scripts\caf shop flows clone website_audit audit_lite      # a built-in flow as an editable draft (YAML via "flows show")
+.venv\Scripts\caf shop flows save my_flow.yaml --publish
+.venv\Scripts\caf shop flows test my_flow
+.venv\Scripts\caf shop subscribe meridian-mutual --flows my_flow --add
 ```
 
 Send the customer its key and the address of `/shop/account`: the page shows its agents, the REST, MCP and A2A
@@ -125,7 +144,7 @@ sees and runs only what it rents, on REST, MCP and A2A alike.
 
 ```powershell
 cd C:\cxnova\cxnova-agent-shop
-.\deploy\windows\update.ps1         # git pull, dependencies, console rebuild if needed, service restart
+.\deploy\windows\update.ps1         # restores the committed console build, git pull, dependencies, service restart
 ```
 
 ## Where things are

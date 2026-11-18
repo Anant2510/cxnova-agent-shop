@@ -1,5 +1,6 @@
 """The Agent Shop: customers, keys, subscriptions, the customer's policy (its own model, masking, websites, limits),
-entitlements on REST / MCP / A2A, metering, the agent check, and the storefront pages."""
+entitlements on REST / MCP / A2A, metering, the agent check, the storefront pages, and orchestration flows (the
+flow builder, publishing, renting a flow as a whole, run_flow_<id> MCP tools)."""
 
 from __future__ import annotations
 
@@ -65,14 +66,24 @@ def test_store_keys_subscriptions_and_entitlements(shop_env):
     full, rec = shop.store.issue_key("acme", "laptop")
     assert shop.store.customer_for_key(full)["id"] == "acme" and shop.store.customer_for_key("cxn_nope_x") is None
     assert shop.store.customer_for_key(full[:-1] + ("a" if full[-1] != "a" else "b")) is None  # one character off
-    shop.store.set_subscriptions("acme", [{"kind": "playbook", "item_id": "website_audit"}, {"kind": "agent", "item_id": "email_creation"}])
+    shop.store.set_subscriptions("acme", [{"kind": "flow", "item_id": "website_audit"}, {"kind": "agent", "item_id": "email_creation"}])
     c = shop.store.get_customer("acme")
-    assert shop.entitled_agents(c) == {"technical_seo_recommendations", "geo_recommendations", "web_accessibility_evaluation", "heatmap_analysis",
-                                      "ga4_traffic_report", "experiment_ideation", "email_creation"}
-    assert shop.entitled_playbooks(c) == ["website_audit"]
+    # renting a flow rents the flow as a whole, not its agents one by one
+    assert shop.entitled_agents(c) == {"email_creation"}
+    assert shop.entitled_flows(c) == ["website_audit"]
     with pytest.raises(ShopError) as exc:
         shop.require_entitled(c, "blog_post_creation")
     assert exc.value.status == 403
+    with pytest.raises(ShopError) as exc:
+        shop.require_entitled_flow(c, "campaign_launch")
+    assert exc.value.status == 403
+    # every agent of a flow rented one by one entitles the flow too; "playbook" is accepted as a synonym of "flow"
+    shop.store.set_subscriptions("acme", [{"kind": "agent", "item_id": a} for a in ("technical_seo_recommendations", "geo_recommendations",
+                                          "web_accessibility_evaluation", "heatmap_analysis", "ga4_traffic_report", "experiment_ideation")]
+                                 + [{"kind": "playbook", "item_id": "competitive_pitch"}])
+    c = shop.store.get_customer("acme")
+    assert shop.entitled_flows(c) == ["competitive_pitch", "website_audit"]
+    assert {s["kind"] for s in shop.store.list_subscriptions("acme")} == {"agent", "flow"}
     shop.store.set_subscriptions("acme", [{"kind": "all", "item_id": "*", "ends_at": "2020-01-01"}])  # expired
     assert shop.entitled_agents(shop.store.get_customer("acme")) == set()
     shop.store.revoke_key("acme", rec["id"])
@@ -115,12 +126,15 @@ def test_policy_encrypts_inline_credentials_and_builds_customer_llm_settings(sho
 
 # ------------------------------------------------------------------------------------------------ REST surfaces
 def test_customer_sees_and_runs_only_its_subscription(client):
-    key, hdr = _customer(client, subs=[{"kind": "playbook", "item_id": "website_audit"}, {"kind": "agent", "item_id": "utm_generation"}])
+    key, hdr = _customer(client, subs=[{"kind": "flow", "item_id": "website_audit"}, {"kind": "agent", "item_id": "utm_generation"}])
     ids = {a["id"] for a in client.get("/agents", headers=hdr).json()}
-    assert ids == {"technical_seo_recommendations", "geo_recommendations", "web_accessibility_evaluation", "heatmap_analysis",
-                   "ga4_traffic_report", "experiment_ideation", "utm_generation"}
+    assert ids == {"utm_generation"}  # the rented flow does not rent its agents one by one
     assert len(client.get("/agents", headers=ADMIN).json()) == 28  # the operator sees everything
     assert [p["id"] for p in client.get("/playbooks", headers=hdr).json()] == ["website_audit"]
+    assert [f["id"] for f in client.get("/flows", headers=hdr).json()] == ["website_audit"]
+    assert len(client.get("/flows", headers=ADMIN).json()) == 8
+    assert client.get("/flows/campaign_launch", headers=hdr).status_code == 403
+    assert client.get("/flows/website_audit", headers=hdr).json()["tool"] == "run_flow_website_audit"
     assert client.get("/agents/blog_post_creation", headers=hdr).status_code == 403
     assert client.post("/agents/blog_post_creation/run", json={}, headers=hdr).status_code == 403
     r = client.post("/agents/utm_generation/run", json={"inputs": {"base_url": DEMO, "campaign": "2026q4_us_home_launch", "channels": ["email"]}}, headers=hdr)
@@ -130,22 +144,31 @@ def test_customer_sees_and_runs_only_its_subscription(client):
     # a customer never sees another customer's runs
     _, other = _customer(client, cid="other-co", name="Other", subs=[{"kind": "all"}])
     assert client.get(f"/runs/{run_id}/trace", headers=other).status_code == 404
-    # a playbook outside the subscription is refused; a plan with an unsubscribed agent skips that step
+    # a flow outside the subscription is refused; a plan with an unsubscribed agent skips that step
     assert client.post("/orchestrate", json={"goal": "launch", "playbook": "campaign_launch"}, headers=hdr).status_code == 403
+    assert client.post("/flows/campaign_launch/run", json={"inputs": {"url": DEMO}}, headers=hdr).status_code == 403
     plan = {"mode": "custom", "steps": [{"id": "links", "agent": "utm_generation"}, {"id": "mail", "agent": "email_creation", "needs": ["links"]}]}
     v = client.post("/orchestrate", json={"goal": "Tag the launch links", "plan": plan, "inputs": {"url": DEMO}}, headers=hdr).json()
     by_step = {s["id"]: s["status"] for s in v["steps"]}
     assert by_step == {"links": "ok", "mail": "skipped"} and any("not in this customer's subscription" in w for w in v["warnings"])
     assert client.get(f"/runs/{v['run_id']}", headers=hdr).json()["run_id"] == v["run_id"]
     assert client.get(f"/runs/{v['run_id']}", headers=other).status_code == 404
-    # metering: every agent run is on the account (one direct, two steps of the orchestrated run), with surface and outcome
+    # the rented flow runs as a whole: all six of its agents run for this customer even though none is rented singly
+    fv = client.post("/flows/website_audit/run", json={"inputs": {"url": DEMO}}, headers=hdr).json()
+    assert fv["flow"]["id"] == "website_audit" and fv["route"]["playbook"] == "website_audit"
+    assert {s["status"] for s in fv["steps"]} <= {"ok", "degraded"} and len(fv["steps"]) == 6
+    assert client.get(f"/runs/{fv['run_id']}", headers=hdr).status_code == 200
+    # metering: every agent run is on the account (one direct, two steps of the plan, six of the flow), with surface and outcome
     me = client.get("/shop/me", headers=hdr).json()
-    assert me["customer"]["id"] == "meridian-mutual" and me["usage"]["totals"]["runs"] == 3
+    assert me["customer"]["id"] == "meridian-mutual" and me["usage"]["totals"]["runs"] == 9
     assert {(u["agent_id"], u["surface"], u["status"]) for u in me["recent"]} >= {("utm_generation", "api", "ok"), ("email_creation", "api", "skipped")}
+    assert {u["agent_id"] for u in me["recent"]} >= {"heatmap_analysis", "technical_seo_recommendations", "experiment_ideation"}
     assert me["connection"]["mcp"]["url"].endswith("/mcp") and "run_utm_generation" in me["connection"]["mcp"]["tools"]
+    assert "run_flow_website_audit" in me["connection"]["mcp"]["tools"] and me["entitled_flows"] == ["website_audit"]
+    assert me["flows"][0]["id"] == "website_audit" and me["flows"][0]["agent_names"]
     assert me["keys"][0]["prefix"] == key[:12] and "key" not in me["keys"][0]
     admin_usage = client.get("/shop/admin/api/usage?customer=meridian-mutual", headers=ADMIN).json()
-    assert admin_usage["totals"]["runs"] == 3
+    assert admin_usage["totals"]["runs"] == 9
 
 
 def test_tokens_roles_and_public_pages(client):
@@ -162,7 +185,10 @@ def test_tokens_roles_and_public_pages(client):
     root = client.get("/", headers={"accept": "text/html"}, follow_redirects=False)
     assert root.headers["location"] == "/shop"
     cat = client.get("/shop/catalog").json()
-    assert len(cat["agents"]) == 28 and len(cat["bundles"]) == 8 and cat["agents"][0]["price"]["monthly"]
+    assert len(cat["agents"]) == 28 and len(cat["flows"]) == 8 and cat["agents"][0]["price"]["monthly"]
+    assert cat["flows"][0]["stages"] and cat["flows"][0]["price"]["monthly"]
+    assert client.get("/shop/catalog/flows/website_audit").json()["agent_cards"][0]["id"] == "technical_seo_recommendations"
+    assert client.get("/shop/flows/website_audit").status_code == 200 and client.get("/shop/catalog/flows/nope").status_code == 404
     one = client.get("/shop/catalog/technical_seo_recommendations").json()
     assert one["model_steps"] and one["price"]["outcome"] == "SEO audit"
     r = client.post("/shop/requests", json={"name": "Priya", "email": "priya@acme.example", "items": ["website_audit"], "run_mode": "customer_cloud"})
@@ -200,7 +226,8 @@ def test_mcp_and_a2a_follow_the_subscription(client):
     # A2A: the card lists only the subscribed skills; a message runs under the customer's context
     card = client.get("/.well-known/agent-card.json", headers=hdr).json()
     assert [s["id"] for s in card["skills"]] == ["utm_generation"] and card["name"].startswith("CX Nova Agent Shop")
-    assert len(client.get("/.well-known/agent-card.json").json()["skills"]) == 28
+    skills = [s["id"] for s in client.get("/.well-known/agent-card.json").json()["skills"]]
+    assert len(skills) == 36 and "flow:website_audit" in skills  # the operator's card: 28 agents and 8 built-in flows
     assert client.get("/a2a/agents/email_creation/agent-card.json", headers=hdr).status_code == 403
     msg = {"jsonrpc": "2.0", "id": 5, "method": "message/send",
            "params": {"message": {"role": "user", "messageId": "m1", "parts": [{"kind": "text", "text": "Create UTM links for our email newsletter"}]}}}
@@ -209,6 +236,119 @@ def test_mcp_and_a2a_follow_the_subscription(client):
     assert client.post("/a2a", json={"jsonrpc": "2.0", "id": 6, "method": "tasks/get", "params": {"id": task["id"]}}, headers=hdr).json()["result"]["id"] == task["id"]
     me = client.get("/shop/me", headers=hdr).json()
     assert {u["surface"] for u in me["recent"]} >= {"mcp", "a2a"}
+    # tools/list is the customer's entitlement: its one agent and the generic tools, no flow tools yet
+    names = {t["name"] for t in client.post("/mcp/", json={"jsonrpc": "2.0", "id": 7, "method": "tools/list", "params": {}}, headers=h).json()["result"]["tools"]}
+    assert names == {"run_utm_generation", "list_agents", "list_flows", "run_flow", "orchestrate", "approve_actions"}
+    assert len({t["name"] for t in client.post("/mcp/", json={"jsonrpc": "2.0", "id": 8, "method": "tools/list", "params": {}}, headers={**MCP_HEADERS, **ADMIN}).json()["result"]["tools"]}) == 28 + 8 + 5
+    # rent a flow: its tool appears, runs as a whole over MCP and over A2A, and is refused without the subscription
+    client.put("/shop/admin/api/customers/meridian-mutual/subscriptions", json=[{"kind": "agent", "item_id": "utm_generation"}, {"kind": "flow", "item_id": "competitive_pitch"}], headers=ADMIN)
+    names = {t["name"] for t in client.post("/mcp/", json={"jsonrpc": "2.0", "id": 9, "method": "tools/list", "params": {}}, headers=h).json()["result"]["tools"]}
+    assert "run_flow_competitive_pitch" in names and "run_flow_website_audit" not in names
+    flows = json.loads(client.post("/mcp/", json={"jsonrpc": "2.0", "id": 10, "method": "tools/call", "params": {"name": "list_flows", "arguments": {}}}, headers=h).json()["result"]["content"][0]["text"])
+    assert [f["id"] for f in flows] == ["competitive_pitch"] and flows[0]["tool"] == "run_flow_competitive_pitch"
+    ran = client.post("/mcp/", json={"jsonrpc": "2.0", "id": 11, "method": "tools/call", "params": {"name": "run_flow_competitive_pitch",
+                      "arguments": {"args": {"url": DEMO, "competitors": ["https://www.rival.example/"], "goal": "Pitch against the rival"}}}}, headers=h).json()
+    assert not ran["result"].get("isError"), ran["result"]["content"][0]["text"]
+    view = ran["result"].get("structuredContent") or json.loads(ran["result"]["content"][0]["text"])
+    assert view["flow"]["id"] == "competitive_pitch" and len(view["steps"]) == 3 and {s["status"] for s in view["steps"]} <= {"ok", "degraded"}
+    denied = client.post("/mcp/", json={"jsonrpc": "2.0", "id": 12, "method": "tools/call", "params": {"name": "run_flow", "arguments": {"args": {"flow_id": "website_audit", "inputs": {"url": DEMO}}}}}, headers=h).json()
+    assert denied["result"].get("isError") and "not in your subscription" in denied["result"]["content"][0]["text"]
+    card = client.get("/.well-known/agent-card.json", headers=hdr).json()
+    assert [s["id"] for s in card["skills"]] == ["utm_generation", "flow:competitive_pitch"]
+    msg = {"jsonrpc": "2.0", "id": 13, "method": "message/send", "params": {"message": {"role": "user", "messageId": "m2", "parts": [
+        {"kind": "data", "data": {"flow": "competitive_pitch", "inputs": {"url": DEMO, "competitors": ["https://www.rival.example/"]}}}]}}}
+    task = client.post("/a2a", json=msg, headers=hdr).json()["result"]
+    assert task["kind"] == "task" and len(task["artifacts"]) == 3
+    msg["params"]["message"]["parts"][0]["data"]["flow"] = "website_audit"
+    assert client.post("/a2a", json=msg, headers=hdr).json()["error"]["message"].startswith("flow 'website_audit' is not in your subscription")
+
+
+# ------------------------------------------------------------------------------------------------ the flow builder
+def test_flow_builder_compose_publish_rent(client):
+    """The operator composes a flow from agents, tests it, publishes it; it becomes a storefront item, a playbook for the
+    router and the console, an MCP tool and a rentable subscription; unpublishing takes all of that away again."""
+    admin_flows = client.get("/shop/admin/api/flows", headers=ADMIN).json()
+    assert len(admin_flows) == 8 and all(f["source"] == "builtin" and f["status"] == "published" for f in admin_flows)
+    assert client.get("/shop/admin/api/flows").status_code == 401  # operator only
+    flow = {"id": "launch_kit", "name": "Launch kit", "description": "Brief, then emails and tagged links in parallel.",
+            "inputs": [{"name": "url", "description": "Product page", "required": True, "example": DEMO}, {"name": "audience"}],
+            "steps": [{"id": "brief", "agent": "campaign_brief_generation", "purpose": "the brief everything hangs off"},
+                      {"id": "mail", "agent": "email_creation", "needs": ["brief"], "inputs": {"overview": "${steps.brief.output.summary|goal}"}},
+                      {"id": "links", "agent": "utm_generation", "needs": ["brief"]}],
+            "triggers": ["launch kit"], "price": {"monthly": 400, "included_runs": 40}}
+    # validation lists every problem without saving
+    bad = {**flow, "steps": [{"id": "a", "agent": "nope"}, {"id": "a", "agent": "email_creation", "needs": ["zzz"], "inputs": {"wrong_field": 1}}]}
+    v = client.post("/shop/admin/api/flows/validate", json=bad, headers=ADMIN).json()
+    assert not v["ok"] and len(v["problems"]) == 4
+    assert client.put("/shop/admin/api/flows/launch_kit", json=bad, headers=ADMIN).status_code == 400
+    assert client.put("/shop/admin/api/flows/website_audit", json={**flow, "id": "website_audit"}, headers=ADMIN).status_code == 409  # built-in
+    v = client.post("/shop/admin/api/flows/validate", json=flow, headers=ADMIN).json()
+    assert v["ok"] and v["stages"] == [["brief"], ["mail", "links"]]
+    # saved as a draft: invisible to customers and the storefront, testable by the operator
+    saved = client.put("/shop/admin/api/flows/launch_kit", json=flow, headers=ADMIN).json()
+    assert saved["status"] == "draft" and saved["version"] == 1 and saved["tool"] == "run_flow_launch_kit" and saved["price"]["monthly"] == 400
+    assert "launch_kit" not in {f["id"] for f in client.get("/shop/catalog").json()["flows"]}
+    assert client.get("/shop/catalog/flows/launch_kit").status_code == 404
+    assert "launch_kit" not in {p["id"] for p in client.get("/playbooks", headers=ADMIN).json()}
+    test = client.post("/shop/admin/api/flows/launch_kit/test", json={}, headers=ADMIN).json()
+    assert test["total"] == 3 and test["passed"] == 3 and test["sample_inputs"]["url"] == DEMO
+    # published: storefront, catalog, playbook list (router + console), MCP tool, A2A skill
+    pub = client.post("/shop/admin/api/flows/launch_kit/publish", headers=ADMIN).json()
+    assert pub["status"] == "published" and pub["published_at"]
+    assert client.get("/shop/catalog/flows/launch_kit").json()["stages"] == [["brief"], ["mail", "links"]]
+    assert "launch_kit" in {p["id"] for p in client.get("/playbooks", headers=ADMIN).json()}
+    assert client.get("/shop/flows/launch_kit").status_code == 200
+    assert 'id="caf-host-playbooks"' in client.get("/console").text and "launch_kit" in client.get("/console").text
+    tools = {t["name"] for t in client.post("/mcp/", json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}, headers={**MCP_HEADERS, **ADMIN}).json()["result"]["tools"]}
+    assert "run_flow_launch_kit" in tools
+    assert "flow:launch_kit" in {s["id"] for s in client.get("/.well-known/agent-card.json").json()["skills"]}
+    # the operator runs it as a playbook through /orchestrate; the explicit step binding is honoured
+    view = client.post("/orchestrate", json={"goal": "Launch the flood-ready home cover", "playbook": "launch_kit", "inputs": {"url": DEMO}}, headers=ADMIN).json()
+    assert view["route"]["playbook"] == "launch_kit" and [s["id"] for s in view["steps"]] == ["brief", "mail", "links"]
+    # a customer rents it: required inputs are enforced, the run is metered, the subscription shows it
+    key, hdr = _customer(client, subs=[{"kind": "flow", "item_id": "launch_kit"}])
+    assert client.get("/agents", headers=hdr).json() == []
+    missing = client.post("/flows/launch_kit/run", json={"inputs": {"audience": "brokers"}}, headers=hdr)
+    assert missing.status_code == 400 and "url" in missing.json()["detail"]
+    run = client.post("/flows/launch_kit/run", json={"inputs": {"url": DEMO, "audience": "brokers"}}, headers=hdr).json()
+    assert run["flow"]["version"] == 1 and {s["status"] for s in run["steps"]} <= {"ok", "degraded", "needs_approval"}  # emails wait at the gate
+    me = client.get("/shop/me", headers=hdr).json()
+    assert me["entitled_flows"] == ["launch_kit"] and me["usage"]["totals"]["runs"] == 3 and me["flows"][0]["price"]["monthly"] == 400
+    assert client.get("/shop/admin/api/flows/launch_kit", headers=ADMIN).json()["subscribers"] == 1
+    # editing bumps the version; cloning a built-in gives an editable draft; unpublishing removes the tool and the listing
+    edited = client.put("/shop/admin/api/flows/launch_kit", json={**flow, "name": "Launch kit v2"}, headers=ADMIN).json()
+    assert edited["version"] == 2 and edited["status"] == "published"
+    clone = client.post("/shop/admin/api/flows/website_audit/clone", json={"new_id": "audit_lite"}, headers=ADMIN).json()
+    assert clone["status"] == "draft" and clone["source"] == "custom" and len(clone["steps"]) == 6
+    assert client.post("/shop/admin/api/flows/website_audit/unpublish", headers=ADMIN).status_code == 409
+    un = client.post("/shop/admin/api/flows/launch_kit/unpublish", headers=ADMIN).json()
+    assert un["status"] == "draft"
+    assert client.post("/flows/launch_kit/run", json={"inputs": {"url": DEMO}}, headers=hdr).status_code == 404
+    tools = {t["name"] for t in client.post("/mcp/", json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}, headers={**MCP_HEADERS, **ADMIN}).json()["result"]["tools"]}
+    assert "run_flow_launch_kit" not in tools and "launch_kit" not in {p["id"] for p in client.get("/playbooks", headers=ADMIN).json()}
+    assert client.delete("/shop/admin/api/flows/launch_kit", headers=ADMIN).json() == {"deleted": "launch_kit"}
+    assert client.delete("/shop/admin/api/flows/website_audit", headers=ADMIN).status_code == 409
+    assert client.get("/shop/me", headers=hdr).json()["subscriptions"] == []  # the rented flow is gone with it
+
+
+def test_flows_cli(shop_env, capsys, tmp_path):
+    from caf.cli import main
+
+    spec = tmp_path / "flow.yaml"
+    spec.write_text("id: quick_links\nname: Quick links\ndescription: Tagged links from a brief\ninputs: [{name: url, required: true, example: " + DEMO + "}]\n"
+                    "steps:\n  - {id: brief, agent: campaign_brief_generation}\n  - {id: links, agent: utm_generation, needs: [brief]}\n", encoding="utf-8")
+    assert main(["shop", "flows", "save", str(spec)]) == 0
+    assert main(["shop", "flows", "list"]) == 0
+    out = capsys.readouterr().out
+    assert "saved quick_links v1 (draft)" in out and "brief -> links" in out and "website_audit" in out
+    assert main(["shop", "flows", "test", "quick_links"]) == 0
+    assert main(["shop", "flows", "publish", "quick_links"]) == 0
+    assert main(["shop", "flows", "clone", "website_audit", "audit_lite"]) == 0
+    assert main(["shop", "flows", "show", "audit_lite"]) == 0
+    out = capsys.readouterr().out
+    assert "2/2 steps passed" in out and "run_flow_quick_links" in out and "source: custom" in out
+    assert main(["shop", "flows", "delete", "website_audit"]) == 2  # built-in
+    assert main(["shop", "flows", "unpublish", "quick_links"]) == 0 and main(["shop", "flows", "delete", "quick_links"]) == 0
 
 
 # ------------------------------------------------------------------------------------------------ run mode 2
@@ -279,10 +419,10 @@ def test_shop_cli_round_trip(shop_env, capsys, tmp_path):
     from caf.cli import main
 
     assert main(["shop", "add", "acme", "ACME Insurance", "--mode", "customer_cloud"]) == 0
-    assert main(["shop", "subscribe", "acme", "--playbooks", "website_audit", "--agents", "email_creation"]) == 0
+    assert main(["shop", "subscribe", "acme", "--flows", "website_audit", "--agents", "email_creation,utm_generation"]) == 0
     assert main(["shop", "key", "acme", "--label", "ops"]) == 0
     out = capsys.readouterr().out
-    assert "cxn_" in out and "7 agents" in out
+    assert "cxn_" in out and "2 agents" in out and "1 flow" in out
     pol = tmp_path / "p.yaml"
     pol.write_text("models: {provider: coforge}\ndata: {mask_before_model: [email]}\nlimits: {runs_per_day: 10}\n")
     assert main(["shop", "policy", "acme", "--file", str(pol)]) == 0

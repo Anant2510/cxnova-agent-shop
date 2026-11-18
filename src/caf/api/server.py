@@ -62,13 +62,20 @@ class OrchestrateRequest(BaseModel):
     use_planner: bool = True
 
 
+class RunFlowRequest(BaseModel):
+    inputs: dict[str, Any] = Field(default_factory=dict, description="The flow's shared inputs (see GET /flows/{id} → inputs)")
+    goal: str | None = Field(default=None, description="Optional goal text; the flow's name when empty")
+    auto_approve: bool | None = None
+    options: dict[str, Any] = Field(default_factory=dict, description="e.g. {'tier_override': 'fast'}")
+
+
 class ApprovalRequest(BaseModel):
     decisions: dict[str, str] = Field(description="{'<step>/<action_id>' or '*': 'approve' | 'reject'}")
 
 
 PUBLIC_PATHS = {"/", "/console", "/health", "/docs", "/docs/oauth2-redirect", "/redoc", "/openapi.json", "/.well-known/agent-card.json",
                 "/shop", "/shop/account", "/shop/admin", "/shop/catalog", "/shop/requests", "/favicon.svg", "/favicon.ico"}
-PUBLIC_PREFIXES = ("/shop/static/", "/shop/catalog/", "/shop/agents/")
+PUBLIC_PREFIXES = ("/shop/static/", "/shop/catalog/", "/shop/agents/", "/shop/flows/")
 LOOPBACK = {"127.0.0.1", "::1", "localhost", "testclient"}
 
 
@@ -224,7 +231,7 @@ def create_app() -> FastAPI:
         return str(request.base_url).rstrip("/")
 
     console_host.register(app, settings)
-    shop_api.register(app, settings, shop)
+    shop_api.register(app, settings, shop, orchestrator=orch)
 
     def customer(request: Request) -> dict[str, Any] | None:
         return getattr(request.state, "customer", None)
@@ -314,9 +321,34 @@ def create_app() -> FastAPI:
     # ------------------------------------------------------------------ orchestrator
     @app.get("/playbooks")
     def playbooks(request: Request) -> list[dict[str, Any]]:
-        """Playbooks. A customer key lists only the playbooks whose agents are all in the subscription."""
-        allowed = set(shop.entitled_playbooks(customer(request)))
+        """Playbooks (built-in and published custom flows). A customer key lists only the flows in the subscription."""
+        allowed = set(shop.entitled_flows(customer(request)))
         return [p.model_dump() for pid, p in load_playbooks().items() if pid in allowed]
+
+    @app.get("/flows")
+    def flows(request: Request) -> list[dict[str, Any]]:
+        """Orchestration flows you may run: built-in playbooks and published custom flows (customers: those rented)."""
+        allowed = set(shop.entitled_flows(customer(request)))
+        return [shop.flow_listing(f) for f in shop.flows() if f.id in allowed]
+
+    @app.get("/flows/{flow_id}")
+    def get_flow(request: Request, flow_id: str) -> dict[str, Any]:
+        try:
+            return shop.flow_listing(shop.require_entitled_flow(customer(request), flow_id))
+        except ShopError as exc:
+            raise HTTPException(exc.status, str(exc)) from exc
+
+    @app.post("/flows/{flow_id}/run")
+    def run_flow(request: Request, flow_id: str, req: RunFlowRequest) -> dict[str, Any]:
+        """Run a whole flow with its shared inputs; returns the run view (steps, outputs, artifacts, pending approvals)."""
+        if req.auto_approve and not allow_request_auto_approve:
+            raise HTTPException(403, "Per-request auto_approve is disabled on this server (approvals.allow_request_auto_approve). "
+                                     "Approve held actions via /runs/{id}/approvals, or have the operator set CAF_AUTO_APPROVE.")
+        try:
+            return shop.run_flow(customer(request), flow_id, req.inputs, orchestrator=orch, goal=req.goal, auto_approve=req.auto_approve,
+                                 surface="api", options=req.options)
+        except ShopError as exc:
+            raise HTTPException(exc.status, str(exc)) from exc
 
     @app.post("/orchestrate")
     def orchestrate(request: Request, req: OrchestrateRequest) -> dict[str, Any]:
@@ -326,9 +358,9 @@ def create_app() -> FastAPI:
         cust = customer(request)
         if req.agent:
             entitled(request, req.agent)
-        if req.playbook and cust is not None and req.playbook not in shop.entitled_playbooks(cust):
-            raise HTTPException(403, f"Playbook '{req.playbook}' needs agents outside your subscription.")
         try:
+            if req.playbook and cust is not None:  # a rented flow runs as a whole, its agents included
+                return shop.run_flow(cust, req.playbook, req.inputs, orchestrator=orch, goal=req.goal, auto_approve=req.auto_approve, surface="api")
             ctx = shop.context_for(cust, surface="api") if cust is not None else None
             view = orch.start(req.goal, inputs=req.inputs, agent=req.agent, playbook=req.playbook, plan=req.plan,
                               auto_approve=req.auto_approve, use_planner=req.use_planner, ctx=ctx)
@@ -406,8 +438,10 @@ def create_app() -> FastAPI:
     @app.get("/.well-known/agent-card.json")
     def agent_card(request: Request) -> dict[str, Any]:
         """The orchestrator's A2A card. With a customer key, the skills are the customer's subscribed agents."""
-        allowed = shop.entitled_agents(customer(request)) if customer(request) else None
-        return a2a.orchestrator_card(base_url(request), allowed=allowed)
+        cust = customer(request)
+        allowed = shop.entitled_agents(cust) if cust else None
+        flows = set(shop.entitled_flows(cust))
+        return a2a.orchestrator_card(base_url(request), allowed=allowed, flows=[shop.flow_listing(f) for f in shop.flows() if f.id in flows])
 
     @app.get("/a2a/agents/{agent_id}/agent-card.json")
     def single_card(agent_id: str, request: Request) -> dict[str, Any]:
@@ -421,18 +455,29 @@ def create_app() -> FastAPI:
         cust = customer(request)
         if agent_id:
             entitled(request, agent_id)
-        ctx = None
+        made: list[Any] = []
+
+        def make_ctx() -> Any:
+            if cust is None:
+                return None
+            ctx = shop.context_for(cust, surface="a2a")
+            made.append(ctx)
+            return ctx
+
+        def run_flow(flow_id: str, inputs: dict[str, Any], goal: str | None) -> dict[str, Any]:
+            return shop.run_flow(cust, flow_id, inputs, orchestrator=orch, goal=goal, surface="a2a")
+
         try:
-            if cust is not None:
-                ctx = shop.context_for(cust, surface="a2a")
+            answer = a2a.handle_jsonrpc(body, orch, agent_id=agent_id, ctx=make_ctx, run_owner=(lambda rid: shop.owns_run(cust, rid)),
+                                        run_flow=run_flow)
         except ShopError as exc:
             return JSONResponse({"jsonrpc": "2.0", "id": body.get("id"), "error": {"code": -32000, "message": str(exc)}})
-        answer = a2a.handle_jsonrpc(body, orch, agent_id=agent_id, ctx=ctx, run_owner=(lambda rid: shop.owns_run(cust, rid)))
-        if ctx is not None and "result" in answer:
-            try:
-                shop.record_view(cust, orch.view(ctx.run_id), surface="a2a", provider=ctx.llm.provider)
-            except KeyError:
-                pass
+        for ctx in made:
+            if "result" in answer:
+                try:
+                    shop.record_view(cust, orch.view(ctx.run_id), surface="a2a", provider=ctx.llm.provider)
+                except KeyError:
+                    pass
         return JSONResponse(answer)
 
     @app.post("/a2a")

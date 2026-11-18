@@ -1,4 +1,4 @@
-# CX Nova Agent Shop: what the storefront shows beside each agent and bundle.
+# CX Nova Agent Shop: what the storefront shows beside each agent and orchestration flow.
 #
 # Prices are INDICATIVE list prices for the storefront and proposals. They are not charged automatically:
 # the shop meters runs and tokens per customer (caf shop usage), and the invoice is built from those records.
@@ -44,7 +44,14 @@ agents:
   exploration_generation:      {monthly: 300, per_run: 4.0,  outcome: "answered question"}
   chart_summary:               {monthly: 150, per_run: 1.5,  outcome: "chart narrative"}
 
-# Bundles: one price for a playbook's agents, run as single agents or as the playbook.
+# Orchestration flows: one price for the flow, run as a whole (renting a flow does not rent its agents one by one).
+# The eight built-in flows are priced here by id. A custom flow composed in the admin console carries its own price
+# (set in the builder); when it has none, flow_defaults apply.
+flow_defaults:
+  monthly: 500
+  included_runs: 40
+  per_run: 10.0
+
 bundles:
   campaign_launch:      {monthly: 700,  included_runs: 60,  per_run: 8.0,  tagline: "Brief to channel copy, links and QR codes"}
   webinar_program:      {monthly: 600,  included_runs: 40,  per_run: 8.0,  tagline: "Invitations, recap, quotes and follow-ups"}

@@ -3614,6 +3614,9 @@ const CAF = (window.CAF = {
     for (const a of CAF.boot.catalog) { CAF.catalog[a.id] = a; CAF.order.push(a.id); }
     CAF.skills = CAF.boot.skills || {};
     CAF.playbooks = CAF.boot.playbooks || {};
+    // hosted by the shop: the server's current playbooks (the built-in ones plus published custom flows) replace the build's
+    const hosted = document.getElementById("caf-host-playbooks");
+    if (hosted) { try { const books = JSON.parse(hosted.textContent || "{}"); if (books && typeof books === "object" && Object.keys(books).length) CAF.playbooks = books; } catch (e) { /* keep the build's */ } }
     CAF.planner = CAF.boot.planner || {};
     CAF.schemas = CAF.boot.schemas || {};
     CAF.routing = CAF.boot.routing || {}; // {agent: {template: {tier, work, follow}}} from config/model_routing.yaml
@@ -19957,6 +19960,8 @@ const UI = (window.CAFUI = {
     const wanted = /[#&]agent=([a-z0-9_]+)/.exec(location.hash);  // the shop's "Try it in the console" links
     UI.selectAgent((wanted && CAF.catalog[wanted[1]] ? wanted[1] : null) || U.storage.get("caf.agent", "campaign_brief_generation"), false);
     if (wanted && CAF.catalog[wanted[1]]) setTimeout(() => UI.switchTab("agent"), 0);
+    const flow = /[#&]playbook=([a-z0-9_]+)/.exec(location.hash);      // the storefront's flow pages
+    if (flow && CAF.playbooks[flow[1]]) setTimeout(() => { U.$("#playbook").value = flow[1]; UI.switchTab("orchestrate"); UI.plan(true); }, 0);
     UI.switchTab(UI.tab);
     CAF.on((e) => {
       if (e.type === "llm") UI.renderLlmChip();

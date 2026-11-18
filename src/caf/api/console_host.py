@@ -22,6 +22,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
+from ..branding import PRODUCT
 from ..core.llm import LLM, LLMError
 from ..core.throttle import ThrottleTimeout, retry_after_of
 
@@ -54,7 +55,7 @@ BRIDGE_JS = r"""
     catch (e) { if (e && e.name === "AbortError") throw fail("cancelled", "Stopped."); throw fail("network", "Could not reach the framework server: " + (e && e.message)); }
     if (r.status === 401) {
       if (ask) {
-        var entered = window.prompt("Access token for this Coforge Agentic Framework server (CAF_API_TOKEN):");
+        var entered = window.prompt("Operator token for this __PRODUCT__ server (CAF_API_TOKEN in its .env):");
         if (entered) { setToken(entered.trim()); return call(path, body, signal, false); }
       }
       throw fail("not_granted", "This server needs an access token.");
@@ -119,8 +120,21 @@ _PAGE: dict[str, Any] = {"mtime": None, "html": None}
 _PAGE_LOCK = threading.Lock()
 
 
+def _host_playbooks_tag() -> str:
+    """The server's current playbooks (built-in plus published custom flows) for the console's playbook list."""
+    try:
+        from ..orchestrator import load_playbooks
+
+        books = {pid: pb.model_dump() for pid, pb in load_playbooks().items()}
+    except Exception:
+        return ""
+    data = json.dumps(books, separators=(",", ":")).replace("</", "<\\/")
+    return f'<script type="application/json" id="caf-host-playbooks">{data}</script>'
+
+
 def console_page(settings: Any) -> str | None:
-    """console-local.html with the host bridge injected before the console's own scripts (cached by mtime)."""
+    """console-local.html with the host bridge injected before the console's own scripts (cached by mtime), plus the
+    server's current playbooks (so flows published in the shop show up in the console without a rebuild)."""
     path = console_file(settings)
     if not path.exists():
         return None
@@ -128,11 +142,12 @@ def console_page(settings: Any) -> str | None:
     with _PAGE_LOCK:
         if _PAGE["mtime"] != mtime:
             html = path.read_text(encoding="utf-8")
-            bridge = f"<script>{BRIDGE_JS}</script>"
+            bridge = f"<script>{BRIDGE_JS.replace('__PRODUCT__', PRODUCT.name)}</script><!--HOST-PLAYBOOKS-->"
             html = html.replace('<meta charset="utf-8">', '<meta charset="utf-8">' + bridge, 1) if '<meta charset="utf-8">' in html \
                 else bridge + html
             _PAGE.update(mtime=mtime, html=html)
-        return _PAGE["html"]
+        html = _PAGE["html"]
+    return html.replace("<!--HOST-PLAYBOOKS-->", _host_playbooks_tag(), 1)
 
 
 def parse_json_reply(text: str) -> Any:

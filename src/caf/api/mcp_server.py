@@ -1,4 +1,5 @@
-"""MCP server: every agent becomes an MCP tool (run_<agent_id>), plus orchestrate / approve / list tools.
+"""MCP server: every agent becomes an MCP tool (run_<agent_id>), every published flow a tool (run_flow_<flow_id>),
+plus list_agents / list_flows / run_flow / orchestrate / approve_actions.
 
 Works with MCP SDK 2.x (MCPServer) and 1.x (FastMCP). Run over stdio with `caf mcp`, or mount the
 streamable-HTTP app at /mcp inside the API service.
@@ -6,14 +7,20 @@ streamable-HTTP app at /mcp inside the API service.
 Tools are called by a model, so runs use the 'service' security policy (no private-network fetches, local
 files only under security.file_roots), and the model cannot switch approval gates off: held actions need an
 explicit approve_actions call, which MCP clients show to the user for confirmation.
+
+A customer key (set on the request by the API's auth middleware) narrows the server to that customer: tools/list
+shows only the rented agents and flows, and every call is checked, metered and run under the customer's policy.
+Flow tools follow the shop: publishing a flow adds its tool, unpublishing or deleting removes it, without a restart.
 """
 
 from __future__ import annotations
 
 import json
+import re
+import threading
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, create_model
 
 from ..core import RunContext, all_agents, catalog, get_agent
 from ..core.security import service_settings
@@ -26,6 +33,8 @@ try:  # MCP SDK 2.x
 except ImportError:  # pragma: no cover - MCP SDK 1.x
     from mcp.server.fastmcp import FastMCP as _Server  # type: ignore
     from mcp.server.fastmcp.exceptions import ToolError  # type: ignore
+
+GENERIC_TOOLS = ("list_agents", "list_flows", "run_flow", "orchestrate", "approve_actions")
 
 
 def _tool_error(exc: Exception) -> ToolError:
@@ -63,11 +72,47 @@ def _make_runner(agent_id: str, input_model: type[BaseModel], settings: Any = No
     return runner
 
 
+def flow_args_model(flow: Any) -> type[BaseModel]:
+    """One pydantic model per flow: a field per declared input (required ones required) plus goal."""
+    fields: dict[str, Any] = {}
+    for inp in flow.inputs:
+        desc = inp.description or inp.name.replace("_", " ")
+        if inp.example:
+            desc += f" (e.g. {inp.example})"
+        fields[inp.name] = (Any, Field(description=desc)) if inp.required else (Any | None, Field(default=None, description=desc))
+    fields["goal"] = (str | None, Field(default=None, description="Optional goal text that steers the agents; the flow's name when empty"))
+    if not flow.inputs:
+        fields["inputs"] = (dict[str, Any], Field(default_factory=dict, description="Shared inputs (url, audience, competitors ...)"))
+    name = "Flow_" + re.sub(r"[^A-Za-z0-9]", "_", flow.id).title() + "_Args"
+    return create_model(name, **fields)  # type: ignore[call-overload]
+
+
+def _make_flow_runner(flow_id: str, args_model: type[BaseModel], orch: Any):
+    def runner(args: args_model) -> dict[str, Any]:  # type: ignore[valid-type]
+        data = args.model_dump()
+        goal = data.pop("goal", None)
+        inputs = {**(data.pop("inputs", None) or {}), **{k: v for k, v in data.items() if v is not None}}
+        try:
+            return _shop(orch.settings).run_flow(shop_context.customer(), flow_id, inputs, orchestrator=orch, goal=goal, surface="mcp")
+        except ShopError as exc:
+            raise _tool_error(exc) from exc
+
+    runner.__name__ = f"run_flow_{flow_id}"
+    runner.__annotations__ = {"args": args_model, "return": dict}
+    return runner
+
+
 class OrchestrateArgs(BaseModel):
     goal: str = Field(description="What you want done, in plain language")
-    playbook: str | None = Field(default=None, description="Optional playbook id")
+    playbook: str | None = Field(default=None, description="Optional flow (playbook) id; see list_flows")
     agent: str | None = Field(default=None, description="Optional single agent id")
     inputs: dict[str, Any] = Field(default_factory=dict, description="Shared run inputs (url, audience, competitors ...)")
+
+
+class RunFlowArgs(BaseModel):
+    flow_id: str = Field(description="Flow id from list_flows")
+    inputs: dict[str, Any] = Field(default_factory=dict, description="The flow's shared inputs (list_flows shows which it expects)")
+    goal: str | None = Field(default=None, description="Optional goal text; the flow's name when empty")
 
 
 class ApproveArgs(BaseModel):
@@ -75,32 +120,73 @@ class ApproveArgs(BaseModel):
     decisions: dict[str, str] = Field(description="{'<step>/<action_id>' | '*': 'approve' | 'reject'}")
 
 
+class ShopMCPServer(_Server):  # type: ignore[misc,valid-type]
+    """MCPServer whose tools/list is the caller's entitlement (a customer sees its rented agents and flows only)."""
+
+    shop_settings: Any = None
+
+    async def list_tools(self) -> list[Any]:  # type: ignore[override]
+        tools = await super().list_tools()
+        cust = shop_context.customer()
+        if cust is None:
+            return tools
+        shop = _shop(self.shop_settings)
+        agents = {f"run_{a}" for a in shop.entitled_agents(cust)}
+        flows = {f"run_flow_{f}" for f in shop.entitled_flows(cust)}
+        return [t for t in tools if t.name in GENERIC_TOOLS or t.name in agents or t.name in flows]
+
+
 def build_mcp(orchestrator: Any = None) -> Any:
     from ..orchestrator import Orchestrator
 
     orch = orchestrator or Orchestrator(service_settings())
-    server = _Server("cxnova-agent-shop", instructions="Run the marketing agents in your subscription directly (run_<agent>), or orchestrate multi-agent workflows.")
+    server = ShopMCPServer("cxnova-agent-shop", instructions="Run the agents in your subscription directly (run_<agent>), run a rented "
+                                                            "orchestration flow (run_flow_<flow>), or orchestrate a goal across them.")
+    server.shop_settings = orch.settings
+    shop = _shop(orch.settings)
 
     def list_agents() -> str:
         """List the agents available to you with id, category, kind and summary."""
         cust = shop_context.customer()
-        allowed = _shop(orch.settings).entitled_agents(cust) if cust is not None else None
+        allowed = shop.entitled_agents(cust) if cust is not None else None
         return json.dumps([a for a in catalog() if allowed is None or a["id"] in allowed], indent=2)
 
     server.add_tool(list_agents, name="list_agents", description="List the agents available to you (id, category, kind, summary)")
+
+    def list_flows() -> str:
+        """List the orchestration flows available to you: id, name, description, expected inputs, steps and stages."""
+        cust = shop_context.customer()
+        allowed = set(shop.entitled_flows(cust))
+        rows = []
+        for f in shop.flows():
+            if f.id in allowed:
+                d = f.listing()
+                rows.append({k: d[k] for k in ("id", "name", "description", "inputs", "agents", "stages", "tool")})
+        return json.dumps(rows, indent=2)
+
+    server.add_tool(list_flows, name="list_flows", description="List the orchestration flows available to you (id, inputs, steps, tool name)")
+
+    def run_flow(args: RunFlowArgs) -> dict[str, Any]:
+        try:
+            return shop.run_flow(shop_context.customer(), args.flow_id, args.inputs, orchestrator=orch, goal=args.goal, surface="mcp")
+        except ShopError as exc:
+            raise _tool_error(exc) from exc
+
+    server.add_tool(run_flow, name="run_flow", description="Run an orchestration flow by id with its shared inputs; returns the run view")
 
     def orchestrate(args: OrchestrateArgs) -> dict[str, Any]:
         cust = shop_context.customer()
         if cust is None:
             return orch.start(args.goal, inputs=args.inputs, agent=args.agent, playbook=args.playbook, auto_approve=None)
-        shop = _shop(orch.settings)
         try:
+            if args.playbook:  # a rented flow runs as a whole, its agents included
+                return shop.run_flow(cust, args.playbook, args.inputs, orchestrator=orch, goal=args.goal, surface="mcp")
             if args.agent:
                 shop.require_entitled(cust, args.agent)
             ctx = shop.context_for(cust, surface="mcp")
         except ShopError as exc:
             raise _tool_error(exc) from exc
-        view = orch.start(args.goal, inputs=args.inputs, agent=args.agent, playbook=args.playbook, auto_approve=None, ctx=ctx)
+        view = orch.start(args.goal, inputs=args.inputs, agent=args.agent, playbook=None, auto_approve=None, ctx=ctx)
         shop.record_view(cust, view, surface="mcp", provider=ctx.llm.provider)
         return view
 
@@ -108,10 +194,10 @@ def build_mcp(orchestrator: Any = None) -> Any:
 
     def approve(args: ApproveArgs) -> dict[str, Any]:
         cust = shop_context.customer()
-        if cust is not None and not _shop(orch.settings).owns_run(cust, args.run_id):
+        if cust is not None and not shop.owns_run(cust, args.run_id):
             raise ToolError(f"Unknown run '{args.run_id}'")
         view = orch.resume(args.run_id, args.decisions)
-        _shop(orch.settings).record_view(cust, view, surface="mcp")
+        shop.record_view(cust, view, surface="mcp")
         return view
 
     server.add_tool(approve, name="approve_actions", description="Approve or reject publish-type actions held at the approval gate")
@@ -119,6 +205,32 @@ def build_mcp(orchestrator: Any = None) -> Any:
     for agent in all_agents():
         server.add_tool(_make_runner(agent.spec.id, agent.Input, orch.settings), name=f"run_{agent.spec.id}",
                         description=f"{agent.spec.name}: {agent.spec.summary}"[:1000])
+
+    # ---- flow tools follow the shop: one run_flow_<id> per published flow, kept in step with publish/unpublish/delete
+    lock = threading.Lock()
+    current: dict[str, int] = {}
+
+    def sync_flow_tools(_shop: Any = None) -> None:
+        with lock:
+            wanted = {f.id: f for f in shop.flows() if f.published}
+            for fid in list(current):
+                if fid not in wanted or wanted[fid].version != current[fid]:
+                    try:
+                        server.remove_tool(f"run_flow_{fid}")
+                    except Exception:
+                        pass
+                    del current[fid]
+            for fid, flow in wanted.items():
+                if fid in current:
+                    continue
+                desc = f"Flow '{flow.name}'" + (f": {flow.description}" if flow.description else "") + ". Steps: " + \
+                    " → ".join(" + ".join(st) for st in flow.stages())
+                server.add_tool(_make_flow_runner(fid, flow_args_model(flow), orch), name=f"run_flow_{fid}", description=desc[:1000])
+                current[fid] = flow.version
+
+    sync_flow_tools()
+    shop.on_flows_changed(sync_flow_tools)
+    server.sync_flow_tools = sync_flow_tools  # type: ignore[attr-defined]
     return server
 
 

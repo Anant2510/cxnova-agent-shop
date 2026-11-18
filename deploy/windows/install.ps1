@@ -14,11 +14,14 @@
     4. Creates .env from .env.example, generating CAF_API_TOKEN and CAF_SECRET_KEY if empty
     5. Creates the data folders and runs the offline health check of all 28 agents
 
-  Afterwards: put your Foundry key in .env, then .\deploy\windows\service.ps1 to run it as a service.
+  The web console ships prebuilt in git (console/dist) and is used as it is; pass -RebuildConsole to rebuild it
+  here from console/src (needs Node.js). Afterwards: put your Foundry key in .env, then
+  .\deploy\windows\service.ps1 to run it as a service.
 #>
 [CmdletBinding()]
 param(
   [switch]$SkipBrowser,
+  [switch]$RebuildConsole,
   [string]$PythonExe = ""
 )
 $ErrorActionPreference = "Stop"
@@ -73,15 +76,16 @@ if (-not $SkipBrowser) {
   if ($LASTEXITCODE -ne 0) { Write-Host "Chromium install failed; the browser-based agents fall back to static checks. Re-run later with: .venv\Scripts\python -m playwright install chromium" -ForegroundColor Yellow }
 }
 
-# the built console ships in git (console/dist); rebuild only when Node.js is present and the sources are newer
-if ((Get-Command node -ErrorAction SilentlyContinue) -and (Test-Path "console\build.py")) {
-  $dist = Get-Item "console\dist\index.html" -ErrorAction SilentlyContinue
-  $newest = Get-ChildItem "console\src" -Recurse -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-  if (-not $dist -or ($newest -and $newest.LastWriteTime -gt $dist.LastWriteTime)) {
-    Write-Host "Rebuilding the console..."
-    if (-not (Test-Path "console\node_modules\nunjucks")) { npm install --prefix console nunjucks@3.2.4 --silent }
-    & $venvPy console\build.py | Out-Null
-  }
+# the built console ships in git (console/dist) and is used as committed; a git clone gives every file the same
+# timestamp, so "sources newer than dist" is no signal here. Rebuild only on request.
+if ($RebuildConsole) {
+  if (-not (Get-Command node -ErrorAction SilentlyContinue)) { throw "-RebuildConsole needs Node.js on PATH" }
+  Write-Host "Rebuilding the console from console\src..."
+  if (-not (Test-Path "console\node_modules\nunjucks")) { npm install --prefix console nunjucks@3.2.4 --silent }
+  & $venvPy console\build.py | Out-Null
+} elseif (-not (Test-Path "console\dist\console-local.html")) {
+  Write-Host "console\dist is missing: restoring the committed build" -ForegroundColor Yellow
+  git checkout -- console/dist 2>$null
 }
 
 function New-RandomToken { -join ((1..48) | ForEach-Object { "abcdefghijklmnopqrstuvwxyz0123456789"[(Get-Random -Maximum 36)] }) }

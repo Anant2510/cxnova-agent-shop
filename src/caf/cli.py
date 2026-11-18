@@ -261,6 +261,56 @@ def cmd_export(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_shop_flows(shop: Any, args: argparse.Namespace) -> int:
+    """caf shop flows [list|show|save|publish|unpublish|clone|delete|test]: the orchestration flows the shop rents out."""
+    import yaml
+
+    from .orchestrator import Orchestrator
+
+    act = args.flow_cmd or "list"
+    if act == "list":
+        for f in shop.flows():
+            stages = " -> ".join("+".join(st) for st in f.stages())
+            print(f"  {f.id:<28} {f.status:<10} {f.source:<8} v{f.version:<3} {f.name:<34} {stages}")
+        return 0
+    if act == "show":
+        flow = shop.flow(args.flow_id)
+        if flow is None:
+            print(f"error: unknown flow '{args.flow_id}'", file=sys.stderr)
+            return 2
+        print(yaml.safe_dump(flow.model_dump(exclude_none=True), sort_keys=False, allow_unicode=True))
+        return 0
+    if act == "save":
+        data = yaml.safe_load(Path(args.file).read_text(encoding="utf-8")) or {}
+        if args.flow_id:
+            data["id"] = args.flow_id
+        flow = shop.save_flow(data, publish=True if args.publish else None)
+        print(f"saved {flow.id} v{flow.version} ({flow.status}); stages: {' -> '.join('+'.join(st) for st in flow.stages())}")
+        return 0
+    if act in ("publish", "unpublish"):
+        flow = shop.publish_flow(args.flow_id, act == "publish")
+        print(f"{flow.id} is now {flow.status}" + (f" (MCP tool run_flow_{flow.id})" if flow.published else ""))
+        return 0
+    if act == "clone":
+        flow = shop.clone_flow(args.flow_id, args.new_id, args.name)
+        print(f"cloned {args.flow_id} -> {flow.id} (draft); edit with: caf shop flows show {flow.id} > f.yaml, then caf shop flows save f.yaml")
+        return 0
+    if act == "delete":
+        shop.delete_flow(args.flow_id)
+        print(f"deleted {args.flow_id}")
+        return 0
+    if act == "test":
+        cust = shop.store.get_customer(args.customer) if args.customer else None
+        view = shop.test_flow(args.flow_id, orchestrator=Orchestrator(shop.settings), customer=cust)
+        for st in view["steps"]:
+            r = st.get("result") or {}
+            mark = "ok  " if st["status"] in ("ok", "degraded") else "FAIL"
+            print(f"  {mark} {st['id']:<20} {st['agent']:<32} {st['status']:<14} {(r.get('error') or r.get('summary') or '')[:70]}")
+        print(f"\n{view['passed']}/{view['total']} steps passed for flow {args.flow_id} (run {view['run_id']})")
+        return 0 if view["passed"] == view["total"] else 1
+    return 2
+
+
 def cmd_shop(args: argparse.Namespace) -> int:
     """caf shop ...: customers, keys, subscriptions, policies, checks and usage of the Agent Shop."""
     import yaml
@@ -280,8 +330,9 @@ def cmd_shop(args: argparse.Namespace) -> int:
             if not rows:
                 print("no customers yet: caf shop add <id> \"<name>\"")
             for c in rows:
-                n = len(shop.entitled_agents(c))
-                print(f"  {c['id']:<24} {c['name']:<28} mode {c['run_mode_number']}  {c['status']:<9} {n:>2} agents  keys {len([k for k in store.list_keys(c['id']) if not k['revoked_at']])}")
+                n, nf = len(shop.entitled_agents(c)), len(shop.entitled_flows(c))
+                print(f"  {c['id']:<24} {c['name']:<28} mode {c['run_mode_number']}  {c['status']:<9} {n:>2} agents {nf:>2} flows  "
+                      f"keys {len([k for k in store.list_keys(c['id']) if not k['revoked_at']])}")
             return 0
         if what == "add":
             c = store.add_customer(args.customer_id, args.name, run_mode=args.mode, contact=args.contact or "")
@@ -297,16 +348,20 @@ def cmd_shop(args: argparse.Namespace) -> int:
             return 0
         if what == "subscribe":
             items = [{"kind": "agent", "item_id": a, "ends_at": args.until} for a in (args.agents.split(",") if args.agents else []) if a.strip()]
-            items += [{"kind": "playbook", "item_id": p, "ends_at": args.until} for p in (args.playbooks.split(",") if args.playbooks else []) if p.strip()]
+            flows = (args.flows or "") + ("," + args.playbooks if args.playbooks else "")
+            items += [{"kind": "flow", "item_id": f, "ends_at": args.until} for f in flows.split(",") if f.strip()]
             if args.all:
                 items.append({"kind": "all", "item_id": "*", "ends_at": args.until})
             if not items:
-                print("nothing to subscribe: use --agents a,b --playbooks p --all", file=sys.stderr)
+                print("nothing to subscribe: use --agents a,b --flows f --all", file=sys.stderr)
                 return 2
             store.set_subscriptions(args.customer_id, items, replace=not args.add)
             c = store.get_customer(args.customer_id)
-            print(f"{args.customer_id}: {len(shop.entitled_agents(c))} agents, playbooks {', '.join(shop.entitled_playbooks(c)) or '-'}")
+            ef = shop.entitled_flows(c)
+            print(f"{args.customer_id}: {len(shop.entitled_agents(c))} agents, {len(ef)} flow{'s' if len(ef) != 1 else ''} ({', '.join(ef) or '-'})")
             return 0
+        if what == "flows":
+            return _cmd_shop_flows(shop, args)
         if what == "policy":
             if args.file:
                 data = yaml.safe_load(Path(args.file).read_text(encoding="utf-8")) or {}
@@ -378,13 +433,25 @@ def main(argv: list[str] | None = None) -> int:
     q = ss.add_parser("key", help="issue an API key (shown once)"); q.add_argument("customer_id"); q.add_argument("--label"); q.set_defaults(fn=cmd_shop)
     q = ss.add_parser("revoke", help="revoke a key"); q.add_argument("customer_id"); q.add_argument("key_id"); q.set_defaults(fn=cmd_shop)
     q = ss.add_parser("subscribe", help="set what a customer rents"); q.add_argument("customer_id"); q.add_argument("--agents", help="comma-separated agent ids")
-    q.add_argument("--playbooks", help="comma-separated playbook ids"); q.add_argument("--all", action="store_true", help="every agent and playbook")
+    q.add_argument("--flows", help="comma-separated flow ids (a flow is rented as a whole)"); q.add_argument("--playbooks", help=argparse.SUPPRESS)
+    q.add_argument("--all", action="store_true", help="every agent and flow")
     q.add_argument("--until", help="YYYY-MM-DD"); q.add_argument("--add", action="store_true", help="add to the existing subscriptions instead of replacing them"); q.set_defaults(fn=cmd_shop)
     q = ss.add_parser("policy", help="show or set a customer's policy"); q.add_argument("customer_id"); q.add_argument("--file", help="YAML or JSON policy to apply"); q.set_defaults(fn=cmd_shop)
     q = ss.add_parser("check", help="run the subscribed agents' self-tests on the customer's model"); q.add_argument("customer_id")
     q.add_argument("--only", help="comma-separated agent ids"); q.add_argument("--fast", action="store_true"); q.set_defaults(fn=cmd_shop)
     q = ss.add_parser("usage", help="metered usage per customer and agent"); q.add_argument("customer_id", nargs="?"); q.add_argument("--month", help="YYYY-MM")
     q.add_argument("--json", action="store_true"); q.set_defaults(fn=cmd_shop)
+    q = ss.add_parser("flows", help="orchestration flows: list, show, save, publish, unpublish, clone, delete, test"); q.set_defaults(fn=cmd_shop)
+    fs = q.add_subparsers(dest="flow_cmd")
+    fs.add_parser("list", help="every flow (built-in and custom)")
+    r = fs.add_parser("show", help="a flow as YAML (edit it and save it under a new id)"); r.add_argument("flow_id")
+    r = fs.add_parser("save", help="create or update a custom flow from a YAML/JSON file"); r.add_argument("file"); r.add_argument("--id", dest="flow_id")
+    r.add_argument("--publish", action="store_true")
+    r = fs.add_parser("publish", help="publish: storefront listing, run_flow_<id> MCP tool, REST and A2A"); r.add_argument("flow_id")
+    r = fs.add_parser("unpublish"); r.add_argument("flow_id")
+    r = fs.add_parser("clone", help="copy a flow (built-in ones too) into an editable draft"); r.add_argument("flow_id"); r.add_argument("new_id"); r.add_argument("--name")
+    r = fs.add_parser("delete"); r.add_argument("flow_id")
+    r = fs.add_parser("test", help="run the flow once with sample inputs"); r.add_argument("flow_id"); r.add_argument("--customer", help="on this customer's model")
     args = parser.parse_args(argv)
     try:
         return int(args.fn(args) or 0)

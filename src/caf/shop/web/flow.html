@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flow · {{PRODUCT}}</title>
+<link rel="icon" href="{{BASE}}/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="{{BASE}}/shop/static/shop.css">
+</head>
+<body data-product="{{PRODUCT}}" data-company="{{COMPANY}}">
+<div id="top"></div>
+<main class="wrap" id="main"><p class="muted">Loading…</p></main>
+<div id="foot"></div>
+<script src="{{BASE}}/shop/static/shop.js"></script>
+<script>
+(function () {
+  const { api, h, $, clear, money, catClass, topbar, footer, pathTail, copy, BASE } = Shop;
+  $("#top").replaceWith(topbar("shop"));
+  $("#foot").replaceWith(footer());
+  const id = pathTail();
+
+  function stageDiagram(f) {
+    const byId = {};
+    f.steps.forEach(s => { byId[s.id] = s; });
+    const wrap = h("div", { class: "stages", style: "gap:10px" });
+    f.stages.forEach((stage, i) => {
+      if (i) wrap.append(h("span", { class: "arrow" }, "→"));
+      wrap.append(h("div", { class: "stage", style: "gap:6px" }, stage.map(sid => {
+        const s = byId[sid];
+        return h("a", { class: "step", href: BASE + "/shop/agents/" + s.agent, style: "padding:6px 10px;font-size:12.5px", title: s.purpose || s.id }, s.agent_name || s.agent);
+      })));
+    });
+    return wrap;
+  }
+  function stepsTable(f) {
+    return h("table", { class: "schema" },
+      h("thead", null, h("tr", null, h("th", null, "Step"), h("th", null, "Agent"), h("th", null, "Runs after"), h("th", null, "Purpose"))),
+      h("tbody", null, f.steps.map(s => h("tr", null,
+        h("td", null, h("code", null, s.id)),
+        h("td", null, h("a", { href: BASE + "/shop/agents/" + s.agent }, s.agent_name || s.agent)),
+        h("td", { class: "muted" }, s.needs && s.needs.length ? s.needs.join(", ") : "—"),
+        h("td", null, s.purpose || "")))));
+  }
+  function inputsTable(f) {
+    if (!f.inputs.length) return h("p", { class: "small muted" }, "No declared inputs: send the agents' usual fields (url, audience, competitors …) as shared inputs; each step takes what it needs.");
+    return h("table", { class: "schema" },
+      h("thead", null, h("tr", null, h("th", null, "Input"), h("th", null, "Meaning"), h("th", null, "Example"))),
+      h("tbody", null, f.inputs.map(i => h("tr", null,
+        h("td", null, h("code", null, i.name), i.required ? h("span", { class: "chip ai", style: "margin-left:6px" }, "required") : null),
+        h("td", null, i.description || ""), h("td", { class: "muted" }, i.example || "")))));
+  }
+  function snippets(f) {
+    const base = location.origin + BASE;
+    const sample = {};
+    f.inputs.forEach(i => { sample[i.name] = i.example || "<" + i.name + ">"; });
+    if (!f.inputs.length) sample.url = "https://www.example.com/";
+    return [
+      ["MCP tool", "Tool: " + f.tool + "\nArguments: " + JSON.stringify({ args: sample }, null, 2) + "\n\nOr the generic tool run_flow with {\"flow_id\": \"" + f.id + "\", \"inputs\": " + JSON.stringify(sample) + "}"],
+      ["MCP client config (Claude, Copilot Studio, Agentforce)", JSON.stringify({ mcpServers: { "cxnova-agent-shop": { type: "http", url: base + "/mcp", headers: { Authorization: "Bearer <your key>" } } } }, null, 2)],
+      ["REST", "curl -X POST " + base + "/flows/" + f.id + "/run \\\n  -H 'Authorization: Bearer <your key>' -H 'Content-Type: application/json' \\\n  -d '" + JSON.stringify({ inputs: sample }) + "'"],
+      ["A2A", "JSON-RPC message/send to " + base + "/a2a with a data part\n" + JSON.stringify({ flow: f.id, inputs: sample }, null, 2) + "\nThe agent card lists the flow as skill flow:" + f.id + "."],
+    ];
+  }
+  api("/shop/catalog/flows/" + encodeURIComponent(id)).then(f => {
+    const p = f.price || {};
+    const main = clear($("#main"));
+    main.append(
+      h("p", { class: "small" }, h("a", { href: BASE + "/shop#flows" }, "← All flows")),
+      h("div", { class: "two", style: "margin-top:10px" },
+        h("div", { class: "stack-lg" },
+          h("div", { class: "stack" },
+            h("div", { class: "row" }, h("span", { class: "cat" }, "Orchestration flow"), h("span", { class: "chip" }, f.agents.length + " agents"), h("span", { class: "chip" }, f.stages.length + " stages"),
+              f.source === "custom" ? h("span", { class: "chip ai" }, "composed by " + (document.body.dataset.company || "Coforge")) : h("span", { class: "chip" }, "built-in playbook"), h("span", { class: "chip" }, "v" + f.version)),
+            h("h1", null, f.name),
+            h("p", { class: "lead", style: "font-size:15px;color:var(--ink-2)" }, f.description || "A multi-agent workflow you rent and call as one tool."),
+            h("div", { class: "row" }, h("a", { class: "btn primary", href: BASE + "/console#playbook=" + f.id }, "Try it in the console"), h("a", { class: "btn", href: BASE + "/shop#request" }, "Request access"))),
+          h("section", { class: "panel" }, h("div", { class: "panel-head" }, h("h2", null, "How it runs"), h("span", { class: "muted small" }, "steps in the same stage run in parallel; a step waits for the steps it needs")),
+            stageDiagram(f)),
+          h("section", { class: "panel" }, h("div", { class: "panel-head" }, h("h2", null, "Steps")), stepsTable(f)),
+          h("section", { class: "panel" }, h("div", { class: "panel-head" }, h("h2", null, "Inputs")), inputsTable(f)),
+          h("section", { class: "panel" }, h("div", { class: "panel-head" }, h("h2", null, "Call it from your tools"), h("span", { class: "muted small" }, "one call runs the whole flow; the answer is the run view with every step's output and artifacts")),
+            h("div", { class: "stack" }, snippets(f).map(([title, code]) => h("div", { class: "stack", style: "gap:4px" }, h("div", { class: "row" }, h("h4", null, title), h("button", { class: "btn sm ghost right", type: "button", onclick: () => copy(code) }, "Copy")), h("pre", null, code)))))),
+        h("aside", { class: "stack" },
+          h("div", { class: "panel stack" },
+            h("h4", null, "Indicative price"),
+            h("div", { class: "price", style: "font-size:22px" }, money(p.monthly, p.currency), h("small", null, " /month")),
+            h("p", { class: "small muted" }, (p.included_runs || 0) + " flow runs included, then " + money(p.per_run, p.currency) + " per run. Renting the flow covers every agent in it, for runs of the flow."),
+            h("p", { class: "xs muted" }, p.note || "")),
+          h("div", { class: "panel stack" },
+            h("h4", null, "Agents in this flow"),
+            h("div", { class: "stack", style: "gap:6px" }, (f.agent_cards || []).map(a => h("a", { href: BASE + "/shop/agents/" + a.id, class: "row", style: "justify-content:space-between" },
+              h("span", null, a.name), h("span", { class: "cat " + catClass(a.category), style: "font-size:10px" }, a.category_label)))),
+            h("p", { class: "xs muted" }, "Want one of these on its own? Agents are rented one by one too.")),
+          h("div", { class: "panel stack" },
+            h("h4", null, "Approvals and audit"),
+            h("p", { class: "small" }, "Steps that would publish anything stop at the approval gate; you approve from your MCP client, the console or the API. Every run keeps its trace and artifacts under your account.")))));
+    document.title = f.name + " · " + (document.body.dataset.product || "");
+  }).catch(e => { clear($("#main")).append(h("div", { class: "notice bad" }, "Could not load this flow: " + e.message)); });
+})();
+</script>
+</body>
+</html>

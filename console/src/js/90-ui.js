@@ -24,6 +24,8 @@ const UI = (window.CAFUI = {
     const wanted = /[#&]agent=([a-z0-9_]+)/.exec(location.hash);  // the shop's "Try it in the console" links
     UI.selectAgent((wanted && CAF.catalog[wanted[1]] ? wanted[1] : null) || U.storage.get("caf.agent", "campaign_brief_generation"), false);
     if (wanted && CAF.catalog[wanted[1]]) setTimeout(() => UI.switchTab("agent"), 0);
+    const flow = /[#&]playbook=([a-z0-9_]+)/.exec(location.hash);      // the storefront's flow pages
+    if (flow && CAF.playbooks[flow[1]]) setTimeout(() => { U.$("#playbook").value = flow[1]; UI.switchTab("orchestrate"); UI.plan(true); }, 0);
     UI.switchTab(UI.tab);
     CAF.on((e) => {
       if (e.type === "llm") UI.renderLlmChip();

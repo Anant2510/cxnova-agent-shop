@@ -1,15 +1,23 @@
-"""Playbooks: reusable multi-agent workflows defined in config/playbooks.yaml."""
+"""Playbooks: reusable multi-agent workflows defined in config/playbooks.yaml.
+
+The shop adds its own (published custom flows, composed in the admin console) through ``set_extra_source``; every
+consumer of ``load_playbooks`` (the router, the planner, the console dropdown, ``caf playbooks``) sees them as
+ordinary playbooks.
+"""
 
 from __future__ import annotations
 
+import logging
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import yaml
 from pydantic import BaseModel, Field
 
 from ..config import get_settings
+
+log = logging.getLogger("caf.playbooks")
 
 
 class StepDef(BaseModel):
@@ -30,12 +38,37 @@ class Playbook(BaseModel):
 
 
 @lru_cache(maxsize=1)
-def load_playbooks() -> dict[str, Playbook]:
+def builtin_playbooks() -> dict[str, Playbook]:
+    """The playbooks shipped in config/playbooks.yaml."""
     path = Path(get_settings().home) / "config" / "playbooks.yaml"
     if not path.exists():
         return {}
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     return {pid: Playbook(id=pid, **body) for pid, body in (raw.get("playbooks") or {}).items()}
+
+
+_EXTRA_SOURCE: Callable[[], dict[str, Playbook]] | None = None
+
+
+def set_extra_source(source: Callable[[], dict[str, Playbook]] | None) -> None:
+    """Register the provider of additional playbooks (the shop's published custom flows); None removes it."""
+    global _EXTRA_SOURCE
+    _EXTRA_SOURCE = source
+
+
+def load_playbooks() -> dict[str, Playbook]:
+    """Built-in playbooks plus the extra source's. A built-in id always wins over a custom one."""
+    books = dict(builtin_playbooks())
+    if _EXTRA_SOURCE is not None:
+        try:
+            for pid, pb in _EXTRA_SOURCE().items():
+                books.setdefault(pid, pb)
+        except Exception as exc:  # a broken flow store must not take the orchestrator down
+            log.warning("extra playbooks unavailable: %s", exc)
+    return books
+
+
+load_playbooks.cache_clear = builtin_playbooks.cache_clear  # type: ignore[attr-defined]  # tests reload the YAML this way
 
 
 def validate_playbooks() -> list[str]:

@@ -1,10 +1,11 @@
 """Shop routes on the API service: the storefront, the customer's account and the operator's admin API.
 
-    Public      GET  /shop, /shop/agents/{id}, /shop/account, /shop/admin   the pages
-                GET  /shop/catalog, /shop/catalog/{agent_id}                 listings with indicative prices
-                POST /shop/requests                                          an access request from the storefront
-    Customer    GET  /shop/me, /shop/me/usage                                (bearer: the customer's key)
-    Admin       /shop/admin/api/...                                          (bearer: CAF_API_TOKEN, or local)
+    Public      GET  /shop, /shop/agents/{id}, /shop/flows/{id}, /shop/account, /shop/admin   the pages
+                GET  /shop/catalog, /shop/catalog/{agent_id}, /shop/catalog/flows/{flow_id}    listings with indicative prices
+                POST /shop/requests                                                            an access request from the storefront
+    Customer    GET  /shop/me, /shop/me/usage                                                  (bearer: the customer's key)
+    Admin       /shop/admin/api/...  customers, keys, subscriptions, policy, check, usage, requests, flows (the flow builder)
+                                                                                               (bearer: CAF_API_TOKEN, or local)
 """
 
 from __future__ import annotations
@@ -44,9 +45,30 @@ class KeyIn(BaseModel):
 
 
 class SubscriptionItem(BaseModel):
-    kind: str = Field(description="agent | playbook | all")
+    kind: str = Field(description="agent | flow | all")
     item_id: str = "*"
     ends_at: str | None = Field(default=None, description="YYYY-MM-DD, empty = open-ended")
+
+
+class FlowIn(BaseModel):
+    id: str
+    name: str
+    description: str = ""
+    inputs: list[dict[str, Any]] = Field(default_factory=list, description="[{name, description, required, example}]")
+    steps: list[dict[str, Any]] = Field(description="[{id, agent, purpose, inputs, needs}] in dependency order")
+    triggers: list[str] = Field(default_factory=list)
+    price: dict[str, Any] | None = None
+    status: str | None = Field(default=None, description="draft | published; unchanged when omitted")
+
+
+class CloneIn(BaseModel):
+    new_id: str
+    name: str | None = None
+
+
+class FlowTestIn(BaseModel):
+    inputs: dict[str, Any] = Field(default_factory=dict, description="Overrides for the sample inputs")
+    customer_id: str | None = Field(default=None, description="Run on this customer's model instead of the shop's")
 
 
 class RequestIn(BaseModel):
@@ -82,7 +104,7 @@ def require_customer(request: Request) -> dict[str, Any]:
     return c
 
 
-def register(app: FastAPI, settings: Any, shop: ShopService) -> None:
+def register(app: FastAPI, settings: Any, shop: ShopService, orchestrator: Any = None) -> None:
     def page(request: Request, name: str) -> HTMLResponse:
         base = (request.scope.get("root_path") or "").rstrip("/")  # behind a reverse-proxy prefix the links keep working
         html = (WEB / name).read_text(encoding="utf-8")
@@ -97,6 +119,10 @@ def register(app: FastAPI, settings: Any, shop: ShopService) -> None:
     @app.get("/shop/agents/{agent_id}", response_class=HTMLResponse, include_in_schema=False)
     def listing_page(request: Request, agent_id: str) -> HTMLResponse:
         return page(request, "agent.html")
+
+    @app.get("/shop/flows/{flow_id}", response_class=HTMLResponse, include_in_schema=False)
+    def flow_page(request: Request, flow_id: str) -> HTMLResponse:
+        return page(request, "flow.html")
 
     @app.get("/shop/account", response_class=HTMLResponse, include_in_schema=False)
     def account_page(request: Request) -> HTMLResponse:
@@ -116,8 +142,19 @@ def register(app: FastAPI, settings: Any, shop: ShopService) -> None:
     # ---------------------------------------------------------------- public catalog
     @app.get("/shop/catalog")
     def shop_catalog() -> dict[str, Any]:
-        """Every agent and bundle with its indicative price (public)."""
+        """Every agent and published flow with its indicative price (public)."""
         return {**shop.listings(), "product": PRODUCT.as_dict()}
+
+    @app.get("/shop/catalog/flows/{flow_id}")
+    def shop_flow_listing(flow_id: str) -> dict[str, Any]:
+        """A published flow: steps, stages, inputs, the agents it drives and its indicative price (public)."""
+        flow = shop.flow(flow_id)
+        if flow is None or not flow.published:
+            raise HTTPException(404, f"unknown flow '{flow_id}'")
+        listing = shop.flow_listing(flow)
+        names = {a["id"]: a for a in shop.listings()["agents"]}
+        listing["agent_cards"] = [names[a] for a in listing["agents"] if a in names]
+        return listing
 
     @app.get("/shop/catalog/{agent_id}")
     def shop_listing(agent_id: str) -> dict[str, Any]:
@@ -164,7 +201,8 @@ def register(app: FastAPI, settings: Any, shop: ShopService) -> None:
         out = []
         for c in shop.store.list_customers():
             out.append({**c, "policy": shop.policy_of(c).redacted(), "subscriptions": shop.store.list_subscriptions(c["id"]),
-                        "entitled_agents": sorted(shop.entitled_agents(c)), "keys": shop.store.list_keys(c["id"])})
+                        "entitled_agents": sorted(shop.entitled_agents(c)), "entitled_flows": shop.entitled_flows(c),
+                        "keys": shop.store.list_keys(c["id"])})
         return out
 
     @app.post("/shop/admin/api/customers", status_code=201)
@@ -183,7 +221,8 @@ def register(app: FastAPI, settings: Any, shop: ShopService) -> None:
         except ShopError as exc:
             raise _err(exc) from exc
         return {**c, "policy": shop.policy_of(c).redacted(), "subscriptions": shop.store.list_subscriptions(customer_id),
-                "entitled_agents": sorted(shop.entitled_agents(c)), "entitled_playbooks": shop.entitled_playbooks(c),
+                "entitled_agents": sorted(shop.entitled_agents(c)), "entitled_playbooks": shop.entitled_flows(c),
+                "entitled_flows": shop.entitled_flows(c),
                 "keys": shop.store.list_keys(customer_id), "usage": shop.store.usage_summary(customer_id),
                 "recent": shop.store.recent_usage(customer_id, 30), "connection": shop.connection_info(c, str(request.base_url).rstrip("/"))}
 
@@ -222,7 +261,8 @@ def register(app: FastAPI, settings: Any, shop: ShopService) -> None:
         except ShopError as exc:
             raise _err(exc) from exc
         c = shop.store.get_customer(customer_id)
-        return {"subscriptions": subs, "entitled_agents": sorted(shop.entitled_agents(c)), "entitled_playbooks": shop.entitled_playbooks(c)}
+        return {"subscriptions": subs, "entitled_agents": sorted(shop.entitled_agents(c)), "entitled_playbooks": shop.entitled_flows(c),
+                "entitled_flows": shop.entitled_flows(c)}
 
     @app.put("/shop/admin/api/customers/{customer_id}/policy")
     def admin_policy(request: Request, customer_id: str, policy: dict[str, Any] = Body(...)) -> dict[str, Any]:
@@ -265,6 +305,94 @@ def register(app: FastAPI, settings: Any, shop: ShopService) -> None:
         except ShopError as exc:
             raise _err(exc) from exc
         return {"id": request_id, "status": status}
+
+    # ---------------------------------------------------------------- admin: the flow builder
+    @app.get("/shop/admin/api/flows")
+    def admin_flows(request: Request) -> list[dict[str, Any]]:
+        """Every flow, built-in (read-only) and custom (drafts included), with steps, stages and subscriber counts."""
+        require_admin(request)
+        return [shop.flow_listing(f) for f in shop.flows()]
+
+    @app.get("/shop/admin/api/flows/{flow_id}")
+    def admin_flow(request: Request, flow_id: str) -> dict[str, Any]:
+        require_admin(request)
+        flow = shop.flow(flow_id)
+        if flow is None:
+            raise HTTPException(404, f"unknown flow '{flow_id}'")
+        d = shop.flow_listing(flow)
+        d["price_override"] = flow.price
+        d["sample_inputs"] = shop.sample_inputs(flow)
+        return d
+
+    @app.post("/shop/admin/api/flows/validate")
+    def admin_flow_validate(request: Request, body: FlowIn) -> dict[str, Any]:
+        """Check a flow without saving it: problems (if any) and the stages it would run in."""
+        require_admin(request)
+        from .flows import Flow, validate_flow
+
+        try:
+            flow = Flow.model_validate({**body.model_dump(exclude_none=True), "source": "custom"})
+        except Exception as exc:
+            return {"ok": False, "problems": [str(exc)], "stages": []}
+        problems = validate_flow(flow)
+        return {"ok": not problems, "problems": problems, "stages": flow.stages() if not problems else [], "agents": flow.agents()}
+
+    @app.put("/shop/admin/api/flows/{flow_id}")
+    def admin_save_flow(request: Request, flow_id: str, body: FlowIn, publish: bool | None = Query(None)) -> dict[str, Any]:
+        """Create or update a custom flow (the body's id must match the path). ?publish=true publishes in the same call."""
+        require_admin(request)
+        if body.id != flow_id:
+            raise HTTPException(400, "the flow id in the body must match the path")
+        try:
+            flow = shop.save_flow(body.model_dump(exclude_none=True), publish=publish)
+        except ShopError as exc:
+            raise _err(exc) from exc
+        return shop.flow_listing(flow)
+
+    @app.post("/shop/admin/api/flows/{flow_id}/publish")
+    def admin_publish_flow(request: Request, flow_id: str) -> dict[str, Any]:
+        require_admin(request)
+        try:
+            return shop.flow_listing(shop.publish_flow(flow_id, True))
+        except ShopError as exc:
+            raise _err(exc) from exc
+
+    @app.post("/shop/admin/api/flows/{flow_id}/unpublish")
+    def admin_unpublish_flow(request: Request, flow_id: str) -> dict[str, Any]:
+        require_admin(request)
+        try:
+            return shop.flow_listing(shop.publish_flow(flow_id, False))
+        except ShopError as exc:
+            raise _err(exc) from exc
+
+    @app.post("/shop/admin/api/flows/{flow_id}/clone", status_code=201)
+    def admin_clone_flow(request: Request, flow_id: str, body: CloneIn) -> dict[str, Any]:
+        require_admin(request)
+        try:
+            return shop.flow_listing(shop.clone_flow(flow_id, body.new_id, body.name))
+        except ShopError as exc:
+            raise _err(exc) from exc
+
+    @app.delete("/shop/admin/api/flows/{flow_id}")
+    def admin_delete_flow(request: Request, flow_id: str) -> dict[str, Any]:
+        require_admin(request)
+        try:
+            shop.delete_flow(flow_id)
+        except ShopError as exc:
+            raise _err(exc) from exc
+        return {"deleted": flow_id}
+
+    @app.post("/shop/admin/api/flows/{flow_id}/test")
+    def admin_test_flow(request: Request, flow_id: str, body: FlowTestIn = Body(default_factory=FlowTestIn)) -> dict[str, Any]:
+        """Run the flow once with sample inputs (drafts too), on the shop's model or a customer's; returns the run view."""
+        require_admin(request)
+        if orchestrator is None:
+            raise HTTPException(503, "no orchestrator on this server")
+        try:
+            cust = shop.store.get_customer(body.customer_id) if body.customer_id else None
+            return shop.test_flow(flow_id, orchestrator=orchestrator, inputs=body.inputs, customer=cust)
+        except ShopError as exc:
+            raise _err(exc) from exc
 
     @app.exception_handler(ShopError)
     async def shop_error(_request: Request, exc: ShopError) -> JSONResponse:

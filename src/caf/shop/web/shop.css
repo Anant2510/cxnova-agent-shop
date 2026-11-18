@@ -78,6 +78,13 @@ label.f { display: grid; gap: 4px; font-size: 12.5px; color: var(--ink-2); font-
 .card h3 a { color: var(--ink); } .card .summary { color: var(--ink-2); font-size: 13px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .card .foot { margin-top: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 6px; border-top: 1px solid var(--rule); }
 .price { font-weight: 600; } .price small { font-weight: 400; color: var(--ink-3); }
+/* flows: stages left to right, parallel steps stacked within a stage */
+.stages { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.stages .stage { display: grid; gap: 3px; }
+.stages .step { font-size: 11.5px; padding: 2px 8px; border-radius: 4px; background: var(--ai-soft); color: var(--ai); border: 1px solid transparent; white-space: nowrap; }
+.stages .step.off { background: var(--wash); color: var(--ink-3); } .stages .step.bad { background: var(--shu-soft); color: var(--shu); } .stages .step.good { background: var(--matsu-soft); color: var(--matsu); }
+.stages .arrow { color: var(--ink-3); font-size: 14px; }
+.card.flow .stages { padding: 4px 0; }
 .hero { display: grid; gap: 16px; grid-template-columns: 1.3fr 1fr; align-items: start; }
 @media (max-width: 860px) { .hero { grid-template-columns: 1fr; } }
 .hero h1 { font-size: 32px; } .hero .lead { font-size: 16px; color: var(--ink-2); max-width: 620px; }

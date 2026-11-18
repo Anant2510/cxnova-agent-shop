@@ -24,6 +24,9 @@ const CAF = (window.CAF = {
     for (const a of CAF.boot.catalog) { CAF.catalog[a.id] = a; CAF.order.push(a.id); }
     CAF.skills = CAF.boot.skills || {};
     CAF.playbooks = CAF.boot.playbooks || {};
+    // hosted by the shop: the server's current playbooks (the built-in ones plus published custom flows) replace the build's
+    const hosted = document.getElementById("caf-host-playbooks");
+    if (hosted) { try { const books = JSON.parse(hosted.textContent || "{}"); if (books && typeof books === "object" && Object.keys(books).length) CAF.playbooks = books; } catch (e) { /* keep the build's */ } }
     CAF.planner = CAF.boot.planner || {};
     CAF.schemas = CAF.boot.schemas || {};
     CAF.routing = CAF.boot.routing || {}; // {agent: {template: {tier, work, follow}}} from config/model_routing.yaml
