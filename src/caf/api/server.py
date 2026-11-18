@@ -104,8 +104,10 @@ class RootPathStrip:
             path = scope.get("path", "")
             twice = root + root
             if path == twice or path.startswith(twice + "/"):
-                fixed = path[len(root):]
-                scope = {**scope, "path": fixed, "raw_path": fixed.encode()}
+                path = path[len(root):]
+                scope = {**scope, "path": path, "raw_path": path.encode()}
+            if path == root:  # "https://host/agentshop" (no slash) is the site root, not an empty route
+                scope = {**scope, "path": root + "/", "raw_path": (root + "/").encode()}
         await self.app(scope, receive, send)
 
 

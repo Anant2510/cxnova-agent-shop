@@ -51,6 +51,25 @@ def test_console_page_and_browser_root(monkeypatch):
     assert parse_json_reply('Here it is: {"a": [1, 2]} - done') == {"a": [1, 2]}
 
 
+def test_reverse_proxy_prefix(monkeypatch):
+    """Behind Caddy at /agentshop: the prefix with and without a trailing slash is the site root, links carry the prefix,
+    and the duplicated prefix a prefix-keeping proxy produces is tolerated."""
+    from caf.api.server import create_app
+
+    monkeypatch.setenv("CAF_LLM_PROVIDER", "offline")
+    monkeypatch.setenv("CAF_API_TOKEN", "t0ken")
+    client = TestClient(create_app(), root_path="/agentshop")
+    html = {"accept": "text/html,application/xhtml+xml"}
+    for path in ("/agentshop", "/agentshop/", "/agentshop/agentshop", "/agentshop/agentshop/"):
+        r = client.get(path, headers=html, follow_redirects=False)
+        assert r.status_code in (302, 307) and r.headers["location"] == "/agentshop/shop", path
+    assert client.get("/agentshop/health").status_code == 200
+    page = client.get("/agentshop/shop")
+    assert page.status_code == 200 and '"/agentshop/shop/static/shop.css"' in page.text
+    assert client.get("/agentshop/agents").status_code == 401  # the API still needs the token under the prefix
+    assert client.get("/agentshop/agents", headers={"Authorization": "Bearer t0ken"}).status_code == 200
+
+
 def test_console_calls_run_on_foundry_with_routing_tier_and_effort(foundry, monkeypatch):  # noqa: F811
     client = _client(monkeypatch)
     host = client.get("/console/host").json()
