@@ -80,7 +80,12 @@ if ($Uninstall) {
 }
 
 if ($Restart) {
-  if ($nssm -and (Service-Exists)) { Invoke-Nssm restart $Name | Out-Null }
+  if (Service-Exists) {
+    # Stop-Service/Start-Service work for an NSSM service too and report failures (nssm restart is silent about them)
+    $svc = Get-Service -Name $Name
+    if ($svc.Status -ne "Stopped") { Stop-Service -Name $Name -Force; $svc.WaitForStatus("Stopped", "00:00:40") }
+    Start-Service -Name $Name
+  }
   elseif (Get-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue) {
     Stop-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue
     Get-Process -Name caf -ErrorAction SilentlyContinue | Stop-Process -Force
