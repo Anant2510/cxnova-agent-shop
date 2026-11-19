@@ -140,10 +140,15 @@ def register(app: FastAPI, settings: Any, shop: ShopService, orchestrator: Any =
         """The orchestration designer: agents on a canvas, connections between them, check, test, publish (operator)."""
         return page(request, "designer.html")
 
+    @app.get("/portal", response_class=HTMLResponse, include_in_schema=False)
+    def portal_page(request: Request) -> HTMLResponse:
+        """The portal: overview, launch, runs (live, step by step), approvals, agents, flows, health and customers in one place."""
+        return page(request, "portal.html")
+
     @app.get("/shop/runs", response_class=HTMLResponse, include_in_schema=False)
     def runs_page(request: Request) -> HTMLResponse:
-        """Runs: every run, live, step by step: what each agent was given, where it came from, what it produced."""
-        return page(request, "runs.html")
+        """Earlier address of the run viewer: the portal's Runs view (it understands the old #run=<id>&step=<id> links)."""
+        return page(request, "portal.html")
 
     @app.get("/shop/static/{name}", include_in_schema=False)
     def static_file(name: str) -> FileResponse:

@@ -52,7 +52,10 @@ CREATE TABLE IF NOT EXISTS checkpoint_writes (
 CREATE TABLE IF NOT EXISTS run_index (
     run_id TEXT PRIMARY KEY, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, status TEXT NOT NULL,
     error TEXT NOT NULL DEFAULT '', customer_id TEXT NOT NULL DEFAULT '', surface TEXT NOT NULL DEFAULT '',
-    goal TEXT NOT NULL DEFAULT '', label TEXT NOT NULL DEFAULT '');
+    goal TEXT NOT NULL DEFAULT '', label TEXT NOT NULL DEFAULT '',
+    agents TEXT NOT NULL DEFAULT '', steps INTEGER NOT NULL DEFAULT 0, steps_ok INTEGER NOT NULL DEFAULT 0,
+    llm_calls INTEGER NOT NULL DEFAULT 0, input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0,
+    duration_ms REAL NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS run_index_created ON run_index(created_at);
 CREATE TABLE IF NOT EXISTS run_actions (
     run_id TEXT NOT NULL, action_key TEXT NOT NULL, decision TEXT NOT NULL, status TEXT NOT NULL, result TEXT NOT NULL DEFAULT '{}',
@@ -99,9 +102,12 @@ class _DB:
             self.con.execute("PRAGMA synchronous=NORMAL")
             self.con.executescript(SCHEMA)
             cols = {r[1] for r in self.con.execute("PRAGMA table_info(run_index)")}
-            for col in ("goal", "label"):  # files made by the first release of the run store
-                if col not in cols:
-                    self.con.execute(f"ALTER TABLE run_index ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
+            for col, typ in (("goal", "TEXT NOT NULL DEFAULT ''"), ("label", "TEXT NOT NULL DEFAULT ''"), ("agents", "TEXT NOT NULL DEFAULT ''"),
+                             ("steps", "INTEGER NOT NULL DEFAULT 0"), ("steps_ok", "INTEGER NOT NULL DEFAULT 0"),
+                             ("llm_calls", "INTEGER NOT NULL DEFAULT 0"), ("input_tokens", "INTEGER NOT NULL DEFAULT 0"),
+                             ("output_tokens", "INTEGER NOT NULL DEFAULT 0"), ("duration_ms", "REAL NOT NULL DEFAULT 0")):
+                if col not in cols:  # files made by earlier releases of the run store
+                    self.con.execute(f"ALTER TABLE run_index ADD COLUMN {col} {typ}")
 
     @contextmanager
     def tx(self) -> Iterator[sqlite3.Connection]:
@@ -352,6 +358,14 @@ class RunStore:
             con.execute("UPDATE run_index SET goal=?, label=CASE WHEN label='' THEN ? ELSE label END WHERE run_id=?",
                         ((goal or "")[:500], (label or "")[:120], run_id))
 
+    def set_metrics(self, run_id: str, m: dict[str, Any]) -> None:
+        """What the run did so far: its agents, step counts, model calls, tokens and time (for history and statistics)."""
+        with self.db.tx() as con:
+            con.execute("UPDATE run_index SET agents=?, steps=?, steps_ok=?, llm_calls=?, input_tokens=?, output_tokens=?, duration_ms=? "
+                        "WHERE run_id=?", (",".join(m.get("agents") or []), int(m.get("steps") or 0), int(m.get("steps_ok") or 0),
+                                           int(m.get("llm_calls") or 0), int(m.get("input_tokens") or 0), int(m.get("output_tokens") or 0),
+                                           float(m.get("duration_ms") or 0), run_id))
+
     def touch(self, run_ids: Sequence[str]) -> None:
         """Heartbeat of the runs this process is executing."""
         if not run_ids:
@@ -428,7 +442,8 @@ class MemoryRunStore:
         with self._lock:
             row = self._index.setdefault(run_id, {"run_id": run_id, "created_at": now_iso(), "error": "",
                                                   "customer_id": customer_id or "", "surface": surface or "",
-                                                  "goal": (goal or "")[:500], "label": (label or "")[:120]})
+                                                  "goal": (goal or "")[:500], "label": (label or "")[:120], "agents": "", "steps": 0,
+                                                  "steps_ok": 0, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "duration_ms": 0})
             row.update(status=status, updated_at=now_iso())
             if error is not None:
                 row["error"] = error
@@ -453,6 +468,14 @@ class MemoryRunStore:
             if row is not None:
                 row["goal"] = (goal or "")[:500]
                 row["label"] = row.get("label") or (label or "")[:120]
+
+    def set_metrics(self, run_id: str, m: dict[str, Any]) -> None:
+        with self._lock:
+            row = self._index.get(run_id)
+            if row is not None:
+                row.update(agents=",".join(m.get("agents") or []), steps=int(m.get("steps") or 0), steps_ok=int(m.get("steps_ok") or 0),
+                           llm_calls=int(m.get("llm_calls") or 0), input_tokens=int(m.get("input_tokens") or 0),
+                           output_tokens=int(m.get("output_tokens") or 0), duration_ms=float(m.get("duration_ms") or 0))
 
     def touch(self, run_ids: Sequence[str]) -> None:
         with self._lock:

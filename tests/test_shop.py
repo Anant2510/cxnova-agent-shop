@@ -183,7 +183,7 @@ def test_tokens_roles_and_public_pages(client):
         assert client.get(path).status_code == 200, path
     assert "CX Nova Agent Orchestration Layer" in client.get("/shop").text
     root = client.get("/", headers={"accept": "text/html"}, follow_redirects=False)
-    assert root.headers["location"] == "/shop"
+    assert root.headers["location"] == "/portal"
     cat = client.get("/shop/catalog").json()
     assert len(cat["agents"]) == 28 and len(cat["flows"]) == 8 and cat["agents"][0]["price"]["monthly"]
     assert cat["flows"][0]["stages"] and cat["flows"][0]["price"]["monthly"]

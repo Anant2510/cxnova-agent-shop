@@ -184,11 +184,12 @@ or from the console's registry.
 
 | Surface | Where | Notes |
 |---|---|---|
-| REST | `caf serve` then `/docs` | `/agents`, `/agents/{id}/run`, `/flows`, `/flows/{id}/run`, `/orchestrate`, `/runs` (list), `/runs/{id}`, `/runs/{id}/trace`, `/runs/{id}/approvals`, `/runs/{id}/continue`, `/runs/{id}/artifacts/...`, `/health`, `/health/agents`, `/playbooks`, `/connectors`, `/r/{code}` short links |
+| REST | `caf serve` then `/docs` | `/agents`, `/agents/{id}/run`, `/flows`, `/flows/{id}/run`, `/plan` (preview the steps a goal would run, nothing started), `/orchestrate`, `/runs` (list, filtered by status, agent, flow or text), `/runs/stats`, `/runs/{id}`, `/runs/{id}/trace`, `/runs/{id}/approvals`, `/runs/{id}/continue`, `/runs/{id}/artifacts/...`, `/approvals` (every held action), `/health`, `/health/agents`, `/playbooks`, `/connectors`, `/r/{code}` short links |
 | MCP | `/mcp` (streamable HTTP) or `caf mcp` (stdio) | `run_<agent_id>` for every agent, `run_flow_<flow_id>` for every published flow, plus `list_agents`, `list_flows`, `run_flow`, `orchestrate`, `approve_actions`, `get_run`; with a customer key the tool list is that customer's subscription |
 | A2A | `/.well-known/agent-card.json`, `POST /a2a` | Orchestrator card listing every agent as a skill; JSON-RPC `message/send`, `tasks/get` |
 | CLI | `caf` | `agents`, `describe`, `run`, `orchestrate`, `playbooks`, `health`, `serve`, `mcp`, `export-catalog` |
-| Console | `caf serve` then `/` (or `/console`) | The orchestrator UI: browser twins of all agents, model calls on the server's provider (see below) |
+| Portal | `caf serve` then `/` (or `/portal`) | The one place to run and watch everything: launch, every run live and step by step, approvals, agents, flows, health, customers (below) |
+| Console | `/console` | The engineering console: browser twins of all agents, model calls on the server's provider (see below) |
 
 ## Model providers
 
@@ -226,14 +227,15 @@ agent is tested headless under a strict no-eval CSP by `console/test/harness.py`
 
 ## Orchestration layer
 
-`caf serve` is the layer: the storefront at `/shop`, the orchestration designer at `/shop/designer`, the agent
-console at `/console`, the customer's account at `/shop/account`, the operator's admin console at `/shop/admin`,
-and the API, MCP and A2A surfaces underneath.
+`caf serve` is the layer: the portal at `/portal` (where a browser lands), the storefront at `/shop`, the
+orchestration designer at `/shop/designer`, the agent console at `/console`, the customer's account at
+`/shop/account`, the operator's admin console at `/shop/admin`, and the API, MCP and A2A surfaces underneath.
 
 | Piece | What it does |
 | --- | --- |
+| Portal (`/portal`, operator token or a customer key) | One application over the whole layer, with a persistent band that says what is running, what waits for a decision and what ran today. **Overview**: live runs with a dot per step, the actions waiting for you (approve or reject from there), recent runs, the last 14 days as bars, the catalogue by kind of work. **Launch**: describe the outcome, preview the plan the orchestrator would run (the graph of steps, how it was chosen, warnings), then run it: the run opens live at once; or pick a flow or one agent and fill its declared inputs. **Runs**: every run kept, grouped by day and filtered by status, flow, agent or text; one run is its graph (long chains wrap onto bands; a running step glows and work flows along the live edges), a timeline of what ran in parallel and a live log; a step shows what it was given and where each value came from (the goal, a run input or an earlier step's output), the earlier work it could read, its output, files (previewed and downloadable), checks, model calls, held actions and its own activity; held actions are decided and a stalled run continued from the page. **Approvals**: every held action across runs. **Agents**: by the work they do, with a run form built from each agent's contract and the runs that used it. **Flows**: each as a graph with its inputs and history. **Health**: model, agent probe, connectors, packs. **Customers** (operator) or **My account** (customer). ⌘K / Ctrl K searches agents, flows and runs, or takes a goal to run. Midnight and paper themes, shared with every other page |
 | Orchestration designer (`/shop/designer`, operator token) | A canvas: pick agents from the palette (grouped by the work they do; a pack agent carries its product's tag), click to chain them or drag them in, drag from one node's port to another to say "runs after", and set each step's action, purpose and input bindings in the inspector (suggestions for `$goal`, `${input.x}`, `${steps.s.output...}`). Check validates the flow, Test run executes it and lights each node, Save and Publish put it on sale. Built-in flows open read-only; Clone makes an editable copy. The console's "Save plan as flow" opens the plan here |
-| Runs (`/shop/runs`, operator token or a customer key) | Every run, live: the flow as a graph with each step's status and timing (running steps show the model call they are on), a timeline of what ran in parallel, and a live log. Select a step to see what it was given (each field as set in the flow, the value the agent received, and where it came from: the goal, a run input or an earlier step's output), which earlier steps' work it could read, its output, files (previewed and downloadable), checks, model calls and its own activity. Held actions are approved or rejected from the page, one at a time; a stalled run is continued from it. A customer key sees its own runs only. The designer's Test run links here |
+| Runs | The portal's Runs view (`/portal#/runs`; the earlier `/shop/runs` address still opens it). The designer's Test run links to it, step by step |
 | Storefront (`/shop`, `/shop/agents/{id}`, `/shop/flows/{id}`) | Every agent and published flow with its contract, steps and stages, model steps, connectors and indicative price (`config/shop_catalog.yaml`); an access-request form |
 | Orchestration flows | A published flow is a storefront item, a playbook for the router, the planner and the console, the MCP tool `run_flow_<id>`, `POST /flows/{id}/run` and the A2A skill `flow:<id>`; unpublishing removes all of that. Admin → Flows lists your flows, the built-in playbooks and each pack's flows. CLI: `caf shop flows list / show / save / publish / clone / test` |
 | Customers, keys, subscriptions | `caf shop add / key / subscribe --agents a,b --flows f`, or the admin console. Keys are `cxn_...`, stored as hashes, shown once. A flow is rented as a whole: the customer runs the flow (every agent in it, for runs of the flow), not its agents one by one |
@@ -253,7 +255,7 @@ config is only a label.
 
 ## Web console
 
-`caf serve` serves the console at `/console`, and a browser opening the server's address (`/`) is sent there. A small
+`caf serve` serves the console at `/console` (a browser opening the server's address `/` lands on the portal, which links to it). A small
 bridge gives the page the same interface it has as a Claude artifact, backed by two server routes:
 `GET /console/host` (which provider and models answer) and `POST /console/llm` (one model call). So the console's model
 calls run on the framework's own provider (for example Claude on Microsoft Foundry) with the shared throttle, the

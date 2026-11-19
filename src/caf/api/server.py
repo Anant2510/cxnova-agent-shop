@@ -76,6 +76,14 @@ class RunFlowRequest(BaseModel):
     wait_s: float | None = Field(default=None, ge=0, le=3600, description=WAIT_HELP)
 
 
+class PlanRequest(BaseModel):
+    goal: str = ""
+    inputs: dict[str, Any] = Field(default_factory=dict, description="Shared run inputs: url, audience, competitors, industry ...")
+    playbook: str | None = Field(default=None, description="A flow id: the plan is that flow's steps")
+    agent: str | None = Field(default=None, description="A single agent: the plan is that one step")
+    use_planner: bool = Field(default=True, description="Let the model plan from the goal (one model call); False uses the deterministic router")
+
+
 class ApprovalRequest(BaseModel):
     decisions: dict[str, str] = Field(description="{'<step>/<action_id>' or '*': 'approve' | 'reject'}. Works while the run is "
                                                   "still going (approved actions execute at once) and at the approval gate")
@@ -86,7 +94,7 @@ class ContinueRequest(BaseModel):
     wait_s: float | None = Field(default=None, ge=0, le=3600, description=WAIT_HELP)
 
 
-PUBLIC_PATHS = {"/", "/console", "/health", "/docs", "/docs/oauth2-redirect", "/redoc", "/openapi.json", "/.well-known/agent-card.json",
+PUBLIC_PATHS = {"/", "/console", "/portal", "/health", "/docs", "/docs/oauth2-redirect", "/redoc", "/openapi.json", "/.well-known/agent-card.json",
                 "/shop", "/shop/account", "/shop/admin", "/shop/designer", "/shop/runs", "/shop/catalog", "/shop/requests", "/favicon.svg", "/favicon.ico"}
 PUBLIC_PREFIXES = ("/shop/static/", "/shop/catalog/", "/shop/agents/", "/shop/flows/")
 LOOPBACK = {"127.0.0.1", "::1", "localhost", "testclient"}
@@ -276,9 +284,9 @@ def create_app() -> FastAPI:
     @app.get("/")
     def root(request: Request) -> Any:
         if "text/html" in request.headers.get("accept", ""):
-            return RedirectResponse(f"{(request.scope.get('root_path') or '').rstrip('/')}/shop")  # browsers land on the storefront
+            return RedirectResponse(f"{(request.scope.get('root_path') or '').rstrip('/')}/portal")  # browsers land on the portal
         return {"service": "coforge-agentic-framework", "product": PRODUCT.name, "version": __version__, "docs": f"{base_url(request)}/docs",
-                "shop": f"{base_url(request)}/shop", "console": f"{base_url(request)}/console",
+                "portal": f"{base_url(request)}/portal", "shop": f"{base_url(request)}/shop", "console": f"{base_url(request)}/console",
                 "agents": f"{base_url(request)}/agents", "health": f"{base_url(request)}/health",
                 "agent_card": f"{base_url(request)}/.well-known/agent-card.json", "mcp": f"{base_url(request)}/mcp"}
 
@@ -423,13 +431,62 @@ def create_app() -> FastAPI:
         shop.record_view(cust, view, surface="api", provider=provider)   # steps done so far (each step is metered once)
         return answer(view, response)
 
-    @app.get("/runs")
-    def list_runs(request: Request, limit: int = Query(50, ge=1, le=500),
-                  status: str | None = Query(None, description="queued | running | awaiting_approval | completed | "
-                                                              "completed_with_errors | failed | stalled")) -> list[dict[str, Any]]:
-        """Runs, newest first: the operator sees every run, a customer key its own."""
+    @app.post("/plan")
+    def plan(request: Request, req: PlanRequest) -> dict[str, Any]:
+        """What the orchestrator would run for a goal (or a flow, or one agent), without running it: the route taken,
+        the steps with their agents, inputs and dependencies, and any warnings. With a model configured and
+        use_planner on, this is one model call."""
+        from ..core import new_run_id
+        from ..orchestrator import route_and_plan
+
         cust = customer(request)
-        return orch.list_runs(limit=limit, customer_id=cust["id"] if cust else None, status=status)
+        if req.agent:
+            entitled(request, req.agent)
+        if not (req.goal.strip() or req.playbook or req.agent):
+            raise HTTPException(400, "Give a goal, a flow (playbook) or an agent to plan for")
+        try:
+            ctx = shop.customer_context(cust, new_run_id("plan"), surface="plan")
+        except ShopError as exc:
+            raise HTTPException(exc.status, str(exc)) from exc
+        ctx.tracer.sink = None  # a preview leaves no run folder behind
+        try:
+            decision, p, warnings = route_and_plan(req.goal, ctx, agent=req.agent, playbook=req.playbook, inputs=req.inputs,
+                                                   use_planner=req.use_planner)
+        except (KeyError, ValueError) as exc:
+            raise HTTPException(400, str(exc)) from exc
+        allowed = shop.entitled_agents(cust) if cust is not None else None
+        steps = []
+        for s in p.steps:
+            d = s.model_dump()
+            d["entitled"] = allowed is None or s.agent in allowed
+            steps.append(d)
+        return {"route": decision.model_dump(), "plan": {"mode": p.mode, "playbook": p.playbook, "reason": p.reason, "steps": steps},
+                "warnings": warnings, "planner": "model" if (req.use_planner and not ctx.llm.offline) else "router"}
+
+    @app.get("/runs")
+    def list_runs(request: Request, limit: int = Query(50, ge=1, le=2000),
+                  status: str | None = Query(None, description="queued | running | awaiting_approval | completed | "
+                                                              "completed_with_errors | failed | stalled"),
+                  agent: str | None = Query(None, description="Only runs that used this agent"),
+                  label: str | None = Query(None, description="Only runs of this flow (or playbook, or single agent)"),
+                  q: str | None = Query(None, description="Text in the goal, label, run id or customer")) -> list[dict[str, Any]]:
+        """Runs, newest first, with each run's agents, step counts, model calls and tokens: the operator sees every run,
+        a customer key its own."""
+        cust = customer(request)
+        return orch.list_runs(limit=limit, customer_id=cust["id"] if cust else None, status=status, agent=agent, label=label, query=q)
+
+    @app.get("/runs/stats")
+    def run_stats(request: Request, days: int = Query(14, ge=1, le=90)) -> dict[str, Any]:
+        """Runs per day by outcome, today's totals, and the busiest agents and flows (the operator: everyone's; a
+        customer: its own)."""
+        cust = customer(request)
+        return orch.stats(customer_id=cust["id"] if cust else None, days=days)
+
+    @app.get("/approvals")
+    def approvals(request: Request) -> list[dict[str, Any]]:
+        """Every action waiting for a decision across the runs still open, with its run and goal."""
+        cust = customer(request)
+        return orch.pending_approvals(customer_id=cust["id"] if cust else None)
 
     @app.get("/runs/{run_id}")
     def get_run(request: Request, run_id: str) -> dict[str, Any]:

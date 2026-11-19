@@ -42,6 +42,12 @@ const UI = (window.CAFUI = {
     U.$("#mode-offline").onclick = () => CAF.llm.setMode("offline");
     U.$("#agent-search").oninput = U.debounce(() => UI.renderRegistry(), 80);
     U.$("#rail-toggle").onclick = () => { const r = U.$("#rail"); r.classList.toggle("open"); U.$("#rail-toggle").textContent = r.classList.contains("open") ? "Hide agents" : "Show agents"; };
+    const themeBtn = U.$("#theme-toggle");   // the same choice the portal and the shop pages read (cxnova.theme)
+    if (themeBtn) {
+      const paint = () => { themeBtn.textContent = document.documentElement.getAttribute("data-theme") === "light" ? "Midnight" : "Paper"; };
+      themeBtn.onclick = () => { const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light"; document.documentElement.setAttribute("data-theme", next); try { localStorage.setItem("cxnova.theme", next); } catch (e) { /* storage unavailable */ } paint(); };
+      paint();
+    }
   },
   switchTab(t) {
     UI.tab = t; U.storage.set("caf.tab", t);

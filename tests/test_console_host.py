@@ -42,7 +42,7 @@ def test_console_page_and_browser_root(monkeypatch):
     assert page.status_code == 200 and "CX Nova Agent Console" in page.text
     assert page.text.index("window.claude = {") < page.text.index('id="caf-boot"')  # the bridge loads first
     root = client.get("/", headers={"accept": "text/html,application/xhtml+xml"}, follow_redirects=False)
-    assert root.status_code in (302, 307) and root.headers["location"] == "/shop"  # browsers land on the storefront
+    assert root.status_code in (302, 307) and root.headers["location"] == "/portal"  # browsers land on the portal
     assert client.get("/").json()["service"] == "coforge-agentic-framework"  # API clients keep the JSON index
     assert client.get("/console/host").status_code == 401  # model access needs the token
     host = client.get("/console/host", headers={"Authorization": "Bearer t0ken"}).json()
@@ -62,7 +62,7 @@ def test_reverse_proxy_prefix(monkeypatch):
     html = {"accept": "text/html,application/xhtml+xml"}
     for path in ("/agentshop", "/agentshop/", "/agentshop/agentshop", "/agentshop/agentshop/"):
         r = client.get(path, headers=html, follow_redirects=False)
-        assert r.status_code in (302, 307) and r.headers["location"] == "/agentshop/shop", path
+        assert r.status_code in (302, 307) and r.headers["location"] == "/agentshop/portal", path
     assert client.get("/agentshop/health").status_code == 200
     page = client.get("/agentshop/shop")
     assert page.status_code == 200 and '"/agentshop/shop/static/shop.css"' in page.text

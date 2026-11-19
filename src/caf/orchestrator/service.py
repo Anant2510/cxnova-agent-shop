@@ -22,6 +22,7 @@ import time
 import weakref
 from concurrent.futures import Future, ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
@@ -287,9 +288,11 @@ class Orchestrator:
         with self._lock:
             return list(self._active)
 
-    def list_runs(self, *, limit: int = 50, customer_id: str | None = None, status: str | None = None) -> list[dict[str, Any]]:
+    def list_runs(self, *, limit: int = 50, customer_id: str | None = None, status: str | None = None, agent: str | None = None,
+                  label: str | None = None, query: str | None = None) -> list[dict[str, Any]]:
         """The newest runs first, with the same status a view would give (without loading any run's state)."""
-        rows = self.store.list(limit=limit if not status else max(limit, 500), customer_id=customer_id)
+        filtered = bool(status or agent or label or query)
+        rows = self.store.list(limit=max(limit, 1000) if filtered else limit, customer_id=customer_id)
         with self._lock:
             active = {rid: e["state"] for rid, e in self._active.items()}
         out = []
@@ -307,12 +310,72 @@ class Orchestrator:
                     pass
             if status and st != status:
                 continue
+            agents = [a for a in (r.get("agents") or "").split(",") if a]
+            if agent and agent not in agents:
+                continue
+            if label and (r.get("label") or "") != label:
+                continue
+            if query and query.lower() not in " ".join([r.get("goal") or "", r.get("label") or "", r["run_id"], r.get("customer_id") or ""]).lower():
+                continue
             out.append({"run_id": r["run_id"], "status": st, "goal": r.get("goal") or "", "label": r.get("label") or "",
                         "created_at": r.get("created_at"), "updated_at": r.get("updated_at"), "customer_id": r.get("customer_id") or "",
-                        "surface": r.get("surface") or "", "error": r.get("error") or ""})
+                        "surface": r.get("surface") or "", "error": r.get("error") or "", "agents": agents,
+                        "steps": int(r.get("steps") or 0), "steps_ok": int(r.get("steps_ok") or 0), "llm_calls": int(r.get("llm_calls") or 0),
+                        "input_tokens": int(r.get("input_tokens") or 0), "output_tokens": int(r.get("output_tokens") or 0),
+                        "duration_ms": float(r.get("duration_ms") or 0)})
             if len(out) >= limit:
                 break
         return out
+
+    def pending_approvals(self, *, customer_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
+        """Every action waiting for a decision, across the runs still open (newest run first)."""
+        out = []
+        for r in self.list_runs(limit=limit, customer_id=customer_id):
+            if r["status"] not in ("running", "queued", "awaiting_approval", "stalled"):
+                continue
+            try:
+                view = self.view(r["run_id"])
+            except KeyError:
+                continue
+            for p in view.get("pending_approvals", []):
+                out.append({**p, "run_id": r["run_id"], "goal": view.get("goal") or "", "run_status": view["status"],
+                            "customer_id": r.get("customer_id") or "", "label": r.get("label") or ""})
+        return out
+
+    def stats(self, *, customer_id: str | None = None, days: int = 14) -> dict[str, Any]:
+        """Runs per day by outcome for the last `days` days, today's totals, and the busiest agents and flows."""
+        from collections import Counter
+        from datetime import date, timedelta
+
+        rows = self.list_runs(limit=2000, customer_id=customer_id)
+        today = date.today()
+        by_day = {(today - timedelta(days=i)).isoformat(): {"date": (today - timedelta(days=i)).isoformat(), "completed": 0, "failed": 0,
+                                                             "open": 0, "runs": 0, "llm_calls": 0, "tokens": 0} for i in range(days)}
+        agents: Counter = Counter()
+        labels: Counter = Counter()
+        totals = {"runs": 0, "completed": 0, "failed": 0, "open": 0, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "duration_ms": 0.0}
+        for r in rows:
+            day = (r.get("created_at") or "")[:10]
+            bucket = by_day.get(day)
+            st = r["status"]
+            kind = "completed" if st in ("completed", "completed_with_errors") else "failed" if st in ("failed", "stalled") else "open"
+            if bucket is not None:
+                bucket["runs"] += 1
+                bucket[kind] += 1
+                bucket["llm_calls"] += r["llm_calls"]
+                bucket["tokens"] += r["input_tokens"] + r["output_tokens"]
+            totals["runs"] += 1
+            totals[kind] += 1
+            totals["llm_calls"] += r["llm_calls"]
+            totals["input_tokens"] += r["input_tokens"]
+            totals["output_tokens"] += r["output_tokens"]
+            totals["duration_ms"] += r["duration_ms"]
+            agents.update(r["agents"])
+            if r.get("label"):
+                labels[r["label"]] += 1
+        return {"days": [by_day[k] for k in sorted(by_day)], "today": by_day[today.isoformat()], "totals": totals,
+                "top_agents": [{"agent_id": a, "runs": n} for a, n in agents.most_common(8)],
+                "top_flows": [{"label": a, "runs": n} for a, n in labels.most_common(8)]}
 
     def prune(self, keep_days: float | None = None) -> int:
         """Delete settled runs older than orchestrator.keep_runs_days from the store (their files under runs/ stay)."""
@@ -410,6 +473,11 @@ class Orchestrator:
             view = None
         if view is not None and not error:
             self.store.record(run_id, view["status"] if view["status"] != "stalled" else "failed")
+        if view is not None:
+            try:
+                self.store.set_metrics(run_id, run_metrics(view))
+            except Exception as exc:  # statistics never stop a run from settling
+                log.debug("run metrics not recorded for %s: %s", run_id, exc)
         if view is None or view["status"] in SETTLED:
             RunApprovals.forget(run_id)
         evict = getattr(self.checkpointer, "evict", None)
@@ -548,6 +616,37 @@ def run_wait_s(settings: Any, requested: Any = None) -> float:
         return max(0.0, default)
 
 
+def run_metrics(view: dict[str, Any]) -> dict[str, Any]:
+    """What a run's steps add up to (recorded in the run index when the run settles)."""
+    agents, calls, tin, tout, ok, dur = [], 0, 0, 0, 0, 0.0
+    for s in view.get("steps", []):
+        if s.get("agent") and s["agent"] not in agents:
+            agents.append(s["agent"])
+        r = s.get("result") or {}
+        m = r.get("metrics") or {}
+        calls += int(m.get("llm_calls") or 0)
+        tin += int(m.get("input_tokens") or 0)
+        tout += int(m.get("output_tokens") or 0)
+        if r.get("status") in ("ok", "degraded", "needs_approval"):
+            ok += 1
+    final = view.get("final") or {}
+    if final.get("duration_s"):
+        dur = float(final["duration_s"]) * 1000
+    else:  # not finished (held for approval, say): the span of the steps that did run
+        starts, ends = [], []
+        for s in view.get("steps", []):
+            t = (s.get("result") or {}).get("timing") or {}
+            for key, into in (("started_at", starts), ("finished_at", ends)):
+                try:
+                    into.append(datetime.fromisoformat(str(t[key]).replace("Z", "+00:00")).timestamp())
+                except (KeyError, ValueError, TypeError):
+                    pass
+        if starts and ends:
+            dur = max(0.0, (max(ends) - min(starts)) * 1000)
+    return {"agents": agents, "steps": len(view.get("steps", [])), "steps_ok": ok, "llm_calls": calls, "input_tokens": tin,
+            "output_tokens": tout, "duration_ms": dur}
+
+
 def follow_hint(view: dict[str, Any], surface: str = "api") -> dict[str, Any]:
     """Tell the caller how to follow a run that has not settled yet (added to the view in place)."""
     rid = view.get("run_id")
@@ -564,4 +663,4 @@ def follow_hint(view: dict[str, Any], surface: str = "api") -> dict[str, Any]:
     return view
 
 
-__all__ = ["Orchestrator", "RunApprovals", "RunStateError", "follow_hint", "run_wait_s"]
+__all__ = ["Orchestrator", "RunApprovals", "RunStateError", "follow_hint", "run_metrics", "run_wait_s"]

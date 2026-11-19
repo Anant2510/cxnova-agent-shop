@@ -111,11 +111,12 @@ Public addresses once that is in place:
 
 | What | Address |
 | --- | --- |
-| Storefront | `https://cxnova2.centralindia.cloudapp.azure.com/agentshop/shop` |
+| Portal (launch, runs, approvals, agents, flows, health, customers) | `https://cxnova2.centralindia.cloudapp.azure.com/agentshop/portal` (operator token: everything; customer key: its own); `.../agentshop` lands here |
+| Storefront | `.../agentshop/shop` |
 | Agent console | `.../agentshop/console` |
 | Customer account | `.../agentshop/shop/account` |
 | Orchestration designer | `.../agentshop/shop/designer` (operator token) |
-| Runs (live, step by step) | `.../agentshop/shop/runs` (operator token: every run; customer key: its own) |
+| Runs (live, step by step) | `.../agentshop/portal#/runs` (the earlier `.../agentshop/shop/runs` still opens it) |
 | Admin | `.../agentshop/shop/admin` (operator token) |
 | API docs | `.../agentshop/docs` |
 | MCP | `.../agentshop/mcp` |

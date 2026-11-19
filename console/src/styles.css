@@ -1,54 +1,49 @@
 /* Layout: a control-room console. A signal rail lists every agent with a status lamp; the work
    surface on the right holds the orchestrator (goal -> plan -> run), agent runners and health. */
 :root {
-  /* CX Nova (Campaign Studio) tokens: paper and ink for the surface, indigo (ai) for what people do,
-     pine for what passes, gold for what needs a person, vermilion for what failed. */
-  --bg: #f3f5f7;
-  --surface: #ffffff;
-  --surface-2: #f7f9fb;
-  --ink: #17202e;
-  --ink-2: #465163;
-  --muted: #778194;
-  --line: #dde2e8;
-  --line-2: #eaeef3;
-  --accent: #1f3d7a;
-  --accent-ink: #ffffff;
-  --accent-soft: #e6ecf7;
-  --live: #2b6a4c;
-  --live-soft: #e3efe8;
-  --warn: #a86b0c;
-  --warn-soft: #fbf0db;
-  --fail: #cf3a1e;
-  --fail-soft: #fbe8e3;
-  --idle: #98a2b3;
-  --cat-strategy: #6d46c9;
-  --cat-content: #08807a;
-  --cat-web: #b64c15;
-  --cat-experimentation: #2563c9;
-  --code-bg: #eaeef3;
+  /* The tokens every CX Nova page shares (see src/caf/shop/web/shop.css): midnight by default, paper as the light theme.
+     Indigo (accent) for what people do, green for what is live or passed, amber for what waits on a person, red for what failed,
+     and one colour per kind of work (the categories). */
+  --bg: #0b1020;
+  --surface: #121a33;
+  --surface-2: #16203d;
+  --ink: #e9edf8;
+  --ink-2: #b7c1dc;
+  --muted: #7c88a8;
+  --line: #243054;
+  --line-2: #1b2545;
+  --accent: #8fb0ff;
+  --accent-ink: #0b1020;
+  --accent-soft: #1b2a55;
+  --live: #4ad39b;
+  --live-soft: #11311f;
+  --warn: #f2b84b;
+  --warn-soft: #3a2a0f;
+  --fail: #ff6b5c;
+  --fail-soft: #3d1c1c;
+  --idle: #4a5578;
+  --cat-strategy: #a78bfa; --cat-content: #2dd4bf; --cat-web: #fb923c; --cat-experimentation: #60a5fa;
+  --cat-design: #f472b6; --cat-engineering: #7dd3fc; --cat-quality: #86efac; --cat-operations: #a5b4c4;
+  --cat-compliance: #fca5a5; --cat-activation: #fbbf24; --cat-analytics: #22d3ee; --cat-platform: #c4b5fd;
+  --code-bg: #0b1020;
   --font-display: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --radius: 10px;
   --radius-sm: 6px;
-  --shadow: 0 1px 2px rgba(23, 32, 46, .05), 0 2px 6px rgba(23, 32, 46, .06);
+  --shadow: none;
   --rail-w: 300px;
+  color-scheme: dark;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0b0f15; --surface: #121821; --surface-2: #161e29; --ink: #e6ebf2; --ink-2: #c4ccd8; --muted: #8b97a9;
-    --line: #253042; --line-2: #1c2532; --accent: #8fb0ff; --accent-ink: #0f141b; --accent-soft: #1a2742;
-    --live: #5ec79a; --live-soft: #11301f; --warn: #f0b85a; --warn-soft: #342613; --fail: #ff8a73; --fail-soft: #3a1c17;
-    --idle: #5d697b; --cat-strategy: #a98bff; --cat-content: #3fc7bd; --cat-web: #f08a4b; --cat-experimentation: #6ea2ff;
-    --code-bg: #0f151d; color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0b0f15; --surface: #121821; --surface-2: #161e29; --ink: #e6ebf2; --ink-2: #c4ccd8; --muted: #8b97a9;
-  --line: #253042; --line-2: #1c2532; --accent: #8fb0ff; --accent-ink: #0f141b; --accent-soft: #1a2742;
-  --live: #5ec79a; --live-soft: #11301f; --warn: #f0b85a; --warn-soft: #342613; --fail: #ff8a73; --fail-soft: #3a1c17;
-  --idle: #5d697b; --cat-strategy: #a98bff; --cat-content: #3fc7bd; --cat-web: #f08a4b; --cat-experimentation: #6ea2ff;
-  --code-bg: #0f151d; color-scheme: dark;
+:root[data-theme="light"] {
+  --bg: #f3f5f7; --surface: #ffffff; --surface-2: #f7f9fb; --ink: #17202e; --ink-2: #465163; --muted: #778194;
+  --line: #dde2e8; --line-2: #eaeef3; --accent: #1f3d7a; --accent-ink: #ffffff; --accent-soft: #e6ecf7;
+  --live: #2b6a4c; --live-soft: #e3efe8; --warn: #a86b0c; --warn-soft: #fbf0db; --fail: #cf3a1e; --fail-soft: #fbe8e3;
+  --idle: #98a2b3;
+  --cat-strategy: #6d46c9; --cat-content: #08807a; --cat-web: #b64c15; --cat-experimentation: #2563c9;
+  --cat-design: #b0307a; --cat-engineering: #1f5fbf; --cat-quality: #2b6a4c; --cat-operations: #5a6475;
+  --cat-compliance: #a3341c; --cat-activation: #a86b0c; --cat-analytics: #0e7490; --cat-platform: #7a4b8f;
+  --code-bg: #eaeef3; --shadow: 0 1px 2px rgba(23, 32, 46, .05), 0 2px 6px rgba(23, 32, 46, .06); color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -303,8 +298,8 @@ details.json > summary { cursor: pointer; font-size: 12.5px; color: var(--muted)
 /* agent packs in the registry: a folded group per pack */
 details.cat.pack > summary { cursor: pointer; list-style: none; }
 details.cat.pack > summary::-webkit-details-marker { display: none; }
-.cat-pack { background: var(--ai, #1f3d7a); }
-.kind.pack { color: var(--ai, #1f3d7a); border-color: color-mix(in srgb, var(--ai, #1f3d7a) 35%, transparent); }
-.pack-group { font-size: 11px; color: var(--ink-3, #778194); padding: 6px 10px 2px 26px; font-weight: 600; }
-.cat-design { background: #b0307a; } .cat-engineering { background: #1f5fbf; } .cat-quality { background: #2b6a4c; } .cat-operations { background: #5a6475; }
-.cat-compliance { background: #a3341c; } .cat-activation { background: #a86b0c; } .cat-analytics { background: #0e7490; } .cat-platform { background: #7a4b8f; }
+.cat-pack { background: var(--accent); }
+.kind.pack { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+.pack-group { font-size: 11px; color: var(--muted); padding: 6px 10px 2px 26px; font-weight: 600; }
+.cat-design { background: var(--cat-design); } .cat-engineering { background: var(--cat-engineering); } .cat-quality { background: var(--cat-quality); } .cat-operations { background: var(--cat-operations); }
+.cat-compliance { background: var(--cat-compliance); } .cat-activation { background: var(--cat-activation); } .cat-analytics { background: var(--cat-analytics); } .cat-platform { background: var(--cat-platform); }

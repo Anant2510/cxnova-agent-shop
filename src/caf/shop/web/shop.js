@@ -1,10 +1,18 @@
 /* Shared helpers for the shop pages: API calls with the stored token, small DOM utilities, formatting. */
 (function () {
   const BASE = (function () {
-    // works at the root and behind a reverse proxy prefix: everything before "/shop"
+    // works at the root and behind a reverse proxy prefix: the server wrote this script's address, so everything before
+    // "/shop/static/" is the prefix; pages served under /shop also carry it in their path
+    const me = document.currentScript && document.currentScript.getAttribute("src") || "";
+    const j = me.indexOf("/shop/static/");
+    if (j >= 0) return me.slice(0, j);
     const i = location.pathname.indexOf("/shop");
     return i > 0 ? location.pathname.slice(0, i) : "";
   })();
+  const THEME_KEY = "cxnova.theme";
+  function theme() { try { return localStorage.getItem(THEME_KEY) || "dark"; } catch (e) { return "dark"; } }
+  function setTheme(t) { try { localStorage.setItem(THEME_KEY, t); } catch (e) {} document.documentElement.setAttribute("data-theme", t); }
+  document.documentElement.setAttribute("data-theme", theme());
   const TOKEN_KEY = "cxnova.shop.token";
 
   function token() { try { return localStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; } }
@@ -79,17 +87,26 @@
   function topbar(current) {
     const product = document.body.dataset.product || "CX Nova Agent Orchestration Layer";
     const company = document.body.dataset.company || "Coforge";
-    const links = [["shop", "Agents", BASE + "/shop"], ["designer", "Designer", BASE + "/shop/designer"], ["runs", "Runs", BASE + "/shop/runs"], ["console", "Console", BASE + "/console"],
-      ["account", "My account", BASE + "/shop/account"], ["admin", "Admin", BASE + "/shop/admin"], ["docs", "API", BASE + "/docs"]];
+    const links = [["portal", "Portal", BASE + "/portal"], ["designer", "Designer", BASE + "/shop/designer"], ["console", "Console", BASE + "/console"],
+      ["shop", "Storefront", BASE + "/shop"], ["account", "My account", BASE + "/shop/account"], ["admin", "Admin", BASE + "/shop/admin"], ["docs", "API", BASE + "/docs"]];
+    const toggle = h("button", { class: "btn sm ghost theme-toggle", type: "button", title: "Switch between the midnight and paper themes", "aria-label": "Switch theme",
+      onclick: () => { setTheme(theme() === "dark" ? "light" : "dark"); clear(toggle).append(themeIcon()); } }, themeIcon());
     return h("header", { class: "topbar" }, h("div", { class: "inner" },
-      h("a", { class: "brand", href: BASE + "/shop" }, mark(), h("div", null, h("div", { class: "name" }, product), h("div", { class: "by" }, "by " + company))),
-      h("nav", { class: "nav", "aria-label": "Sections" }, links.map(([id, label, href]) => h("a", { href, "aria-current": id === current ? "page" : null }, label)))));
+      h("a", { class: "brand", href: BASE + "/portal" }, mark(), h("div", null, h("div", { class: "name" }, product), h("div", { class: "by" }, "by " + company))),
+      h("nav", { class: "nav", "aria-label": "Sections" }, links.map(([id, label, href]) => h("a", { href, "aria-current": id === current ? "page" : null }, label))),
+      h("div", { class: "right" }, toggle)));
   }
+  function themeIcon() {  // the icon names the theme you would switch to
+    const sun = "<circle cx='10' cy='10' r='3.5'/><path d='M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M4.3 15.7l1.4-1.4M14.3 5.7l1.4-1.4'/>";
+    const moon = "<path d='M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5z'/>";
+    return h("span", { html: "<svg viewBox='0 0 20 20' width='16' height='16' aria-hidden='true' fill='none' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'>" + (theme() === "dark" ? sun : moon) + "</svg>" });
+  }
+
   function footer() {
     const product = document.body.dataset.product || "CX Nova Agent Orchestration Layer";
     return h("footer", { class: "site" }, h("div", { class: "inner" }, h("span", null, product + " · built on the Coforge Agentic Framework"),
       h("a", { href: BASE + "/docs" }, "API reference"), h("a", { href: BASE + "/.well-known/agent-card.json" }, "A2A agent card"),
       h("a", { href: BASE + "/mcp" }, "MCP endpoint")));
   }
-  window.Shop = { BASE, api, token, setToken, h, $, $$, clear, toast, money, num, when, catClass, catColor, tierLabel, param, pathTail, copy, topbar, footer };
+  window.Shop = { BASE, api, token, setToken, theme, setTheme, h, $, $$, clear, toast, money, num, when, catClass, catColor, tierLabel, param, pathTail, copy, topbar, footer, themeIcon };
 })();

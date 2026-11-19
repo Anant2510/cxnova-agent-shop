@@ -170,8 +170,15 @@ class ShopService:
             customer = self.store.get_customer(owner)
         except ShopError:
             return RunContext.create(run_id, self.settings, options={"customer_id": owner})
+        return self.customer_context(customer, run_id, surface="resume")
+
+    def customer_context(self, customer: dict[str, Any] | None, run_id: str, *, surface: str) -> RunContext:
+        """A context on the customer's model and policy that is not a run of theirs: nothing is recorded or counted
+        (plan previews, decisions on a run after a restart). The operator's is the shop's own."""
+        if customer is None:
+            return RunContext.create(run_id, self.settings)
         pol = self.policy_of(customer)
-        opts = {"customer_id": customer["id"], "run_mode": customer["run_mode"], "surface": "resume"}
+        opts = {"customer_id": customer["id"], "run_mode": customer["run_mode"], "surface": surface}
         ctx = RunContext.create(run_id, pol.settings_for(self.settings), options=opts)
         llm = self.llm_for(customer, tracer=ctx.tracer)
         if llm is not None:

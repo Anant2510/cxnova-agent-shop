@@ -531,9 +531,38 @@ def test_runs_list_trace_and_page(shop_client):
     kinds = [e["kind"] for e in trace]
     assert "orchestrator.step.start" in kinds and any(e["kind"] == "model.done" and e["agent"] == "email_creation" for e in trace)
     assert shop_client.get(f"/runs/{mine['run_id']}/trace?since={len(trace) - 2}", headers=hdr).json() == trace[-2:]
-    page = shop_client.get("/shop/runs")
-    assert page.status_code == 200 and "Runs ·" in page.text and "/shop/static/shop.js" in page.text
+    for path in ("/portal", "/shop/runs"):   # the portal, and the run viewer's earlier address
+        page = shop_client.get(path)
+        assert page.status_code == 200 and "/shop/static/portal.js" in page.text and "/shop/static/shop.js" in page.text
+    assert shop_client.get("/", headers={"Accept": "text/html"}, follow_redirects=False).headers["location"].endswith("/portal")
     assert shop_client.get("/runs").status_code == 401   # the list needs a token
+
+
+def test_portal_endpoints_plan_approvals_and_stats(shop_client):
+    hdr = _customer(shop_client, [{"kind": "all"}])
+    # a plan is a preview: the steps the run would take, nothing started
+    plan = shop_client.post("/plan", json={"goal": "Audit our website", "inputs": {"url": DEMO}}, headers=hdr).json()
+    assert plan["route"]["playbook"] == "website_audit" and [s["agent"] for s in plan["plan"]["steps"]][-1] == "experiment_ideation"
+    assert all(s["entitled"] for s in plan["plan"]["steps"]) and shop_client.get("/runs", headers=hdr).json() == []
+    one = shop_client.post("/plan", json={"goal": "", "agent": "utm_generation"}, headers=ADMIN).json()
+    assert [s["agent"] for s in one["plan"]["steps"]] == ["utm_generation"]
+    assert shop_client.post("/plan", json={"goal": "", "playbook": "no_such_flow"}, headers=ADMIN).status_code in (400, 404, 422)
+    # held actions across runs: the approvals inbox
+    held = shop_client.post("/orchestrate", json={"goal": "Write the webinar invitation", "agent": "email_creation"}, headers=hdr).json()
+    assert held["status"] == "awaiting_approval"
+    inbox = shop_client.get("/approvals", headers=ADMIN).json()
+    assert [a["run_id"] for a in inbox] == [held["run_id"]] and inbox[0]["kind"] == "esp.export" and inbox[0]["goal"] == held["goal"]
+    assert {a["key"] for a in shop_client.get("/approvals", headers=hdr).json()} == {a["key"] for a in inbox}   # the customer sees its own
+    other = _customer(shop_client, [{"kind": "all"}], cid="harborline")
+    assert shop_client.get("/approvals", headers=other).json() == []
+    decided = shop_client.post(f"/runs/{held['run_id']}/approvals", json={"decisions": {inbox[0]["key"]: "reject"}, "wait_s": 5}, headers=hdr).json()
+    assert decided["status"] == "completed" and shop_client.get("/approvals", headers=ADMIN).json() == []
+    # the statistics behind the overview: today's runs, the last days, totals, the most used agents and flows
+    stats = shop_client.get("/runs/stats?days=7", headers=ADMIN).json()
+    assert len(stats["days"]) == 7 and stats["days"][-1] == stats["today"] and stats["today"]["runs"] >= 1
+    assert stats["totals"]["runs"] >= 1 and any(a["agent_id"] == "email_creation" for a in stats["top_agents"])
+    mine = shop_client.get("/runs/stats", headers=other).json()
+    assert mine["totals"]["runs"] == 0 and mine["top_agents"] == []
 
 
 def test_deciding_some_held_actions_at_the_gate_keeps_the_others_held(orch, monkeypatch):
