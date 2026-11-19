@@ -238,8 +238,8 @@ def test_mcp_and_a2a_follow_the_subscription(client):
     assert {u["surface"] for u in me["recent"]} >= {"mcp", "a2a"}
     # tools/list is the customer's entitlement: its one agent and the generic tools, no flow tools yet
     names = {t["name"] for t in client.post("/mcp/", json={"jsonrpc": "2.0", "id": 7, "method": "tools/list", "params": {}}, headers=h).json()["result"]["tools"]}
-    assert names == {"run_utm_generation", "list_agents", "list_flows", "run_flow", "orchestrate", "approve_actions"}
-    assert len({t["name"] for t in client.post("/mcp/", json={"jsonrpc": "2.0", "id": 8, "method": "tools/list", "params": {}}, headers={**MCP_HEADERS, **ADMIN}).json()["result"]["tools"]}) == 28 + 8 + 5
+    assert names == {"run_utm_generation", "list_agents", "list_flows", "run_flow", "orchestrate", "approve_actions", "get_run"}
+    assert len({t["name"] for t in client.post("/mcp/", json={"jsonrpc": "2.0", "id": 8, "method": "tools/list", "params": {}}, headers={**MCP_HEADERS, **ADMIN}).json()["result"]["tools"]}) == 28 + 8 + 6
     # rent a flow: its tool appears, runs as a whole over MCP and over A2A, and is refused without the subscription
     client.put("/shop/admin/api/customers/meridian-mutual/subscriptions", json=[{"kind": "agent", "item_id": "utm_generation"}, {"kind": "flow", "item_id": "competitive_pitch"}], headers=ADMIN)
     names = {t["name"] for t in client.post("/mcp/", json={"jsonrpc": "2.0", "id": 9, "method": "tools/list", "params": {}}, headers=h).json()["result"]["tools"]}

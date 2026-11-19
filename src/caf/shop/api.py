@@ -13,7 +13,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import Body, FastAPI, HTTPException, Query, Request
+from fastapi import Body, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
@@ -70,6 +70,8 @@ class CloneIn(BaseModel):
 class FlowTestIn(BaseModel):
     inputs: dict[str, Any] = Field(default_factory=dict, description="Overrides for the sample inputs")
     customer_id: str | None = Field(default=None, description="Run on this customer's model instead of the shop's")
+    wait_s: float | None = Field(default=None, ge=0, le=3600, description="Seconds to wait before answering with the run so far "
+                                 "(default orchestrator.run_wait_s); follow a run still going with GET /runs/{run_id}")
 
 
 class RequestIn(BaseModel):
@@ -391,16 +393,24 @@ def register(app: FastAPI, settings: Any, shop: ShopService, orchestrator: Any =
         return {"deleted": flow_id}
 
     @app.post("/shop/admin/api/flows/{flow_id}/test")
-    def admin_test_flow(request: Request, flow_id: str, body: FlowTestIn = Body(default_factory=FlowTestIn)) -> dict[str, Any]:
-        """Run the flow once with sample inputs (drafts too), on the shop's model or a customer's; returns the run view."""
+    def admin_test_flow(request: Request, response: Response, flow_id: str,
+                        body: FlowTestIn = Body(default_factory=FlowTestIn)) -> dict[str, Any]:
+        """Run the flow once with sample inputs (drafts too), on the shop's model or a customer's; returns the run view.
+        A test still going after wait_s answers 202: the designer follows it with GET /runs/{run_id}, lighting each step."""
         require_admin(request)
         if orchestrator is None:
             raise HTTPException(503, "no orchestrator on this server")
+        from ..orchestrator.service import follow_hint, run_wait_s
+
         try:
             cust = shop.store.get_customer(body.customer_id) if body.customer_id else None
-            return shop.test_flow(flow_id, orchestrator=orchestrator, inputs=body.inputs, customer=cust)
+            view = shop.test_flow(flow_id, orchestrator=orchestrator, inputs=body.inputs, customer=cust,
+                                  wait=run_wait_s(shop.settings, body.wait_s))
         except ShopError as exc:
             raise _err(exc) from exc
+        if view.get("run_id") and not view.get("settled"):
+            response.status_code = 202
+        return follow_hint(view, "api")
 
     @app.exception_handler(ShopError)
     async def shop_error(_request: Request, exc: ShopError) -> JSONResponse:

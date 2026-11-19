@@ -159,31 +159,61 @@ class ShopService:
     def owns_run(self, customer: dict[str, Any] | None, run_id: str) -> bool:
         return customer is None or self.store.run_owner(run_id) == customer["id"]
 
-    # ------------------------------------------------------------------------------- metering
-    def record_result(self, customer: dict[str, Any] | None, run_id: str, result: Any, *, surface: str, provider: str = "") -> None:
+    def context_for_run(self, run_id: str) -> RunContext:
+        """The context of an existing run this process does not hold (approving or continuing it after a restart):
+        a customer's run goes back on the customer's model and policy. No limit check and no new run record: the run
+        was counted when it started."""
+        owner = self.store.run_owner(run_id)
+        if not owner:
+            return RunContext.create(run_id, self.settings)
+        try:
+            customer = self.store.get_customer(owner)
+        except ShopError:
+            return RunContext.create(run_id, self.settings, options={"customer_id": owner})
+        pol = self.policy_of(customer)
+        opts = {"customer_id": customer["id"], "run_mode": customer["run_mode"], "surface": "resume"}
+        ctx = RunContext.create(run_id, pol.settings_for(self.settings), options=opts)
+        llm = self.llm_for(customer, tracer=ctx.tracer)
+        if llm is not None:
+            ctx.llm = llm
+            ctx.connectors.llm = llm
+        return ctx
+
+    def meter(self, customer: dict[str, Any] | None, *, surface: str, provider: str = "") -> Callable[[dict[str, Any]], None] | None:
+        """A callback that meters a run's steps whenever the run settles (``Orchestrator.start(on_settled=...)``)."""
         if customer is None:
-            return
+            return None
+        return lambda view: self.record_view(customer, view, surface=surface, provider=provider)
+
+    # ------------------------------------------------------------------------------- metering
+    def record_result(self, customer: dict[str, Any] | None, run_id: str, result: Any, *, surface: str, provider: str = "",
+                      step_id: str = "") -> bool:
+        if customer is None:
+            return False
         data = result if isinstance(result, dict) else result.model_dump(mode="json")
         version = ""
         try:
             version = get_agent(data.get("agent_id", "")).spec.version
         except KeyError:
             pass
-        self.store.record_usage(customer_id=customer["id"], run_id=run_id, agent_id=data.get("agent_id", "?"), surface=surface,
-                                run_mode=customer["run_mode"], status=data.get("status", "?"), metrics=data.get("metrics") or {},
-                                agent_version=version, provider=provider)
+        return self.store.record_usage(customer_id=customer["id"], run_id=run_id, agent_id=data.get("agent_id", "?"), surface=surface,
+                                       run_mode=customer["run_mode"], status=data.get("status", "?"), metrics=data.get("metrics") or {},
+                                       agent_version=version, provider=provider, step_id=step_id)
 
     def record_view(self, customer: dict[str, Any] | None, view: dict[str, Any], *, surface: str, provider: str = "") -> None:
-        """Meter every finished step of an orchestrated run (idempotent per step: steps already metered are skipped)."""
+        """Meter every finished step of an orchestrated run, once per step: a flow that runs the same agent in five
+        steps is metered five times, and metering the same run again (each poll, each settle) adds nothing."""
         if customer is None or not view.get("run_id"):
             return
-        seen = {(u["run_id"], u["agent_id"]) for u in self.store.recent_usage(customer["id"], limit=500) if u["run_id"] == view["run_id"]}
+        run_id = view["run_id"]
+        done = self.store.metered_steps(run_id)
         for step in view.get("steps", []):
             r = step.get("result")
-            if not r or r.get("status") in ("pending", "running") or (view["run_id"], r.get("agent_id")) in seen:
+            sid = step.get("id") or ""
+            if not r or not sid or sid in done or r.get("status") in ("pending", "running"):
                 continue
-            seen.add((view["run_id"], r.get("agent_id")))
-            self.record_result(customer, view["run_id"], r, surface=surface, provider=provider)
+            if self.record_result(customer, run_id, r, surface=surface, provider=provider, step_id=sid):
+                done.add(sid)
 
     # ------------------------------------------------------------------------------- the agent check
     def check_agents(self, customer: dict[str, Any], only: list[str] | None = None, *, tier: str | None = None,
@@ -346,8 +376,11 @@ class ShopService:
 
     def run_flow(self, customer: dict[str, Any] | None, flow_id: str, inputs: dict[str, Any] | None, *, orchestrator: Any,
                  goal: str | None = None, auto_approve: bool | None = None, surface: str = "api",
-                 options: dict[str, Any] | None = None) -> dict[str, Any]:
-        """Run a whole flow for a customer (or the operator): entitlement, required inputs, metering."""
+                 options: dict[str, Any] | None = None, wait: float | None = None) -> dict[str, Any]:
+        """Run a whole flow for a customer (or the operator): entitlement, required inputs, metering.
+
+        ``wait``: None runs the flow on this thread; seconds run it on the orchestrator's worker pool and return the
+        run as it stands after at most that long. Every step is metered once, when the run settles."""
         flow = self.require_entitled_flow(customer, flow_id)
         inputs = dict(inputs or {})
         missing = [i.name for i in flow.inputs if i.required and inputs.get(i.name) in (None, "", [], {})]
@@ -356,14 +389,16 @@ class ShopService:
         allowed = (self.entitled_agents(customer) | set(flow.agents())) if customer is not None else None
         ctx = self.context_for(customer, surface=surface, options={**(options or {}), "flow_id": flow_id}, allowed_agents=allowed)
         ctx.tracer.event("shop.flow", flow=flow_id, version=flow.version, source=flow.source)
-        view = orchestrator.start(goal or flow.name, inputs=inputs, plan=flow.plan().model_dump(), auto_approve=auto_approve, ctx=ctx)
+        view = orchestrator.start(goal or flow.name, inputs=inputs, plan=flow.plan().model_dump(), auto_approve=auto_approve, ctx=ctx,
+                                  wait=wait, on_settled=self.meter(customer, surface=surface, provider=ctx.llm.provider))
         view["flow"] = {"id": flow.id, "name": flow.name, "version": flow.version}
-        self.record_view(customer, view, surface=surface, provider=ctx.llm.provider)
+        self.record_view(customer, view, surface=surface, provider=ctx.llm.provider)   # steps done so far (idempotent)
         return view
 
     def test_flow(self, flow_id: str, *, orchestrator: Any, inputs: dict[str, Any] | None = None,
-                  customer: dict[str, Any] | None = None) -> dict[str, Any]:
-        """The operator's test run of a flow (drafts included) with sample inputs, optionally on a customer's model."""
+                  customer: dict[str, Any] | None = None, wait: float | None = None) -> dict[str, Any]:
+        """The operator's test run of a flow (drafts included) with sample inputs, optionally on a customer's model.
+        With ``wait`` the test runs on the worker pool; follow it with the orchestrator's view (GET /runs/{id})."""
         flow = self.flow(flow_id)
         if flow is None:
             raise ShopError(f"unknown flow '{flow_id}'", 404)
@@ -371,12 +406,11 @@ class ShopService:
         allowed = (self.entitled_agents(customer) | set(flow.agents())) if customer is not None else None
         ctx = self.context_for(customer, run_id=new_run_id(f"flowtest-{flow_id[:12]}"), surface="check", allowed_agents=allowed)
         ctx.tracer.event("shop.flow.test", flow=flow_id, version=flow.version)
-        view = orchestrator.start(flow.description or flow.name, inputs=shared, plan=flow.plan().model_dump(), auto_approve=True, ctx=ctx)
+        view = orchestrator.start(flow.description or flow.name, inputs=shared, plan=flow.plan().model_dump(), auto_approve=True, ctx=ctx,
+                                  wait=wait)
         view["flow"] = {"id": flow.id, "name": flow.name, "version": flow.version}
         view["sample_inputs"] = shared
-        steps = view.get("steps", [])
-        view["passed"] = sum(1 for s in steps if s.get("status") in ("ok", "degraded"))
-        view["total"] = len(steps)
+        view.update(flow_test_counts(view))
         return view
 
     # ------------------------------------------------------------------------------- storefront
@@ -476,6 +510,12 @@ class ShopService:
 
 _SERVICES: dict[str, ShopService] = {}
 _SERVICES_LOCK = threading.Lock()
+
+
+def flow_test_counts(view: dict[str, Any]) -> dict[str, int]:
+    """passed / total for a flow test run (also computed by the designer while it follows a run)."""
+    steps = view.get("steps", [])
+    return {"passed": sum(1 for s in steps if s.get("status") in ("ok", "degraded")), "total": len(steps)}
 
 
 def get_shop(settings: Settings) -> ShopService:

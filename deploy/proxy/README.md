@@ -44,8 +44,9 @@ headers"). Then in the site's `web.config`:
 ```
 
 `HTTP_X_FORWARDED_PROTO` and `HTTP_X_FORWARDED_HOST` must be added to *Allowed Server Variables* in URL Rewrite.
-Raise the proxy time-out in ARR (Server Proxy Settings → Time-out) to 600 seconds: an orchestrated run can take a
-few minutes.
+Raise the proxy time-out in ARR (Server Proxy Settings → Time-out) to 600 seconds. Orchestrated runs answer within
+`CAF_RUN_WAIT_S` (60 s by default) and are then followed with `GET /runs/{id}`, so the time-out only has to stay above
+`CAF_RUN_WAIT_S` and the slowest single-agent call.
 
 ## nginx
 

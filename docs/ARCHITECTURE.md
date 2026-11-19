@@ -54,6 +54,18 @@ flowchart LR
 5. **Humans gate side effects.** Publishing is proposed as an action and executed only after approval (or explicit auto-approve).
 6. **Prove liveness.** Every agent ships a self-test; the registry and the health probe fail loudly if any agent is missing or broken.
 
+## Runs
+
+| Concern | How |
+|---|---|
+| Where a run executes | CLI: on the calling thread. REST, MCP, A2A: on a bounded worker pool (`orchestrator.max_concurrent_runs`); the call waits up to `orchestrator.run_wait_s` and answers 202 with the run so far, which the caller follows with `GET /runs/{id}` (`get_run`, `tasks/get`) |
+| Run state | `caf.orchestrator.persistence`: LangGraph's in-memory saver with a write-through to `$CAF_DATA_DIR/orchestrator.db`; a run's checkpoints load into memory only while it runs or is read, and leave when it settles |
+| Statuses | `queued`, `running`, `awaiting_approval`, `completed`, `completed_with_errors`, `failed`, `stalled` (the process running it stopped: its heartbeat in `run_index` is older than `orchestrator.stall_after_s`; `POST /runs/{id}/continue` resumes from the last checkpoint, finished steps are not run again) |
+| Approvals | Held actions appear in `pending_approvals` as their step finishes and can be decided mid-run (executed at once); the approval gate at the end holds only what is undecided. Decisions are in the approvals ledger (`run_actions`), which the gate honours. Each decision is claimed with a single insert before the action executes, so it executes once even when two processes reach it together |
+| Entitlement of a run | The customer's allowed agents are part of the run's state, so a run continued after a restart keeps them; approving or continuing a customer's run rebuilds its context from the customer's current policy (`ShopService.context_for_run`) |
+| Metering | Once per step (`usage.step_id`, unique per run and step), when the run settles; the daily run limit counts runs when they start |
+| Retention | Settled runs older than `orchestrator.keep_runs_days` are pruned from the store at start-up; files under `runs/` are kept |
+
 ## Security
 
 Runs are created under one of two security modes (`caf.core.security`):

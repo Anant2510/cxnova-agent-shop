@@ -159,9 +159,23 @@ or from the console's registry.
   with `runs/<run-id>/summary.md` (outcome, next steps, every step and its files) and `summary.json`.
 * **Bindings.** Step inputs can reference `$goal`, `${input.url}`, `${steps.links.output.links.0.url}`, with
   fallbacks `${input.test_idea|steps.ideas.output.ideas.0.title|goal}`. Each agent declares which inputs the goal fills.
-* **Approvals.** Pending publish actions trigger a LangGraph `interrupt`. Resume with
-  `POST /runs/{id}/approvals {"decisions": {"<step>/<action>": "approve"}}`. Runs are checkpointed (in-memory by default;
-  plug a LangGraph Postgres/SQLite saver for durability).
+* **Approvals.** A held action (publish, send, deploy ...) shows in the run's `pending_approvals` as soon as its step
+  finishes, and can be decided right away while the rest of the run goes on:
+  `POST /runs/{id}/approvals {"decisions": {"<step>/<action>": "approve"}}` executes it at once. Whatever is still
+  undecided when the last step finishes is held by a LangGraph `interrupt` (status `awaiting_approval`), and the same
+  call resumes the run. Every decision, who took it and what executing it returned is kept in the run's approvals ledger,
+  so no action is executed twice, even across a restart.
+* **Runs off the request.** REST, MCP and A2A runs execute on a worker pool (`orchestrator.max_concurrent_runs`, more wait
+  in a queue). A call waits up to `orchestrator.run_wait_s` (`CAF_RUN_WAIT_S`, default 60; a request can pass `wait_s`)
+  and then answers **202** with the run so far; follow it with `GET /runs/{id}` (MCP: `get_run`; A2A: `tasks/get`). Short
+  runs still answer in one call. Keep `run_wait_s` under your reverse proxy's read timeout. The CLI runs in the foreground.
+* **Durable runs.** Checkpoints, run status and approval decisions are in `$CAF_DATA_DIR/orchestrator.db` (SQLite,
+  `orchestrator.run_store`). After a restart, finished runs stay viewable, runs at the approval gate stay approvable, and a
+  run that was cut off mid-way reports `stalled` once its process's heartbeat is a minute old
+  (`orchestrator.stall_after_s`): `POST /runs/{id}/continue` picks it up from its last checkpoint without running finished
+  steps again. A run another process is executing (the CLI next to the service) shows as `running` there and cannot be
+  continued twice. Approval decisions are claimed atomically in the store, so an action executes once. In memory the orchestrator keeps only the runs in flight. Settled runs older than
+  `orchestrator.keep_runs_days` (default 30) are pruned at start-up (their files under `runs/` stay).
 * **Playbooks** (`config/playbooks.yaml`), which together cover all 28 agents: campaign launch kit, webinar programme,
   SEO content factory, competitive pitch, website audit, experimentation loop, insights reporting, headless CMS migration.
 
@@ -169,8 +183,8 @@ or from the console's registry.
 
 | Surface | Where | Notes |
 |---|---|---|
-| REST | `caf serve` then `/docs` | `/agents`, `/agents/{id}/run`, `/flows`, `/flows/{id}/run`, `/orchestrate`, `/runs/{id}`, `/runs/{id}/approvals`, `/runs/{id}/artifacts/...`, `/health`, `/health/agents`, `/playbooks`, `/connectors`, `/r/{code}` short links |
-| MCP | `/mcp` (streamable HTTP) or `caf mcp` (stdio) | `run_<agent_id>` for every agent, `run_flow_<flow_id>` for every published flow, plus `list_agents`, `list_flows`, `run_flow`, `orchestrate`, `approve_actions`; with a customer key the tool list is that customer's subscription |
+| REST | `caf serve` then `/docs` | `/agents`, `/agents/{id}/run`, `/flows`, `/flows/{id}/run`, `/orchestrate`, `/runs/{id}`, `/runs/{id}/approvals`, `/runs/{id}/continue`, `/runs/{id}/artifacts/...`, `/health`, `/health/agents`, `/playbooks`, `/connectors`, `/r/{code}` short links |
+| MCP | `/mcp` (streamable HTTP) or `caf mcp` (stdio) | `run_<agent_id>` for every agent, `run_flow_<flow_id>` for every published flow, plus `list_agents`, `list_flows`, `run_flow`, `orchestrate`, `approve_actions`, `get_run`; with a customer key the tool list is that customer's subscription |
 | A2A | `/.well-known/agent-card.json`, `POST /a2a` | Orchestrator card listing every agent as a skill; JSON-RPC `message/send`, `tasks/get` |
 | CLI | `caf` | `agents`, `describe`, `run`, `orchestrate`, `playbooks`, `health`, `serve`, `mcp`, `export-catalog` |
 | Console | `caf serve` then `/` (or `/console`) | The orchestrator UI: browser twins of all agents, model calls on the server's provider (see below) |
@@ -224,7 +238,7 @@ and the API, MCP and A2A surfaces underneath.
 | Entitlements | With a customer key, `/agents`, `/flows`, `/playbooks`, the MCP tool list, the A2A card and every run are limited to the subscription; a planned step outside it is skipped and reported |
 | Run modes | 1 Coforge Cloud (the layer's model), 2 Coforge Cloud with the customer's model, 3 Customer Cloud (this same image in the customer's environment) |
 | Customer policy | `config/policies/example-customer.yaml`: provider, endpoint, credential (`api_key_env` on the server, or inline and encrypted with `CAF_SECRET_KEY`), routing tiers → the customer's deployments, masking before the model (email, phone, policy and card numbers, IBAN), images on/off, allowed websites, approvals, runs per day and tokens per month |
-| Metering | Every agent run: customer, agent, version, surface, run mode, provider, tokens, duration, outcome. `caf shop usage`, `/shop/me/usage`, the admin usage view |
+| Metering | Every agent run, and every step of an orchestrated run (once per step, so a flow that uses one agent in five steps is metered five times): customer, agent, step, version, surface, run mode, provider, tokens, duration, outcome. A run still going is metered when it settles; the daily run limit counts runs when they start. `caf shop usage`, `/shop/me/usage`, the admin usage view |
 | Agent check | `caf shop check <customer>` runs the subscribed agents' self-tests on the customer's model and keeps the pass table on the account |
 | Branding | CX Nova (Campaign Studio's palette, IBM Plex); `CAF_PRODUCT_NAME`, `CAF_COMPANY` override it |
 

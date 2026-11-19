@@ -81,6 +81,7 @@ class RunContext:
     options: dict[str, Any] = field(default_factory=dict)
     meter: Meter = field(default_factory=Meter)
     used_connectors: set[str] = field(default_factory=set)
+    approvals: Any = None  # orchestrated runs: the run's approvals ledger (caf.orchestrator.service.RunApprovals)
 
     # ---- construction -----------------------------------------------------------------------
     @classmethod

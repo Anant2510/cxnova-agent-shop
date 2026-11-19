@@ -26,7 +26,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import Body, FastAPI, HTTPException, Query, Request
+from fastapi import Body, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
@@ -40,11 +40,15 @@ from ..core import LLM, RunContext, catalog, get_agent
 from ..core.security import PolicyError, service_settings, validate_run_id
 from ..branding import PRODUCT
 from ..health import liveness, summary
-from ..orchestrator import Orchestrator, load_playbooks
+from ..orchestrator import Orchestrator, RunStateError, follow_hint, load_playbooks, run_wait_s
 from ..shop import ShopError, get_shop
 from ..shop import api as shop_api
 from ..shop import context as shop_context
 from . import a2a, console_host
+
+
+WAIT_HELP = ("Seconds to wait for the run to settle before answering (default orchestrator.run_wait_s). A run still going "
+             "answers 202 with the run so far; follow it with GET /runs/{run_id}")
 
 
 class RunAgentRequest(BaseModel):
@@ -61,6 +65,7 @@ class OrchestrateRequest(BaseModel):
     plan: dict[str, Any] | None = Field(default=None, description="Explicit plan {mode, steps:[{id, agent, inputs, needs}]}")
     auto_approve: bool | None = None
     use_planner: bool = True
+    wait_s: float | None = Field(default=None, ge=0, le=3600, description=WAIT_HELP)
 
 
 class RunFlowRequest(BaseModel):
@@ -68,10 +73,17 @@ class RunFlowRequest(BaseModel):
     goal: str | None = Field(default=None, description="Optional goal text; the flow's name when empty")
     auto_approve: bool | None = None
     options: dict[str, Any] = Field(default_factory=dict, description="e.g. {'tier_override': 'fast'}")
+    wait_s: float | None = Field(default=None, ge=0, le=3600, description=WAIT_HELP)
 
 
 class ApprovalRequest(BaseModel):
-    decisions: dict[str, str] = Field(description="{'<step>/<action_id>' or '*': 'approve' | 'reject'}")
+    decisions: dict[str, str] = Field(description="{'<step>/<action_id>' or '*': 'approve' | 'reject'}. Works while the run is "
+                                                  "still going (approved actions execute at once) and at the approval gate")
+    wait_s: float | None = Field(default=None, ge=0, le=3600, description=WAIT_HELP)
+
+
+class ContinueRequest(BaseModel):
+    wait_s: float | None = Field(default=None, ge=0, le=3600, description=WAIT_HELP)
 
 
 PUBLIC_PATHS = {"/", "/console", "/health", "/docs", "/docs/oauth2-redirect", "/redoc", "/openapi.json", "/.well-known/agent-card.json",
@@ -229,9 +241,21 @@ def create_app() -> FastAPI:
     app.add_middleware(RootPathStrip)  # outermost: the proxy prefix is handled before anything looks at the path
     app.state.orchestrator = orch
     app.state.health_cache = None
+    # a run this process does not hold (after a restart) is approved / continued on its owner's model and policy
+    orch.context_factory = shop.context_for_run
 
     def base_url(request: Request) -> str:
         return str(request.base_url).rstrip("/")
+
+    def answer(view: dict[str, Any], response: Response) -> dict[str, Any]:
+        """A run still going answers 202 with the run so far and where to follow it."""
+        if view.get("run_id") and not view.get("settled"):
+            response.status_code = 202
+        return follow_hint(view, "api")
+
+    def actor(request: Request) -> str:
+        cust = getattr(request.state, "customer", None)
+        return f"customer:{cust['id']}" if cust else str(getattr(request.state, "role", "") or "operator")
 
     console_host.register(app, settings)
     shop_api.register(app, settings, shop, orchestrator=orch)
@@ -356,58 +380,90 @@ def create_app() -> FastAPI:
             raise HTTPException(exc.status, str(exc)) from exc
 
     @app.post("/flows/{flow_id}/run")
-    def run_flow(request: Request, flow_id: str, req: RunFlowRequest) -> dict[str, Any]:
-        """Run a whole flow with its shared inputs; returns the run view (steps, outputs, artifacts, pending approvals)."""
+    def run_flow(request: Request, response: Response, flow_id: str, req: RunFlowRequest) -> dict[str, Any]:
+        """Run a whole flow with its shared inputs; returns the run view (steps, outputs, artifacts, pending approvals).
+
+        The run executes on the server's worker pool. The call waits up to `wait_s` seconds (default
+        orchestrator.run_wait_s); a run still going answers 202 with the run so far: follow it with GET /runs/{run_id}."""
         if req.auto_approve and not allow_request_auto_approve:
             raise HTTPException(403, "Per-request auto_approve is disabled on this server (approvals.allow_request_auto_approve). "
                                      "Approve held actions via /runs/{id}/approvals, or have the operator set CAF_AUTO_APPROVE.")
         try:
-            return shop.run_flow(customer(request), flow_id, req.inputs, orchestrator=orch, goal=req.goal, auto_approve=req.auto_approve,
-                                 surface="api", options=req.options)
+            view = shop.run_flow(customer(request), flow_id, req.inputs, orchestrator=orch, goal=req.goal, auto_approve=req.auto_approve,
+                                 surface="api", options=req.options, wait=run_wait_s(settings, req.wait_s))
         except ShopError as exc:
             raise HTTPException(exc.status, str(exc)) from exc
+        return answer(view, response)
 
     @app.post("/orchestrate")
-    def orchestrate(request: Request, req: OrchestrateRequest) -> dict[str, Any]:
+    def orchestrate(request: Request, response: Response, req: OrchestrateRequest) -> dict[str, Any]:
+        """Plan and run a goal across the agents. Waits up to `wait_s` seconds; a run still going answers 202 (see
+        POST /flows/{id}/run)."""
         if req.auto_approve and not allow_request_auto_approve:
             raise HTTPException(403, "Per-request auto_approve is disabled on this server (approvals.allow_request_auto_approve). "
                                      "Approve held actions via /runs/{id}/approvals, or have the operator set CAF_AUTO_APPROVE.")
         cust = customer(request)
         if req.agent:
             entitled(request, req.agent)
+        wait = run_wait_s(settings, req.wait_s)
         try:
             if req.playbook and cust is not None:  # a rented flow runs as a whole, its agents included
-                return shop.run_flow(cust, req.playbook, req.inputs, orchestrator=orch, goal=req.goal, auto_approve=req.auto_approve, surface="api")
+                view = shop.run_flow(cust, req.playbook, req.inputs, orchestrator=orch, goal=req.goal, auto_approve=req.auto_approve,
+                                     surface="api", wait=wait)
+                return answer(view, response)
             ctx = shop.context_for(cust, surface="api") if cust is not None else None
+            provider = ctx.llm.provider if ctx else ""
             view = orch.start(req.goal, inputs=req.inputs, agent=req.agent, playbook=req.playbook, plan=req.plan,
-                              auto_approve=req.auto_approve, use_planner=req.use_planner, ctx=ctx)
+                              auto_approve=req.auto_approve, use_planner=req.use_planner, ctx=ctx, wait=wait,
+                              on_settled=shop.meter(cust, surface="api", provider=provider))
         except ShopError as exc:
             raise HTTPException(exc.status, str(exc)) from exc
-        except KeyError as exc:
+        except (KeyError, ValueError) as exc:  # unknown agent or playbook, a plan with no valid step
             raise HTTPException(400, str(exc)) from exc
-        shop.record_view(cust, view, surface="api", provider=ctx.llm.provider if ctx else "")
-        return view
+        shop.record_view(cust, view, surface="api", provider=provider)   # steps done so far (each step is metered once)
+        return answer(view, response)
 
     @app.get("/runs/{run_id}")
     def get_run(request: Request, run_id: str) -> dict[str, Any]:
+        """The run as it stands. status: queued | running | awaiting_approval | completed | completed_with_errors |
+        failed | stalled. Held actions show in pending_approvals as soon as their step finishes."""
         own_run(request, run_id)
         try:
-            return orch.view(run_id)
+            return follow_hint(orch.view(run_id), "api")
         except KeyError as exc:
             raise HTTPException(404, str(exc)) from exc
 
     @app.post("/runs/{run_id}/approvals")
-    def approve(request: Request, run_id: str, req: ApprovalRequest) -> dict[str, Any]:
+    def approve(request: Request, response: Response, run_id: str, req: ApprovalRequest) -> dict[str, Any]:
+        """Approve or reject held actions. While the run is still going, approved actions execute at once and the run
+        goes on; at the approval gate (status awaiting_approval) the run resumes with the decisions."""
         own_run(request, run_id)
+        cust = customer(request)
         try:
-            view = orch.view(run_id)
+            view = orch.resume(run_id, req.decisions, wait=run_wait_s(settings, req.wait_s), actor=actor(request),
+                               on_settled=shop.meter(cust, surface="api"))
         except KeyError as exc:
             raise HTTPException(404, str(exc)) from exc
-        if view["status"] != "awaiting_approval":
-            raise HTTPException(409, f"Run is '{view['status']}', not awaiting approval")
-        view = orch.resume(run_id, req.decisions)
-        shop.record_view(customer(request), view, surface="api")
-        return view
+        except RunStateError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        shop.record_view(cust, view, surface="api")
+        return answer(view, response)
+
+    @app.post("/runs/{run_id}/continue")
+    def continue_run(request: Request, response: Response, run_id: str,
+                     req: ContinueRequest = Body(default_factory=ContinueRequest)) -> dict[str, Any]:
+        """Pick up a run that stopped mid-way (status stalled, for example after a restart) from its last checkpoint.
+        Steps that finished are not run again."""
+        own_run(request, run_id)
+        cust = customer(request)
+        try:
+            view = orch.continue_run(run_id, wait=run_wait_s(settings, req.wait_s), on_settled=shop.meter(cust, surface="api"))
+        except KeyError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except RunStateError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        shop.record_view(cust, view, surface="api")
+        return answer(view, response)
 
     def run_folder(run_id: str) -> Path:
         try:
@@ -481,21 +537,26 @@ def create_app() -> FastAPI:
             made.append(ctx)
             return ctx
 
+        wait = run_wait_s(settings)
+
         def run_flow(flow_id: str, inputs: dict[str, Any], goal: str | None) -> dict[str, Any]:
-            return shop.run_flow(cust, flow_id, inputs, orchestrator=orch, goal=goal, surface="a2a")
+            return shop.run_flow(cust, flow_id, inputs, orchestrator=orch, goal=goal, surface="a2a", wait=wait)
+
+        def settled(view: dict[str, Any]) -> None:  # every step metered once, when the run settles
+            shop.record_view(cust, view, surface="a2a", provider=made[0].llm.provider if made else "")
 
         try:
-            answer = a2a.handle_jsonrpc(body, orch, agent_id=agent_id, ctx=make_ctx, run_owner=(lambda rid: shop.owns_run(cust, rid)),
-                                        run_flow=run_flow)
+            reply = a2a.handle_jsonrpc(body, orch, agent_id=agent_id, ctx=make_ctx, run_owner=(lambda rid: shop.owns_run(cust, rid)),
+                                       run_flow=run_flow, wait=wait, on_settled=settled if cust is not None else None)
         except ShopError as exc:
             return JSONResponse({"jsonrpc": "2.0", "id": body.get("id"), "error": {"code": -32000, "message": str(exc)}})
         for ctx in made:
-            if "result" in answer:
+            if "result" in reply:
                 try:
                     shop.record_view(cust, orch.view(ctx.run_id), surface="a2a", provider=ctx.llm.provider)
                 except KeyError:
                     pass
-        return JSONResponse(answer)
+        return JSONResponse(reply)
 
     @app.post("/a2a")
     def a2a_rpc(request: Request, body: dict[str, Any] = Body(...)) -> JSONResponse:

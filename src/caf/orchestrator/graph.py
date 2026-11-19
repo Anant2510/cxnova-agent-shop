@@ -8,7 +8,8 @@
               langgraph.types.Send, and a per-run slot pool keeps at most orchestrator.max_parallel running
               (a queued step starts the moment any running step finishes, not when the whole batch does)
 * run_step  : resolves bindings, runs the agent sub-graph with upstream outputs as context
-* approve   : LangGraph interrupt() holding publish-type actions for a human decision
+* approve   : applies the decisions already taken while the run was going (the run's approvals ledger), then a
+              LangGraph interrupt() holds whatever publish-type action is still undecided for a human decision
 * synthesize: deterministic digest + optional model narrative of the whole run
 """
 
@@ -20,6 +21,7 @@ import os
 import sys
 import threading
 import time
+from contextlib import nullcontext
 from typing import Annotated, Any, Literal, TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -30,6 +32,7 @@ from pydantic import BaseModel, Field
 from ..core import PendingAction, RunContext, get_agent
 from ..core.agent import merge_dicts
 from .bindings import build_step_inputs
+from .persistence import shown_status
 from .router import route_and_plan
 
 TERMINAL = {"ok", "degraded", "needs_approval", "error", "skipped"}
@@ -72,6 +75,12 @@ def _slots(run_id: str, size: int) -> threading.BoundedSemaphore:
         if pool is None:
             pool = _SLOTS[run_id] = threading.BoundedSemaphore(max(1, size))
         return pool
+
+
+def release_run(run_id: str) -> None:
+    """Drop a run's step slots (called when the run settles, however it ended)."""
+    with _SLOTS_LOCK:
+        _SLOTS.pop(run_id, None)
 
 
 def _progress(line: str) -> None:
@@ -137,7 +146,9 @@ def run_step(payload: dict[str, Any], runtime: Runtime[RunContext]) -> dict[str,
         res = {"agent_id": step["agent"], "status": "error", "error": str(exc), "summary": "Agent not registered",
                "output": {}, "checks": [], "artifacts": [], "pending_actions": [], "metrics": {}}
         return {"results": {step["id"]: res}, "events": [_evt("step.error", step=step["id"], error=str(exc))]}
-    allowed = ctx.options.get("allowed_agents")  # a shop customer runs only the agents in its subscription
+    # a shop customer runs only the agents in its subscription (kept in the run's state, so it survives a restart)
+    request = payload.get("request") or {}
+    allowed = request["allowed_agents"] if request.get("allowed_agents") is not None else ctx.options.get("allowed_agents")
     if allowed is not None and agent.spec.id not in allowed:
         msg = f"'{agent.spec.id}' is not in this customer's subscription"
         res = {"agent_id": agent.spec.id, "status": "skipped", "error": msg, "summary": f"Skipped: {msg}",
@@ -185,35 +196,61 @@ def approve_node(state: OrchestratorState, runtime: Runtime[RunContext]) -> dict
                 pending.append({"step": sid, "agent_id": r.get("agent_id"), **a})
     if not pending:
         return {}
+    # Decisions already taken while the run was going (or before a crash) are in the run's approvals ledger: they are
+    # applied as recorded and never asked for, or executed, again.
+    ledger = getattr(ctx, "approvals", None)
+    lock = ledger.lock if ledger is not None else nullcontext()
+    with lock:
+        recorded = ledger.decisions() if ledger is not None else {}
     auto = (state.get("request") or {}).get("auto_approve") or ctx.settings.auto_approve
-    decisions = {f"{p['step']}/{p['id']}": "approve" for p in pending if auto and not p.get("mandatory")}
-    held = [p for p in pending if f"{p['step']}/{p['id']}" not in decisions]
+    decisions = {f"{p['step']}/{p['id']}": "approve" for p in pending
+                 if auto and not p.get("mandatory") and f"{p['step']}/{p['id']}" not in recorded}
+    auto_keys = set(decisions)
+    held = [p for p in pending if f"{p['step']}/{p['id']}" not in decisions and f"{p['step']}/{p['id']}" not in recorded]
+    actor = "gate"
     if held:  # mandatory actions always wait for a human, even with auto-approve on
         answer = interrupt({"type": "approval", "pending": [
-            {"key": f"{p['step']}/{p['id']}", "step": p["step"], "agent_id": p["agent_id"], "kind": p["kind"], "summary": p["summary"],
-             "mandatory": bool(p.get("mandatory"))} for p in held]})
+            {"key": f"{p['step']}/{p['id']}", "id": p["id"], "step": p["step"], "agent_id": p["agent_id"], "kind": p["kind"],
+             "summary": p["summary"], "mandatory": bool(p.get("mandatory"))} for p in held]})
         given = (answer or {}).get("decisions", answer) if isinstance(answer, dict) else {}
+        actor = str((answer or {}).get("by") or "gate") if isinstance(answer, dict) else "gate"
         decisions.update(given or {})
     events = []
-    for p in pending:
-        key = f"{p['step']}/{p['id']}"
-        decision = str(decisions.get(key) or decisions.get(p["id"]) or decisions.get("*") or "reject").lower()
-        r = results[p["step"]]
-        actions = [dict(a) for a in r.get("pending_actions", [])]
-        for a in actions:
-            if a["id"] != p["id"]:
-                continue
-            if decision in ("approve", "approved", "yes", "true"):
-                agent = get_agent(p["agent_id"])
-                done = agent.execute_action(PendingAction.model_validate(a), ctx.for_agent(p["agent_id"]))
-                a.update(done.model_dump(mode="json"))
-            else:
-                a["status"] = "rejected"
-            events.append(_evt("action", step=p["step"], action=a["kind"], status=a["status"]))
-        r["pending_actions"] = actions
-        if not any(a.get("status") == "pending" for a in actions) and r.get("status") == "needs_approval":
-            r["status"] = "degraded" if (r.get("provenance") or {}).get("degraded_reasons") else "ok"
-        results[p["step"]] = r
+    with lock:
+        recorded = ledger.decisions() if ledger is not None else {}   # again: decisions may have landed meanwhile
+        for p in pending:
+            key = f"{p['step']}/{p['id']}"
+            r = results[p["step"]]
+            actions = [dict(a) for a in r.get("pending_actions", [])]
+            for a in actions:
+                if a["id"] != p["id"]:
+                    continue
+                decision = str(decisions.get(key) or decisions.get(p["id"]) or decisions.get("*") or "reject").lower()
+                approve = decision in ("approve", "approved", "yes", "true")
+                by = "auto" if key in auto_keys else actor
+                rec = recorded.get(key)
+                if rec is None and ledger is not None and not ledger.claim(key, "approve" if approve else "reject", by=by):
+                    rec = ledger.decisions().get(key) or {"status": "approved", "decision": "approve"}   # another process took it
+                if rec is not None:  # decided earlier (mid-run, or before a restart): show what happened then
+                    a["status"] = shown_status(rec["status"])
+                    if rec.get("result"):
+                        a["result"] = rec["result"]
+                    decisions[key] = rec["decision"]
+                    events.append(_evt("action", step=p["step"], action=a["kind"], status=a["status"], early=True))
+                    continue
+                if approve:
+                    agent = get_agent(p["agent_id"])
+                    done = agent.execute_action(PendingAction.model_validate(a), ctx.for_agent(p["agent_id"]))
+                    a.update(done.model_dump(mode="json"))
+                    if ledger is not None:
+                        ledger.finish(key, a["status"], a.get("result"))
+                else:
+                    a["status"] = "rejected"
+                events.append(_evt("action", step=p["step"], action=a["kind"], status=a["status"]))
+            r["pending_actions"] = actions
+            if not any(a.get("status") == "pending" for a in actions) and r.get("status") == "needs_approval":
+                r["status"] = "degraded" if (r.get("provenance") or {}).get("degraded_reasons") else "ok"
+            results[p["step"]] = r
     return {"results": results, "decisions": decisions, "events": events}
 
 

@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS usage (
     id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT NOT NULL, customer_id TEXT NOT NULL, run_id TEXT NOT NULL,
     agent_id TEXT NOT NULL, agent_version TEXT DEFAULT '', surface TEXT NOT NULL, run_mode TEXT NOT NULL,
     provider TEXT DEFAULT '', status TEXT NOT NULL, llm_calls INTEGER DEFAULT 0, input_tokens INTEGER DEFAULT 0,
-    output_tokens INTEGER DEFAULT 0, duration_ms REAL DEFAULT 0);
+    output_tokens INTEGER DEFAULT 0, duration_ms REAL DEFAULT 0, step_id TEXT NOT NULL DEFAULT '');
 CREATE INDEX IF NOT EXISTS usage_customer_ts ON usage(customer_id, ts);
 CREATE TABLE IF NOT EXISTS access_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL, name TEXT NOT NULL, company TEXT DEFAULT '',
@@ -66,11 +66,9 @@ def hash_key(key: str) -> str:
 
 
 def data_dir(settings: Any = None) -> Path:
-    env = os.environ.get("CAF_DATA_DIR")
-    if env:
-        return Path(env)
-    home = getattr(settings, "home", None) or Path(os.environ.get("CAF_HOME") or Path.cwd())
-    return Path(home) / "data"
+    from ..config import data_dir as _data_dir
+
+    return _data_dir(settings)
 
 
 class ShopError(ValueError):
@@ -87,6 +85,12 @@ class ShopStore:
         con = sqlite3.connect(self.path, timeout=30)
         try:
             con.executescript(SCHEMA)
+            # earlier releases metered orchestrated runs per agent, not per step: add the step column to old files
+            cols = {r[1] for r in con.execute("PRAGMA table_info(usage)")}
+            if "step_id" not in cols:
+                con.execute("ALTER TABLE usage ADD COLUMN step_id TEXT NOT NULL DEFAULT ''")
+            # one usage row per step of a run, however often the run is metered (each settle, each poll)
+            con.execute("CREATE UNIQUE INDEX IF NOT EXISTS usage_run_step ON usage(run_id, step_id) WHERE step_id <> ''")
             # earlier releases called a rented flow a "playbook" subscription
             con.execute("UPDATE OR IGNORE subscriptions SET kind='flow' WHERE kind='playbook'")
             con.execute("DELETE FROM subscriptions WHERE kind='playbook'")
@@ -255,19 +259,31 @@ class ShopStore:
         return row["customer_id"] if row else None
 
     def record_usage(self, *, customer_id: str, run_id: str, agent_id: str, surface: str, run_mode: str, status: str,
-                     metrics: dict[str, Any] | None = None, agent_version: str = "", provider: str = "") -> None:
+                     metrics: dict[str, Any] | None = None, agent_version: str = "", provider: str = "", step_id: str = "") -> bool:
+        """One usage row. With a step_id (a step of an orchestrated run) the row is written once per (run, step): a
+        second call for the same step is ignored and returns False."""
         m = metrics or {}
         with self._db() as db:
-            db.execute("INSERT INTO usage(ts,customer_id,run_id,agent_id,agent_version,surface,run_mode,provider,status,"
-                       "llm_calls,input_tokens,output_tokens,duration_ms) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                       (now_iso(), customer_id, run_id, agent_id, agent_version, surface, run_mode, provider, status,
-                        int(m.get("llm_calls", 0) or 0), int(m.get("input_tokens", 0) or 0), int(m.get("output_tokens", 0) or 0),
-                        float(m.get("duration_ms", 0) or 0)))
+            cur = db.execute("INSERT OR IGNORE INTO usage(ts,customer_id,run_id,agent_id,agent_version,surface,run_mode,provider,status,"
+                             "llm_calls,input_tokens,output_tokens,duration_ms,step_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                             (now_iso(), customer_id, run_id, agent_id, agent_version, surface, run_mode, provider, status,
+                              int(m.get("llm_calls", 0) or 0), int(m.get("input_tokens", 0) or 0), int(m.get("output_tokens", 0) or 0),
+                              float(m.get("duration_ms", 0) or 0), step_id or ""))
+        return cur.rowcount > 0
+
+    def metered_steps(self, run_id: str) -> set[str]:
+        """The steps of a run that are already on the meter."""
+        with self._db() as db:
+            rows = db.execute("SELECT step_id FROM usage WHERE run_id=? AND step_id<>''", (run_id,)).fetchall()
+        return {r["step_id"] for r in rows}
 
     def runs_today(self, customer_id: str) -> int:
+        """Runs the customer started today (UTC), counted when they start, so runs still going count against the daily
+        limit too. The operator's agent checks and flow tests on the customer's model are not the customer's runs."""
         since = datetime.now(timezone.utc).strftime("%Y-%m-%dT00:00:00")
         with self._db() as db:
-            row = db.execute("SELECT COUNT(DISTINCT run_id) AS n FROM usage WHERE customer_id=? AND ts>=?", (customer_id, since)).fetchone()
+            row = db.execute("SELECT COUNT(*) AS n FROM runs WHERE customer_id=? AND created_at>=? AND surface<>'check'",
+                             (customer_id, since)).fetchone()
         return int(row["n"] or 0)
 
     def usage_summary(self, customer_id: str | None = None, month: str | None = None) -> dict[str, Any]:

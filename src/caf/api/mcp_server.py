@@ -1,5 +1,9 @@
 """MCP server: every agent becomes an MCP tool (run_<agent_id>), every published flow a tool (run_flow_<flow_id>),
-plus list_agents / list_flows / run_flow / orchestrate / approve_actions.
+plus list_agents / list_flows / run_flow / orchestrate / approve_actions / get_run.
+
+Runs execute on the orchestrator's worker pool: a run tool waits up to orchestrator.run_wait_s and then answers with the
+run so far (status running, plus a `next` hint); the client follows it with get_run and can approve held actions with
+approve_actions as soon as they appear, while the rest of the run goes on.
 
 Works with MCP SDK 2.x (MCPServer) and 1.x (FastMCP). Run over stdio with `caf mcp`, or mount the
 streamable-HTTP app at /mcp inside the API service.
@@ -24,6 +28,7 @@ from pydantic import BaseModel, Field, create_model
 
 from ..core import RunContext, all_agents, catalog, get_agent
 from ..core.security import service_settings
+from ..orchestrator.service import RunStateError, follow_hint, run_wait_s
 from ..shop import ShopError
 from ..shop import context as shop_context
 
@@ -34,7 +39,7 @@ except ImportError:  # pragma: no cover - MCP SDK 1.x
     from mcp.server.fastmcp import FastMCP as _Server  # type: ignore
     from mcp.server.fastmcp.exceptions import ToolError  # type: ignore
 
-GENERIC_TOOLS = ("list_agents", "list_flows", "run_flow", "orchestrate", "approve_actions")
+GENERIC_TOOLS = ("list_agents", "list_flows", "run_flow", "orchestrate", "approve_actions", "get_run")
 
 
 def _tool_error(exc: Exception) -> ToolError:
@@ -93,9 +98,11 @@ def _make_flow_runner(flow_id: str, args_model: type[BaseModel], orch: Any):
         goal = data.pop("goal", None)
         inputs = {**(data.pop("inputs", None) or {}), **{k: v for k, v in data.items() if v is not None}}
         try:
-            return _shop(orch.settings).run_flow(shop_context.customer(), flow_id, inputs, orchestrator=orch, goal=goal, surface="mcp")
+            view = _shop(orch.settings).run_flow(shop_context.customer(), flow_id, inputs, orchestrator=orch, goal=goal, surface="mcp",
+                                                 wait=run_wait_s(orch.settings))
         except ShopError as exc:
             raise _tool_error(exc) from exc
+        return follow_hint(view, "mcp")
 
     runner.__name__ = f"run_flow_{flow_id}"
     runner.__annotations__ = {"args": args_model, "return": dict}
@@ -117,7 +124,12 @@ class RunFlowArgs(BaseModel):
 
 class ApproveArgs(BaseModel):
     run_id: str
-    decisions: dict[str, str] = Field(description="{'<step>/<action_id>' | '*': 'approve' | 'reject'}")
+    decisions: dict[str, str] = Field(description="{'<step>/<action_id>' | '*': 'approve' | 'reject'}. Works while the run is still "
+                                                  "going (approved actions execute at once) and when it waits at the approval gate")
+
+
+class GetRunArgs(BaseModel):
+    run_id: str = Field(description="The run_id a run_flow / orchestrate / run_flow_<id> call returned")
 
 
 class ShopMCPServer(_Server):  # type: ignore[misc,valid-type]
@@ -141,7 +153,8 @@ def build_mcp(orchestrator: Any = None) -> Any:
 
     orch = orchestrator or Orchestrator(service_settings())
     server = ShopMCPServer("cxnova-orchestration", instructions="Run the agents in your subscription directly (run_<agent>), run a rented "
-                                                            "orchestration flow (run_flow_<flow>), or orchestrate a goal across them.")
+                                                            "orchestration flow (run_flow_<flow>), or orchestrate a goal across them. A long run "
+                                                            "answers while it is still going: follow it with get_run.")
     server.shop_settings = orch.settings
     shop = _shop(orch.settings)
 
@@ -168,27 +181,35 @@ def build_mcp(orchestrator: Any = None) -> Any:
 
     def run_flow(args: RunFlowArgs) -> dict[str, Any]:
         try:
-            return shop.run_flow(shop_context.customer(), args.flow_id, args.inputs, orchestrator=orch, goal=args.goal, surface="mcp")
+            view = shop.run_flow(shop_context.customer(), args.flow_id, args.inputs, orchestrator=orch, goal=args.goal, surface="mcp",
+                                 wait=run_wait_s(orch.settings))
         except ShopError as exc:
             raise _tool_error(exc) from exc
+        return follow_hint(view, "mcp")
 
     server.add_tool(run_flow, name="run_flow", description="Run an orchestration flow by id with its shared inputs; returns the run view")
 
     def orchestrate(args: OrchestrateArgs) -> dict[str, Any]:
         cust = shop_context.customer()
-        if cust is None:
-            return orch.start(args.goal, inputs=args.inputs, agent=args.agent, playbook=args.playbook, auto_approve=None)
+        wait = run_wait_s(orch.settings)
         try:
+            if cust is None:
+                return follow_hint(orch.start(args.goal, inputs=args.inputs, agent=args.agent, playbook=args.playbook, auto_approve=None,
+                                              wait=wait), "mcp")
             if args.playbook:  # a rented flow runs as a whole, its agents included
-                return shop.run_flow(cust, args.playbook, args.inputs, orchestrator=orch, goal=args.goal, surface="mcp")
+                return follow_hint(shop.run_flow(cust, args.playbook, args.inputs, orchestrator=orch, goal=args.goal, surface="mcp",
+                                                 wait=wait), "mcp")
             if args.agent:
                 shop.require_entitled(cust, args.agent)
             ctx = shop.context_for(cust, surface="mcp")
+            view = orch.start(args.goal, inputs=args.inputs, agent=args.agent, playbook=None, auto_approve=None, ctx=ctx, wait=wait,
+                              on_settled=shop.meter(cust, surface="mcp", provider=ctx.llm.provider))
         except ShopError as exc:
             raise _tool_error(exc) from exc
-        view = orch.start(args.goal, inputs=args.inputs, agent=args.agent, playbook=None, auto_approve=None, ctx=ctx)
+        except (KeyError, ValueError) as exc:
+            raise ToolError(str(exc)) from exc
         shop.record_view(cust, view, surface="mcp", provider=ctx.llm.provider)
-        return view
+        return follow_hint(view, "mcp")
 
     server.add_tool(orchestrate, name="orchestrate", description="Plan and run a multi-agent workflow for a goal; returns the run view")
 
@@ -196,11 +217,31 @@ def build_mcp(orchestrator: Any = None) -> Any:
         cust = shop_context.customer()
         if cust is not None and not shop.owns_run(cust, args.run_id):
             raise ToolError(f"Unknown run '{args.run_id}'")
-        view = orch.resume(args.run_id, args.decisions)
+        actor = f"customer:{cust['id']}" if cust else "operator"
+        try:
+            view = orch.resume(args.run_id, args.decisions, wait=run_wait_s(orch.settings), actor=f"mcp:{actor}",
+                               on_settled=shop.meter(cust, surface="mcp"))
+        except KeyError as exc:
+            raise ToolError(f"Unknown run '{args.run_id}'") from exc
+        except RunStateError as exc:
+            raise ToolError(str(exc)) from exc
         shop.record_view(cust, view, surface="mcp")
-        return view
+        return follow_hint(view, "mcp")
 
-    server.add_tool(approve, name="approve_actions", description="Approve or reject publish-type actions held at the approval gate")
+    server.add_tool(approve, name="approve_actions", description="Approve or reject publish-type actions held by a run: while it is "
+                                                                 "still going (they execute at once) or at its approval gate")
+
+    def get_run(args: GetRunArgs) -> dict[str, Any]:
+        cust = shop_context.customer()
+        if cust is not None and not shop.owns_run(cust, args.run_id):
+            raise ToolError(f"Unknown run '{args.run_id}'")
+        try:
+            return follow_hint(orch.view(args.run_id), "mcp")
+        except KeyError as exc:
+            raise ToolError(f"Unknown run '{args.run_id}'") from exc
+
+    server.add_tool(get_run, name="get_run", description="Follow a run: its status (queued, running, awaiting_approval, completed, "
+                                                         "failed, stalled), each step's result so far and the actions waiting for approval")
 
     for agent in all_agents():
         server.add_tool(_make_runner(agent.spec.id, agent.Input, orch.settings), name=f"run_{agent.spec.id}",

@@ -362,7 +362,7 @@
     }));
   }
   function markSelection() { $$(".node", world).forEach(n => n.classList.toggle("sel", !!S.sel && S.sel.type === "node" && S.sel.id === n.dataset.id)); }
-  function statusOf(id) { const t = S.test && S.test.steps && S.test.steps.find(x => x.id === id); return !t ? "" : ["ok", "degraded", "needs_approval"].includes(t.status) ? (t.status === "ok" ? "good" : "warn") : t.status === "skipped" ? "" : "bad"; }
+  function statusOf(id) { const t = S.test && S.test.steps && S.test.steps.find(x => x.id === id); return !t ? "" : ["ok", "degraded", "needs_approval"].includes(t.status) ? (t.status === "ok" ? "good" : "warn") : ["skipped", "pending", "running"].includes(t.status) ? "" : "bad"; }
   function renderCanvas() {
     $$(".node", world).forEach(n => n.remove());
     S.flow.steps.forEach(s => {
@@ -546,10 +546,26 @@
     if (S.test && S.test.running) return;
     if (!S.readOnly && (S.dirty || S.isNew)) { if (!(await save(null))) return; }
     S.test = { running: true }; renderBar();
-    try { S.test = await api("/shop/admin/api/flows/" + encodeURIComponent(S.flow.id) + "/test", { method: "POST", body: {} }); toast(S.test.passed + " of " + S.test.total + " steps passed"); }
-    catch (e) { S.test = null; toast("Test run failed: " + e.message, 6000); }
+    // the server answers within a couple of seconds and runs the test on its worker pool; the page follows the run,
+    // lighting each step as it finishes, so a 50-step flow never hits a proxy timeout
+    const flowId = S.flow.id, here = () => S.flow && S.flow.id === flowId && S.test && S.test.running;
+    try {
+      let v = await api("/shop/admin/api/flows/" + encodeURIComponent(flowId) + "/test", { method: "POST", body: { wait_s: 2 } });
+      while (v && v.run_id && !v.settled && v.status !== "stalled" && here()) {
+        S.test = Object.assign(testCounts(v), v, { running: true }); renderAll();
+        await new Promise((r) => setTimeout(r, 1500));
+        v = await api("/runs/" + encodeURIComponent(v.run_id));
+      }
+      if (!here()) return;   // another flow was opened meanwhile
+      S.test = Object.assign(testCounts(v), v);
+      toast(v.status === "stalled" ? "The test run stopped mid-way (the server restarted)" :
+        v.status === "awaiting_approval" ? S.test.passed + " of " + S.test.total + " steps passed; an action is waiting for approval" :
+        S.test.passed + " of " + S.test.total + " steps passed", 6000);
+    }
+    catch (e) { if (here()) { S.test = null; toast("Test run failed: " + e.message, 6000); } }
     renderAll();
   }
+  function testCounts(v) { const st = v.steps || []; return { passed: st.filter((s) => s.status === "ok" || s.status === "degraded").length, total: st.length }; }
   function renderAll() { renderBar(); renderCanvas(); renderInspector(); renderPalette(); applyView(); }
   window.addEventListener("beforeunload", (e) => { if (S.dirty && !S.readOnly) { e.preventDefault(); e.returnValue = ""; } });
   window.addEventListener("resize", () => drawWires());

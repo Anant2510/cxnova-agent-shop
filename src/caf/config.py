@@ -192,6 +192,15 @@ def load_settings(path: str | Path | None = None) -> Settings:
     )
 
 
+def data_dir(settings: Any = None) -> Path:
+    """Where the layer keeps its records (the shop's and the orchestrator's SQLite files): $CAF_DATA_DIR, else <home>/data."""
+    env = os.environ.get("CAF_DATA_DIR")
+    if env:
+        return Path(env)
+    home = getattr(settings, "home", None) or Path(os.environ.get("CAF_HOME") or Path.cwd())
+    return Path(home) / "data"
+
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return load_settings()

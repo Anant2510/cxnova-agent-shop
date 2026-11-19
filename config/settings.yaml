@@ -200,6 +200,16 @@ orchestrator:
   planner_tier: balanced
   synthesis_tier: fast
   min_route_confidence: 0.05      # below this, the deterministic router asks for a clearer goal instead of guessing
+  # Run state. sqlite keeps every run's checkpoints, status and approval decisions in $CAF_DATA_DIR/orchestrator.db, so a
+  # restart keeps finished runs viewable, held actions approvable and cut-off runs resumable; memory loses them on restart.
+  run_store: ${CAF_RUN_STORE:-sqlite}           # sqlite | memory
+  keep_runs_days: ${CAF_KEEP_RUNS_DAYS:-30}     # settled runs older than this are pruned from the store at start-up
+  stall_after_s: 60                             # a run whose process stopped beating this long ago is "stalled" (continuable)
+  # REST / MCP / A2A runs execute on a worker pool, not on the HTTP request. A call waits up to run_wait_s for the run to
+  # settle; a longer run answers 202 with the run so far, and the caller follows it with GET /runs/{id} (MCP: get_run;
+  # A2A: tasks/get). Keep run_wait_s under the reverse proxy's read timeout.
+  run_wait_s: ${CAF_RUN_WAIT_S:-60}
+  max_concurrent_runs: ${CAF_MAX_CONCURRENT_RUNS:-4}   # orchestrated runs executing at once; more wait in a queue
 
 security:
   # Applies to the service surfaces (REST, MCP over HTTP or stdio, A2A), whose callers are remote users or models.

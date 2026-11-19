@@ -103,7 +103,9 @@ Then, on the VM: <http://127.0.0.1:8080/shop>. Other commands: `service.ps1 -Sta
 
 Follow `deploy/proxy/README.md` for the server the VM uses (IIS with ARR, nginx or Caddy). The pattern is one
 rule: `https://cxnova2.centralindia.cloudapp.azure.com/agentshop/*` → `http://127.0.0.1:8080/agentshop/*`, with
-`CAF_ROOT_PATH=/agentshop` in `.env` and a 600-second proxy time-out (orchestrated runs take minutes).
+`CAF_ROOT_PATH=/agentshop` in `.env`. Orchestrated runs no longer hold the HTTP request: a call answers within
+`CAF_RUN_WAIT_S` (60 s by default) and a longer run answers 202 and is followed with `GET /runs/{id}`, so keep the proxy
+time-out above `CAF_RUN_WAIT_S` (the 600 s in the proxy examples leaves plenty of room).
 
 Public addresses once that is in place:
 
@@ -207,12 +209,18 @@ cd C:\cxnova\cxnova-agent-shop
 .\deploy\windows\update.ps1         # restores the committed console build, git pull, dependencies, service restart
 ```
 
+After a restart (an update, a reboot, the service recovering), finished runs and runs waiting for approval are as
+they were. A run that was cut off mid-way reports `running` for up to a minute (until the stopped process's heartbeat
+is stale), then `stalled` in `GET /runs/{id}`; `POST /runs/{id}/continue` picks it up from its last checkpoint and does
+not run its finished steps again.
+
 ## Where things are
 
 | | |
 | --- | --- |
 | Settings and secrets | `.env` (never committed) |
 | Customers, keys, subscriptions, usage | `data\shop.db` (SQLite; back it up with the VM) |
+| Run state: checkpoints, status, approval decisions | `data\orchestrator.db` (SQLite; runs survive a service restart, see below) |
 | Run artifacts and traces | `runs\<run-id>\` |
 | Service logs | `logs\service.log` |
 | Model routing (which model does what) | `config\model_routing.yaml`, `caf models` |

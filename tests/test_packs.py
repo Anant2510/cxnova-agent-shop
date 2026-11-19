@@ -245,8 +245,11 @@ def test_packs_on_every_surface(client):
         return {t["name"] for t in client.post("/mcp/", json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}, headers={**MCP_HEADERS, **h}).json()["result"]["tools"]}
 
     admin_tools = tools(ADMIN)
-    assert len(admin_tools) == 97 + 21 + 5 and {"run_cs_xtender_variants", "run_arm_front_velocity", "run_flow_arm_ai_to_z_release"} <= admin_tools
-    assert tools(hdr) == {"run_arm_site_auditor", "run_flow_cs_stage_checks", "list_agents", "list_flows", "run_flow", "orchestrate", "approve_actions"}
+    from caf.api.mcp_server import GENERIC_TOOLS
+
+    assert len(admin_tools) == 97 + 21 + len(GENERIC_TOOLS) and {"run_cs_xtender_variants", "run_arm_front_velocity", "run_flow_arm_ai_to_z_release"} <= admin_tools
+    assert tools(hdr) == {"run_arm_site_auditor", "run_flow_cs_stage_checks", "list_agents", "list_flows", "run_flow", "orchestrate", "approve_actions",
+                          "get_run"}
     # the console the layer hosts gets the pack agents (they run on the server) and every flow in its playbook list
     console = client.get("/console").text
     assert 'id="caf-host-agents"' in console and '"cs_xtender_variants"' in console and "arm_stage_4_qa" in console
