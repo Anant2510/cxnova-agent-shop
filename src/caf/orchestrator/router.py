@@ -45,6 +45,7 @@ class RouteDecision(BaseModel):
     reason: str = ""
     method: Literal["explicit", "planner", "router"] = "router"
     alternatives: list[dict[str, Any]] = Field(default_factory=list)
+    planner_metrics: dict[str, Any] | None = None   # the planning call's own usage and cost, when the model planned
 
 
 def _agent_doc(a: Any) -> str:
@@ -183,7 +184,8 @@ def route_and_plan(goal: str, ctx: Any, *, agent: str | None = None, playbook: s
             cleaned, w = validate_plan(proposed)
             decision = RouteDecision(mode=cleaned.mode, playbook=cleaned.playbook,
                                      agent=cleaned.steps[0].agent if cleaned.mode == "agent" else None,
-                                     method="planner", confidence=0.9, reason=cleaned.reason)
+                                     method="planner", confidence=0.9, reason=cleaned.reason,
+                                     planner_metrics=orch.meter.snapshot())   # the planning call is part of what the run costs
             return decision, cleaned, w
         except Exception as exc:  # fall back to the deterministic router
             warnings.append(f"Planner unavailable, used deterministic router: {type(exc).__name__}: {exc}")

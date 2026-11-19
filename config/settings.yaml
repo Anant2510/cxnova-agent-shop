@@ -24,6 +24,24 @@ llm:
     max_retries: 6                                   # retries after 429 / overloaded, honouring Retry-After
     cooldown_s: 20                                   # pause for everyone after a refusal that outlasts the retries
     max_wait_s: 600                                  # give up waiting for capacity after this long
+  # What a model call costs: dollars per million tokens, input and output. A model id matches the longest key it
+  # contains (a Foundry deployment 'claude-sonnet-5-5-eu' or a Bedrock id 'anthropic.claude-sonnet-5-5-v1:0' both match
+  # claude-sonnet-5-5; 'claude-sonnet' catches every Sonnet). The figures below are each family's published API list
+  # prices; Microsoft Foundry, Bedrock and Azure OpenAI bill under their own agreements, so set what your contract
+  # says. A model with no matching key is counted in tokens but reported as unpriced, never as free.
+  pricing:
+    currency: USD
+    cache_read_factor: 0.1      # prompt-cache reads cost this fraction of the input rate
+    cache_write_factor: 1.25    # prompt-cache writes cost this multiple of the input rate
+    models:
+      claude-opus:   {input: 15,   output: 75}
+      claude-sonnet: {input: 3,    output: 15}
+      claude-haiku:  {input: 1,    output: 5}
+      gpt-5-mini:    {input: 0.25, output: 2}
+      gpt-5-nano:    {input: 0.05, output: 0.4}
+      gpt-5:         {input: 1.25, output: 10}
+      llama:         {input: 0,    output: 0}     # Ollama runs locally
+      offline:       {input: 0,    output: 0}
   # Agents request a tier, never a model. Map tiers to models per provider here
   # (or override any tier with CAF_MODEL_FAST / CAF_MODEL_BALANCED / CAF_MODEL_PRO / CAF_MODEL_COMPLEX).
   providers:

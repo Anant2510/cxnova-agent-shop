@@ -37,6 +37,9 @@ class Meter:
         self.calls = 0
         self.input_tokens = 0
         self.output_tokens = 0
+        self.cost_usd = 0.0
+        self.unpriced_calls = 0          # calls on a model the price table does not know
+        self.models: dict[str, dict[str, Any]] = {}   # per model: calls, tokens and cost
         self.errors = 0
         self.last_error = ""
         self.routes: list[dict[str, Any]] = []  # which model did which step, and why
@@ -51,15 +54,54 @@ class Meter:
             self.errors += 1
             self.last_error = message[:300]
 
-    def add(self, usage: dict[str, Any] | None) -> None:
+    def add(self, usage: dict[str, Any] | None, *, model: str | None = None, cost: float | None = None) -> None:
+        """One model call: its reported usage, the model that answered and what it cost (None: not in the price table)."""
+        tin = int((usage or {}).get("input_tokens", 0) or 0)
+        tout = int((usage or {}).get("output_tokens", 0) or 0)
         with self._lock:
             self.calls += 1
-            if usage:
-                self.input_tokens += int(usage.get("input_tokens", 0) or 0)
-                self.output_tokens += int(usage.get("output_tokens", 0) or 0)
+            self.input_tokens += tin
+            self.output_tokens += tout
+            if cost is None:
+                self.unpriced_calls += 1
+            else:
+                self.cost_usd += cost
+            if model:
+                m = self.models.setdefault(model, {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0})
+                m["calls"] += 1
+                m["input_tokens"] += tin
+                m["output_tokens"] += tout
+                if cost is None:
+                    m["unpriced"] = True
+                else:
+                    m["cost_usd"] += cost
+
+    def absorb(self, metrics: dict[str, Any] | None) -> None:
+        """Roll a sub-agent's metrics into this meter."""
+        m = metrics or {}
+        with self._lock:
+            self.calls += int(m.get("llm_calls", 0) or 0)
+            self.errors += int(m.get("llm_errors", 0) or 0)
+            self.last_error = self.last_error or str(m.get("llm_last_error") or "")
+            self.input_tokens += int(m.get("input_tokens", 0) or 0)
+            self.output_tokens += int(m.get("output_tokens", 0) or 0)
+            self.cost_usd += float(m.get("cost_usd", 0) or 0)
+            self.unpriced_calls += int(m.get("unpriced_calls", 0) or 0)
+            for model, sub in (m.get("models") or {}).items():
+                mine = self.models.setdefault(model, {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0})
+                for k in ("calls", "input_tokens", "output_tokens"):
+                    mine[k] += int(sub.get(k, 0) or 0)
+                mine["cost_usd"] += float(sub.get("cost_usd", 0) or 0)
+                if sub.get("unpriced"):
+                    mine["unpriced"] = True
 
     def snapshot(self) -> dict[str, Any]:
-        snap: dict[str, Any] = {"llm_calls": self.calls, "input_tokens": self.input_tokens, "output_tokens": self.output_tokens}
+        snap: dict[str, Any] = {"llm_calls": self.calls, "input_tokens": self.input_tokens, "output_tokens": self.output_tokens,
+                                "cost_usd": round(self.cost_usd, 6)}
+        if self.unpriced_calls:
+            snap["unpriced_calls"] = self.unpriced_calls
+        if self.models:
+            snap["models"] = {k: {**v, "cost_usd": round(v["cost_usd"], 6)} for k, v in self.models.items()}
         if self.errors:
             snap.update(llm_errors=self.errors, llm_last_error=self.last_error)
         return snap
@@ -227,13 +269,7 @@ class RunContext:
         from .registry import get_agent
 
         result = get_agent(agent_id).run(inputs, self, upstream=self.upstream, options={**self.options, **options})
-        m = result.metrics or {}
-        with self.meter._lock:
-            self.meter.calls += int(m.get("llm_calls", 0) or 0)
-            self.meter.errors += int(m.get("llm_errors", 0) or 0)
-            self.meter.last_error = self.meter.last_error or str(m.get("llm_last_error") or "")
-            self.meter.input_tokens += int(m.get("input_tokens", 0) or 0)
-            self.meter.output_tokens += int(m.get("output_tokens", 0) or 0)
+        self.meter.absorb(result.metrics)
         self.used_connectors.update((result.provenance or {}).get("connectors", []))
         self.tracer.event("agent.subagent", parent=self.agent_id, child=agent_id, status=result.status)
         return result

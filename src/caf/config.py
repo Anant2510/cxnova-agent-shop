@@ -95,6 +95,7 @@ class LLMSettings(BaseModel):
     timeout_s: float = 180.0
     throttle: dict[str, Any] = Field(default_factory=dict)
     providers: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    pricing: dict[str, Any] = Field(default_factory=dict)   # see Pricing in caf.core.pricing
 
     def resolved_provider(self) -> str:
         p = (os.environ.get("CAF_LLM_PROVIDER") or self.provider or "auto").strip().lower()

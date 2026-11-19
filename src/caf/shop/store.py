@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS usage (
     id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT NOT NULL, customer_id TEXT NOT NULL, run_id TEXT NOT NULL,
     agent_id TEXT NOT NULL, agent_version TEXT DEFAULT '', surface TEXT NOT NULL, run_mode TEXT NOT NULL,
     provider TEXT DEFAULT '', status TEXT NOT NULL, llm_calls INTEGER DEFAULT 0, input_tokens INTEGER DEFAULT 0,
-    output_tokens INTEGER DEFAULT 0, duration_ms REAL DEFAULT 0, step_id TEXT NOT NULL DEFAULT '');
+    output_tokens INTEGER DEFAULT 0, duration_ms REAL DEFAULT 0, step_id TEXT NOT NULL DEFAULT '', cost_usd REAL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS usage_customer_ts ON usage(customer_id, ts);
 CREATE TABLE IF NOT EXISTS access_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL, name TEXT NOT NULL, company TEXT DEFAULT '',
@@ -89,6 +89,8 @@ class ShopStore:
             cols = {r[1] for r in con.execute("PRAGMA table_info(usage)")}
             if "step_id" not in cols:
                 con.execute("ALTER TABLE usage ADD COLUMN step_id TEXT NOT NULL DEFAULT ''")
+            if "cost_usd" not in cols:   # what each metered step cost, at the price table of the time
+                con.execute("ALTER TABLE usage ADD COLUMN cost_usd REAL DEFAULT 0")
             # one usage row per step of a run, however often the run is metered (each settle, each poll)
             con.execute("CREATE UNIQUE INDEX IF NOT EXISTS usage_run_step ON usage(run_id, step_id) WHERE step_id <> ''")
             # earlier releases called a rented flow a "playbook" subscription
@@ -265,10 +267,10 @@ class ShopStore:
         m = metrics or {}
         with self._db() as db:
             cur = db.execute("INSERT OR IGNORE INTO usage(ts,customer_id,run_id,agent_id,agent_version,surface,run_mode,provider,status,"
-                             "llm_calls,input_tokens,output_tokens,duration_ms,step_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                             "llm_calls,input_tokens,output_tokens,duration_ms,step_id,cost_usd) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                              (now_iso(), customer_id, run_id, agent_id, agent_version, surface, run_mode, provider, status,
                               int(m.get("llm_calls", 0) or 0), int(m.get("input_tokens", 0) or 0), int(m.get("output_tokens", 0) or 0),
-                              float(m.get("duration_ms", 0) or 0), step_id or ""))
+                              float(m.get("duration_ms", 0) or 0), step_id or "", float(m.get("cost_usd", 0) or 0)))
         return cur.rowcount > 0
 
     def metered_steps(self, run_id: str) -> set[str]:
@@ -300,11 +302,14 @@ class ShopStore:
             rows = db.execute(f"SELECT customer_id, agent_id, run_mode, COUNT(*) AS runs, "
                               f"SUM(CASE WHEN status IN ('ok','degraded') THEN 1 ELSE 0 END) AS ok_runs, "
                               f"SUM(llm_calls) AS llm_calls, SUM(input_tokens) AS input_tokens, SUM(output_tokens) AS output_tokens, "
-                              f"SUM(duration_ms) AS duration_ms FROM usage WHERE {' AND '.join(where)} "
+                              f"SUM(duration_ms) AS duration_ms, SUM(cost_usd) AS cost_usd FROM usage WHERE {' AND '.join(where)} "
                               f"GROUP BY customer_id, agent_id, run_mode ORDER BY customer_id, runs DESC", params).fetchall()
         lines = [dict(r) for r in rows]
+        for r in lines:
+            r["cost_usd"] = round(float(r.get("cost_usd") or 0), 6)
         totals = {"runs": sum(r["runs"] for r in lines), "llm_calls": sum(r["llm_calls"] or 0 for r in lines),
-                  "input_tokens": sum(r["input_tokens"] or 0 for r in lines), "output_tokens": sum(r["output_tokens"] or 0 for r in lines)}
+                  "input_tokens": sum(r["input_tokens"] or 0 for r in lines), "output_tokens": sum(r["output_tokens"] or 0 for r in lines),
+                  "cost_usd": round(sum(r["cost_usd"] for r in lines), 6)}
         return {"month": month, "customer_id": customer_id, "lines": lines, "totals": totals}
 
     def recent_usage(self, customer_id: str | None = None, limit: int = 50) -> list[dict[str, Any]]:

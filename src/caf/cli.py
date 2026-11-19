@@ -387,11 +387,14 @@ def cmd_shop(args: argparse.Namespace) -> int:
             if args.json:
                 print(json.dumps(summary, indent=2, default=str))
                 return 0
+            from .core.pricing import money
+
             print(f"usage {summary['month']}" + (f" for {args.customer_id}" if args.customer_id else "") + f": {summary['totals']['runs']} runs, "
-                  f"{summary['totals']['llm_calls']} model calls, {summary['totals']['input_tokens']} in / {summary['totals']['output_tokens']} out tokens")
+                  f"{summary['totals']['llm_calls']} model calls, {summary['totals']['input_tokens']} in / {summary['totals']['output_tokens']} out tokens, "
+                  f"{money(summary['totals'].get('cost_usd'))}")
             for line in summary["lines"]:
                 print(f"  {line['customer_id']:<20} {line['agent_id']:<32} {line['runs']:>4} runs  {line['ok_runs']:>4} ok  "
-                      f"{line['input_tokens'] or 0:>8} in {line['output_tokens'] or 0:>8} out")
+                      f"{line['input_tokens'] or 0:>8} in {line['output_tokens'] or 0:>8} out  {money(line.get('cost_usd')):>10}")
             return 0
     except ShopError as exc:
         print(f"error: {exc}", file=sys.stderr)

@@ -288,6 +288,14 @@ def synthesize_node(state: OrchestratorState, runtime: Runtime[RunContext]) -> d
             final.update(headline=syn.headline, summary_markdown=syn.summary_markdown, next_steps=syn.next_steps, method="model")
         except Exception as exc:
             final["synthesis_error"] = f"{type(exc).__name__}: {exc}"
+        final["metrics"] = orch.meter.snapshot()   # the summary call is part of what the run cost
+    planner = (state.get("route") or {}).get("planner_metrics")
+    if planner:
+        m = final.setdefault("metrics", {"llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0})
+        for k in ("llm_calls", "input_tokens", "output_tokens", "unpriced_calls"):
+            if planner.get(k):
+                m[k] = int(m.get(k) or 0) + int(planner[k])
+        m["cost_usd"] = round(float(m.get("cost_usd") or 0) + float(planner.get("cost_usd") or 0), 6)
     status = "failed" if rows and not ok else ("completed_with_errors" if failed else "completed")
     started = state.get("started")
     if started:

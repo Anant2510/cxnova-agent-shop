@@ -461,7 +461,8 @@ def create_app() -> FastAPI:
             d["entitled"] = allowed is None or s.agent in allowed
             steps.append(d)
         return {"route": decision.model_dump(), "plan": {"mode": p.mode, "playbook": p.playbook, "reason": p.reason, "steps": steps},
-                "warnings": warnings, "planner": "model" if (req.use_planner and not ctx.llm.offline) else "router"}
+                "warnings": warnings, "planner": "model" if (req.use_planner and not ctx.llm.offline) else "router",
+                "estimate": orch.estimate(steps)}   # likely cost, from what these agents cost in earlier runs
 
     @app.get("/runs")
     def list_runs(request: Request, limit: int = Query(50, ge=1, le=2000),

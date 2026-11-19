@@ -19,6 +19,7 @@ from pydantic import BaseModel, ValidationError
 
 from ..config import LLMSettings
 from .offline import OfflineModel
+from .pricing import Pricing
 from .throttle import ThrottleTimeout, get_throttle, limits_from, retry_after_of
 
 T = TypeVar("T", bound=BaseModel)
@@ -88,6 +89,9 @@ class LLM:
         self.calls = 0
         self.input_tokens = 0
         self.output_tokens = 0
+        self.cost_usd = 0.0
+        self.unpriced_calls = 0
+        self.pricing = Pricing(getattr(settings, "pricing", None) or {})
 
     # ---- introspection ----------------------------------------------------------------------
     @property
@@ -104,6 +108,8 @@ class LLM:
         info: dict[str, Any] = {"provider": self.provider, "offline": self.offline, "models": {t: self.model_for(t) for t in tiers}}
         if not self.offline:
             info["throttle"] = self.throttle_limits()
+        info["pricing"] = {**self.pricing.describe(),   # what each configured tier is billed at (None: not in the table)
+                           "tiers": {t: self.pricing.rate(self.model_for(t)) for t in tiers}}
         return info
 
     # ---- throttling -------------------------------------------------------------------------
@@ -151,8 +157,12 @@ class LLM:
         chars = sum(len(_content_text(getattr(m, "content", ""))) for m in messages)
         return chars / 3.5 + 1000  # prompt estimate plus a typical answer; corrected by reported usage
 
-    def usage(self) -> dict[str, int]:
-        return {"llm_calls": self.calls, "input_tokens": self.input_tokens, "output_tokens": self.output_tokens}
+    def usage(self) -> dict[str, Any]:
+        out: dict[str, Any] = {"llm_calls": self.calls, "input_tokens": self.input_tokens, "output_tokens": self.output_tokens,
+                               "cost_usd": round(self.cost_usd, 6)}
+        if self.unpriced_calls:
+            out["unpriced_calls"] = self.unpriced_calls
+        return out
 
     # ---- provider factory -------------------------------------------------------------------
     def chat_model(self, tier: str, effort: str | None = None) -> Any:
@@ -256,16 +266,22 @@ class LLM:
 
     def _account(self, msg: Any, tier: str, t0: float, kind: str, meter: Any = None) -> None:
         usage = getattr(msg, "usage_metadata", None) or {}
+        model = self.model_for(tier)
+        cost = self.pricing.cost(model, usage)
         if meter is not None:
-            meter.add(usage)
+            meter.add(usage, model=model, cost=cost)
         with self._lock:
             self.calls += 1
             self.input_tokens += int(usage.get("input_tokens", 0) or 0)
             self.output_tokens += int(usage.get("output_tokens", 0) or 0)
+            if cost is None:
+                self.unpriced_calls += 1
+            else:
+                self.cost_usd += cost
         if self.tracer is not None:
-            self.tracer.event("llm.call", call=kind, tier=tier, model=self.model_for(tier), provider=self.provider,
+            self.tracer.event("llm.call", call=kind, tier=tier, model=model, provider=self.provider,
                               duration_ms=round((time.perf_counter() - t0) * 1000, 1),
-                              input_tokens=usage.get("input_tokens"), output_tokens=usage.get("output_tokens"))
+                              input_tokens=usage.get("input_tokens"), output_tokens=usage.get("output_tokens"), cost_usd=cost)
 
     # ---- public API -------------------------------------------------------------------------
     def complete(self, prompt: str, *, system: str | None = None, tier: str = "balanced",

@@ -22,6 +22,14 @@
   function ago(iso) { const t = Date.parse(iso); if (isNaN(t)) return ""; const s = (Date.now() - t) / 1000; if (s < 45) return "just now"; if (s < 3600) return Math.round(s / 60) + " min ago"; if (s < 86400) return Math.round(s / 3600) + " h ago"; return when(iso); }
   const ts = (iso) => { const t = Date.parse(iso); return isNaN(t) ? null : t; };
   const num = (n) => Number(n || 0).toLocaleString();
+  const currency = () => (D.stats && D.stats.currency) || "USD";
+  function money(x, plus) {  // a cost; `plus` marks a figure that leaves some calls unpriced
+    if (x === null || x === undefined || isNaN(x)) return "—";
+    const sym = currency() === "USD" ? "$" : currency() + " ";
+    const t = x === 0 ? sym + "0" : x < 0.001 ? "<" + sym + "0.001" : x < 1 ? sym + x.toFixed(3) : x < 100 ? sym + x.toFixed(2) : sym + Math.round(x).toLocaleString();
+    return plus ? t + "+" : t;
+  }
+  const stepCost = (s) => { const m = (s.result || {}).metrics || {}; return { cost: Number(m.cost_usd || 0), unpriced: Number(m.unpriced_calls || 0) }; };
   function since(iso) { return h("span", { dataset: { since: iso } }, dur(Date.now() - ts(iso))); }
   function agent(id) { return D.byId[id] || { id, name: (id || "").replace(/_/g, " "), category: "", category_label: "" }; }
   function packTag(a) { const p = D.packs.find((x) => x.id === a.pack); return p ? (p.tag || p.name.split(/\s+/).map((w) => w[0]).join("").toUpperCase().slice(0, 4)) : ""; }
@@ -232,7 +240,7 @@
         let sub;
         if (opts.planned) sub = s.purpose || a.category_label || "";
         else if (status === "running") sub = h("span", null, s.id + ": running for ", since(s.started_at));
-        else sub = s.id + ": " + (r ? label(r.status) + (ms ? ", " + dur(ms) : "") : label(status));
+        else sub = s.id + ": " + (r ? label(r.status) + (ms ? ", " + dur(ms) : "") + (stepCost(s).cost ? ", " + money(stepCost(s).cost, stepCost(s).unpriced) : "") : label(status));
         inner.append(h("button", { type: "button", class: "gnode " + status + (opts.selected === s.id ? " sel" : "") + (s.entitled === false ? " not-entitled" : ""),
           style: `left:${pos.x}px;top:${pos.y}px;height:${GH}px`, onclick: () => opts.onSelect && opts.onSelect(s.id), title: (a.name || s.agent) + (s.purpose ? ": " + s.purpose : "") + (s.entitled === false ? " (not in this subscription: it would be skipped)" : "") },
           h("span", { class: "bar", style: "background:" + catColor(a.category) }),
@@ -271,20 +279,22 @@
 
   // ------------------------------------------------------------------------------------------------ overview
   VIEWS[""] = function (c) {
+    // the frame is built once; each live tick replaces only the parts that show live data, never the goal box someone is typing in
+    const top = h("div", { id: "ov-top" }), held = h("div", { id: "ov-held" }), recent = h("div", { id: "ov-recent" }), act = h("div", { id: "ov-activity" });
+    put(c, h("div", { class: "cols" }, h("div", null, top, held, recent), h("div", null, act, h("section", { class: "section" }, h("h2", null, "What is here"), whatIsHere()))));
+    let showing = null;
     const draw = () => {
-      clear(c);
       const live = D.runs.filter((r) => r.status === "running" || r.status === "queued");
-      const held = D.approvals, st = D.stats;
-      put(c, h("div", { class: "cols" },
-        h("div", null,
-          live.length ? liveNow(live) : launchBox({ compact: true }),
-          held.length ? h("section", { class: "section" }, h("h2", null, "Waiting for you", h("span", { class: "muted" }, held.length + (held.length === 1 ? " action" : " actions"))), approvalsList(held.slice(0, 5), { compact: true }),
-            held.length > 5 ? h("p", { class: "small", style: "margin-top:8px" }, h("a", { href: "#/approvals" }, "All " + held.length + " waiting")) : null) : null,
-          h("section", { class: "section" }, h("h2", null, "Recent runs", h("span", { class: "muted" }, D.runs.length ? D.runs.length + " kept" : "")), recentRuns(D.runs.slice(0, 8)),
-            D.runs.length > 8 ? h("p", { class: "small", style: "margin-top:8px" }, h("a", { href: "#/runs" }, "Every run, with each step's inputs and outputs")) : null)),
-        h("div", null,
-          st ? activity(st) : null,
-          h("section", { class: "section" }, h("h2", null, "What is here"), whatIsHere()))));
+      const mode = live.length ? "live" : "launch";
+      if (mode === "live") { clear(top).append(liveNow(live)); showing = "live"; }
+      else if (showing !== "launch") { clear(top).append(launchBox({ compact: true })); showing = "launch"; }
+      const hl = D.approvals;
+      clear(held);
+      if (hl.length) put(held, h("section", { class: "section" }, h("h2", null, "Waiting for you", h("span", { class: "muted" }, hl.length + (hl.length === 1 ? " action" : " actions"))), approvalsList(hl.slice(0, 5), { compact: true }),
+        hl.length > 5 ? h("p", { class: "small", style: "margin-top:8px" }, h("a", { href: "#/approvals" }, "All " + hl.length + " waiting")) : null));
+      put(clear(recent), h("section", { class: "section" }, h("h2", null, "Recent runs", h("span", { class: "muted" }, D.runs.length ? D.runs.length + " kept" : "")), recentRuns(D.runs.slice(0, 8)),
+        D.runs.length > 8 ? h("p", { class: "small", style: "margin-top:8px" }, h("a", { href: "#/runs" }, "Every run, with each step's inputs and outputs")) : null));
+      if (D.stats) clear(act).append(activity(D.stats));
     };
     draw();
     return { onLive: draw };
@@ -300,7 +310,7 @@
     if (!rows.length) return h("div", { class: "empty" }, "No runs yet. Describe an outcome on Launch and the orchestrator plans and runs it.", h("div", null, h("a", { class: "btn primary", href: "#/launch" }, "Open Launch")));
     return h("div", { class: "rows" }, rows.map((r) => h("a", { class: "r", href: "#/runs/" + encodeURIComponent(r.run_id) }, h("span", { class: "lamp " + lampOf(r.status), title: label(r.status) }),
       h("span", null, h("div", { class: "t" }, r.goal || r.run_id), h("div", { class: "m" }, [r.label, r.customer_id, r.surface === "check" ? "designer test" : ""].filter(Boolean).join(", "))),
-      h("span", { class: "end" }, label(r.status), h("br"), ago(r.created_at)))));
+      h("span", { class: "end" }, label(r.status), h("br"), ago(r.created_at), r.cost_usd || r.unpriced_calls ? [h("br"), h("span", { title: r.unpriced_calls ? r.unpriced_calls + " model call(s) on a model the price table does not know" : "What this run cost at the configured rates" }, money(r.cost_usd, r.unpriced_calls))] : null))));
   }
   function activity(st) {
     const days = st.days, max = Math.max(1, ...days.map((d) => d.runs));
@@ -309,12 +319,13 @@
     return h("section", null, h("h2", { style: "font-size:16px;margin-bottom:10px" }, "Activity, last 14 days"),
       h("div", { class: "figures" }, h("div", { class: "figure" }, h("div", { class: "v" }, week.runs), h("div", { class: "l" }, "runs this week")),
         h("div", { class: "figure" }, h("div", { class: "v" }, rate === null ? "—" : rate + "%"), h("div", { class: "l" }, "finished without a failure")),
-        h("div", { class: "figure" }, h("div", { class: "v" }, num(st.totals.llm_calls)), h("div", { class: "l" }, "model calls, all runs")),
-        h("div", { class: "figure" }, h("div", { class: "v" }, num(st.totals.input_tokens + st.totals.output_tokens)), h("div", { class: "l" }, "tokens"))),
+        h("div", { class: "figure" }, h("div", { class: "v" }, money(days.slice(-7).reduce((a, d) => a + (d.cost_usd || 0), 0))), h("div", { class: "l" }, "spend this week")),
+        h("div", { class: "figure" }, h("div", { class: "v" }, money(st.totals.cost_usd, st.totals.unpriced_calls)), h("div", { class: "l" }, "spend, all runs kept" + (st.totals.unpriced_calls ? " (" + st.totals.unpriced_calls + " calls unpriced)" : ""))),
+        h("div", { class: "figure" }, h("div", { class: "v" }, num(st.totals.llm_calls)), h("div", { class: "l" }, "model calls, " + num(st.totals.input_tokens + st.totals.output_tokens) + " tokens"))),
       h("div", { class: "bars", style: "margin-top:14px", role: "img", "aria-label": "Runs per day" }, days.map((d) => { const H = 60; const seg = (n, cls) => n ? h("i", { class: cls, style: "height:" + Math.max(2, Math.round((n / max) * H)) + "px" }) : null;
-        return h("a", { class: "d" + (d.runs ? "" : " none"), href: "#/runs?day=" + d.date, title: dayName(d.date) + ": " + d.runs + " run(s), " + d.completed + " completed, " + d.failed + " failed" }, seg(d.completed, "ok"), seg(d.open, "open"), seg(d.failed, "bad")); })),
+        return h("a", { class: "d" + (d.runs ? "" : " none"), href: "#/runs?day=" + d.date, title: dayName(d.date) + ": " + d.runs + " run(s), " + d.completed + " completed, " + d.failed + " failed" + (d.cost_usd ? ", " + money(d.cost_usd) : "") }, seg(d.completed, "ok"), seg(d.open, "open"), seg(d.failed, "bad")); })),
       h("div", { class: "axis" }, h("span", null, dayName(days[0].date)), h("span", null, "today")),
-      st.top_flows.length ? h("div", { style: "margin-top:14px" }, h("div", { class: "small muted", style: "margin-bottom:4px" }, "Most run"), h("div", { class: "row", style: "gap:6px" }, st.top_flows.slice(0, 6).map((f) => h("a", { class: "chip", href: "#/runs?label=" + encodeURIComponent(f.label) }, f.label, h("span", { class: "muted" }, f.runs))))) : null);
+      st.top_flows.length ? h("div", { style: "margin-top:14px" }, h("div", { class: "small muted", style: "margin-bottom:4px" }, "Most run"), h("div", { class: "row", style: "gap:6px" }, st.top_flows.slice(0, 6).map((f) => h("a", { class: "chip", href: "#/runs?label=" + encodeURIComponent(f.label), title: f.avg_cost_usd ? "about " + money(f.avg_cost_usd) + " a run" : "" }, f.label, h("span", { class: "muted" }, f.runs))))) : null);
   }
   function whatIsHere() {
     const cats = new Map();
@@ -414,6 +425,13 @@
       finally { L.launching = false; runBtn.textContent = "Run"; runBtn.disabled = false; }
     }
   }
+  function estimateChip(e) {
+    if (!e) return null;
+    if (e.cost_usd === null || e.cost_usd === undefined) return h("span", { class: "chip", title: "None of these agents has run yet, so there is nothing to estimate from" }, "no cost history yet");
+    const partial = e.known_steps < e.steps;
+    return h("span", { class: "chip", title: "The mean of what each agent cost in its earlier runs" + (partial ? "; " + (e.steps - e.known_steps) + " step(s) have no history and are not counted" : "") },
+      "likely " + money(e.cost_usd) + (partial ? "+" : "") + " from earlier runs");
+  }
   function showPlan() { const box = $("#plan"); if (!box) return; clear(box); if (L.plan) box.append(planView(L.plan)); }
   function planView(p) {
     if (p.clarify) return h("div", { class: "notice warn", style: "margin-top:18px" }, h("strong", null, "The goal is too vague to route without a model planner. "), (p.clarify.final && p.clarify.final.summary_markdown) || "", (p.clarify.final && p.clarify.final.next_steps || []).length ? h("ul", { class: "small", style: "margin:6px 0 0;padding-left:18px" }, p.clarify.final.next_steps.map((x) => h("li", null, x))) : null);
@@ -422,12 +440,13 @@
     const how = { explicit: "the steps you chose", planner: "planned by the model from the goal", router: "picked by the router from the goal" }[r.method] || r.method;
     return h("div", null,
       h("div", { class: "plan-head" }, h("span", { class: "chip ai" }, steps.length + (steps.length === 1 ? " step" : " steps")), h("span", { class: "chip" }, how), r.playbook ? h("a", { class: "chip", href: "#/flows/" + encodeURIComponent(r.playbook) }, "flow: " + r.playbook) : null,
-        r.reason ? h("span", { class: "muted small" }, r.reason) : null, h("span", { class: "muted small right" }, "Run starts exactly these steps")),
+        r.reason ? h("span", { class: "muted small" }, r.reason) : null, estimateChip(p.estimate), h("span", { class: "muted small right" }, "Run starts exactly these steps")),
       (p.warnings || []).length ? h("div", { class: "notice warn small", style: "margin-bottom:10px" }, h("ul", { style: "margin:0;padding-left:18px" }, p.warnings.map((w) => h("li", null, w)))) : null,
       graph(steps, { planned: true }),
       h("div", { class: "stack", style: "margin-top:12px;gap:0" }, steps.map((s) => { const a = agent(s.agent); return h("div", { class: "steprow", style: "padding:6px 0;border-bottom:1px solid var(--rule)" },
         h("span", { class: "stripe", style: "background:" + catColor(a.category) }), h("div", { class: "small" }, h("code", null, s.id), " ", h("a", { class: "strong", href: "#/agents/" + encodeURIComponent(s.agent) }, a.name),
           s.purpose ? h("span", { class: "muted" }, ": " + s.purpose) : null,
+          (() => { const e = ((p.estimate || {}).per_step || []).find((x) => x.id === s.id); return e && e.cost_usd !== null && e.cost_usd !== undefined ? h("span", { class: "muted", title: "the mean of this agent's last " + e.runs + " run(s)" }, " about " + money(e.cost_usd)) : null; })(),
           Object.keys(s.inputs || {}).length ? h("div", { class: "xs muted" }, Object.entries(s.inputs).map(([k, v]) => k + " = " + (typeof v === "string" ? v : JSON.stringify(v))).join("; ")) : null,
           (s.needs || []).length ? h("div", { class: "xs muted" }, "after " + s.needs.join(", ")) : null)); })));
   }
@@ -488,31 +507,38 @@
       const qq = RL.q.toLowerCase();
       return !qq || [r.goal, r.label, r.run_id, r.customer_id].some((x) => (x || "").toLowerCase().includes(qq));
     }
-    function renderList() {
+    // the head (search box, filters) is built once and only rebuilt when a filter chip changes; live ticks refresh the items and the count
+    const FILTERS = [["all", "All"], ["live", "Live"], ["approval", "Needs approval"], ["done", "Completed"], ["bad", "Failed"]];
+    const countEl = h("div", { class: "xs muted" }), itemsEl = h("div", { class: "items" });
+    const head = h("div", { class: "head" });
+    function renderHead() {
+      put(clear(head),
+        h("input", { type: "text", placeholder: "Find a run", "aria-label": "Find a run", value: RL.q, oninput: (e) => { RL.q = e.target.value; renderItems(); } }),
+        h("div", { class: "seg" }, FILTERS.map(([id, text]) => h("button", { type: "button", "aria-pressed": String(RL.filter === id), onclick: () => { RL.filter = id; $$(".seg button", head).forEach((b) => b.setAttribute("aria-pressed", String(b.textContent === text))); renderItems(); } }, text))),
+        RL.label || RL.agent || RL.day ? h("div", { class: "row", style: "gap:6px" }, RL.label ? h("button", { class: "chip ai", type: "button", onclick: () => { RL.label = ""; renderHead(); renderItems(); } }, "flow: " + RL.label + " ×") : null,
+          RL.agent ? h("button", { class: "chip ai", type: "button", onclick: () => { RL.agent = ""; renderHead(); renderItems(); } }, agent(RL.agent).name + " ×") : null,
+          RL.day ? h("button", { class: "chip ai", type: "button", onclick: () => { RL.day = ""; renderHead(); renderItems(); } }, dayName(RL.day) + " ×") : null) : null,
+        countEl);
+    }
+    function renderItems() {
       const every = allRuns(), rows = every.filter(matches);
-      clear(listBox);
-      const FILTERS = [["all", "All"], ["live", "Live"], ["approval", "Needs approval"], ["done", "Completed"], ["bad", "Failed"]];
-      put(listBox, h("div", { class: "head" },
-        h("input", { type: "text", placeholder: "Find a run", "aria-label": "Find a run", value: RL.q, oninput: (e) => { RL.q = e.target.value; renderList(); } }),
-        h("div", { class: "seg" }, FILTERS.map(([id, text]) => h("button", { type: "button", "aria-pressed": String(RL.filter === id), onclick: () => { RL.filter = id; renderList(); } }, text))),
-        RL.label || RL.agent || RL.day ? h("div", { class: "row", style: "gap:6px" }, RL.label ? h("button", { class: "chip ai", type: "button", onclick: () => { RL.label = ""; renderList(); } }, "flow: " + RL.label + " ×") : null,
-          RL.agent ? h("button", { class: "chip ai", type: "button", onclick: () => { RL.agent = ""; renderList(); } }, agent(RL.agent).name + " ×") : null,
-          RL.day ? h("button", { class: "chip ai", type: "button", onclick: () => { RL.day = ""; renderList(); } }, dayName(RL.day) + " ×") : null) : null,
-        h("div", { class: "xs muted" }, rows.length === every.length ? rows.length + (rows.length === 1 ? " run" : " runs") : rows.length + " of " + every.length + " runs")));
-      const items = h("div", { class: "items" });
-      if (!every.length) items.append(h("div", { class: "empty small", style: "border:0" }, "No runs yet."));
-      else if (!rows.length) items.append(h("div", { class: "empty small", style: "border:0" }, "No run matches."));
+      countEl.textContent = rows.length === every.length ? rows.length + (rows.length === 1 ? " run" : " runs") : rows.length + " of " + every.length + " runs";
+      const keep = itemsEl.scrollTop;
+      clear(itemsEl);
+      if (!every.length) itemsEl.append(h("div", { class: "empty small", style: "border:0" }, "No runs yet."));
+      else if (!rows.length) itemsEl.append(h("div", { class: "empty small", style: "border:0" }, "No run matches."));
       let day = null;
       for (const r of rows) {
         const dk = dayKey(r.created_at);
-        if (dk !== day) { day = dk; items.append(h("div", { class: "day" }, dayName(dk))); }
-        items.append(h("button", { class: "item", type: "button", "aria-current": String(r.run_id === R.id), onclick: () => navigate("#/runs/" + encodeURIComponent(r.run_id)) },
+        if (dk !== day) { day = dk; itemsEl.append(h("div", { class: "day" }, dayName(dk))); }
+        itemsEl.append(h("button", { class: "item", type: "button", "aria-current": String(r.run_id === R.id), onclick: () => navigate("#/runs/" + encodeURIComponent(r.run_id)) },
           h("span", { class: "lamp " + lampOf(r.status), title: label(r.status) }),
-          h("span", null, h("span", { class: "g" }, r.goal || r.run_id), h("span", { class: "m" }, label(r.status) + ", " + ago(r.created_at) + (r.duration_ms ? ", " + dur(r.duration_ms) : "")),
+          h("span", null, h("span", { class: "g" }, r.goal || r.run_id), h("span", { class: "m" }, label(r.status) + ", " + ago(r.created_at) + (r.duration_ms ? ", " + dur(r.duration_ms) : "") + (r.cost_usd || r.unpriced_calls ? ", " + money(r.cost_usd, r.unpriced_calls) : "")),
             r.label || r.customer_id ? h("span", { class: "m" }, [r.label, r.customer_id].filter(Boolean).join(", ")) : null)));
       }
-      listBox.append(items);
+      itemsEl.scrollTop = keep;
     }
+    function renderList() { if (!head.parentElement) listBox.append(head, itemsEl); if (!head.childElementCount) renderHead(); renderItems(); }
     renderList();
     const detail = $("#rundetail");
     if (params[0]) openRun(detail, params[0], params[1] || null);
@@ -565,9 +591,11 @@
     renderHead(); renderGraphArea(); renderStep();
   }
   function runStats(v) {
-    let calls = 0, tin = 0, tout = 0, files = 0, fails = 0, done = 0;
-    for (const s of v.steps) { const r = s.result; if (!r) continue; done++; const m = r.metrics || {}; calls += m.llm_calls || 0; tin += m.input_tokens || 0; tout += m.output_tokens || 0; files += (r.artifacts || []).length; fails += (r.checks || []).filter((c) => c.status === "fail").length; }
-    return { calls, tin, tout, files, fails, done };
+    let calls = 0, tin = 0, tout = 0, files = 0, fails = 0, done = 0, cost = 0, unpriced = 0;
+    for (const s of v.steps) { const r = s.result; if (!r) continue; done++; const m = r.metrics || {}; calls += m.llm_calls || 0; tin += m.input_tokens || 0; tout += m.output_tokens || 0; cost += m.cost_usd || 0; unpriced += m.unpriced_calls || 0; files += (r.artifacts || []).length; fails += (r.checks || []).filter((c) => c.status === "fail").length; }
+    const own = (v.final || {}).metrics || {};   // the orchestrator's planning and summary calls
+    calls += own.llm_calls || 0; tin += own.input_tokens || 0; tout += own.output_tokens || 0; cost += own.cost_usd || 0; unpriced += own.unpriced_calls || 0;
+    return { calls, tin, tout, files, fails, done, cost, unpriced };
   }
   function runTimes(v) {
     let start = null, end = null;
@@ -604,6 +632,7 @@
         h("div", { class: "figure" }, h("div", { class: "v" }, st.done, h("small", null, "/ " + v.steps.length)), h("div", { class: "l" }, "steps run")),
         h("div", { class: "figure" }, h("div", { class: "v" }, num(st.calls)), h("div", { class: "l" }, "model calls")),
         h("div", { class: "figure" }, h("div", { class: "v" }, num(st.tin + st.tout)), h("div", { class: "l" }, "tokens (" + num(st.tin) + " in, " + num(st.tout) + " out)")),
+        h("div", { class: "figure", title: "Model calls priced at the rates in config/settings.yaml (llm.pricing); the orchestrator's own planning and summary calls included" }, h("div", { class: "v" }, money(st.cost, st.unpriced)), h("div", { class: "l" }, "cost" + (st.unpriced ? ", " + st.unpriced + " call(s) unpriced" : "") + (live ? " so far" : ""))),
         h("div", { class: "figure" }, h("div", { class: "v" }, st.files), h("div", { class: "l" }, "files produced")),
         h("div", { class: "figure" }, h("div", { class: "v", style: st.fails ? "color:var(--shu)" : "" }, st.fails), h("div", { class: "l" }, "failed checks"))));
     if (v.status === "stalled") put(p, h("div", { class: "notice bad", style: "margin-top:12px" }, "This run stopped mid-way (the service restarted). Continue it: the finished steps are not run again."));
@@ -801,7 +830,10 @@
       h("div", { class: "figures" }, h("div", { class: "figure" }, h("div", { class: "v" }, m.llm_calls || 0), h("div", { class: "l" }, "model calls")),
         h("div", { class: "figure" }, h("div", { class: "v" }, num(m.input_tokens)), h("div", { class: "l" }, "tokens in")),
         h("div", { class: "figure" }, h("div", { class: "v" }, num(m.output_tokens)), h("div", { class: "l" }, "tokens out")),
-        h("div", { class: "figure" }, h("div", { class: "v" }, dur(m.duration_ms)), h("div", { class: "l" }, "agent time"))),
+        h("div", { class: "figure" }, h("div", { class: "v" }, dur(m.duration_ms)), h("div", { class: "l" }, "agent time")),
+        h("div", { class: "figure" }, h("div", { class: "v" }, money(m.cost_usd || 0, m.unpriced_calls)), h("div", { class: "l" }, "cost" + (m.unpriced_calls ? ", " + m.unpriced_calls + " call(s) unpriced" : "")))),
+      m.models && Object.keys(m.models).length ? h("div", { class: "tw" }, h("table", null, h("thead", null, h("tr", null, h("th", null, "Model"), h("th", { class: "num" }, "Calls"), h("th", { class: "num" }, "Tokens in"), h("th", { class: "num" }, "Tokens out"), h("th", { class: "num" }, "Cost"))),
+        h("tbody", null, Object.entries(m.models).map(([name, x]) => h("tr", null, h("td", null, h("code", null, name)), h("td", { class: "num" }, x.calls), h("td", { class: "num" }, num(x.input_tokens)), h("td", { class: "num" }, num(x.output_tokens)), h("td", { class: "num" }, x.unpriced ? h("span", { class: "chip warn", title: "Not in the price table (config/settings.yaml, llm.pricing)" }, "unpriced") : money(x.cost_usd))))))) : null,
       routes.length ? h("div", { class: "tw" }, h("table", null, h("thead", null, h("tr", null, h("th", null, "Call"), h("th", null, "Kind of work"), h("th", null, "Model"), h("th", null, "Why"))),
         h("tbody", null, routes.map((x) => h("tr", null, h("td", null, h("code", null, x.step)), h("td", { class: "small" }, (x.work || "") + (x.effort ? ", effort " + x.effort : "")),
           h("td", { class: "small" }, h("code", null, x.model || x.tier), h("div", { class: "xs muted" }, "tier " + x.tier)), h("td", { class: "xs muted" }, x.why || "")))))) :
@@ -841,7 +873,7 @@
     const body = { inputs: inputsTab, output: outputTab, files: filesTab, checks: checksTab, model: modelTab, actions: actionsTab, activity: activityTab }[R.stab] || inputsTab;
     put(clear(p), h("div", { class: "stephead" }, h("span", { class: "bar", style: "background:" + catColor(a.category) }),
       h("div", null, h("div", { class: "row", style: "gap:8px" }, h("h2", null, a.name || s.agent), h("code", { class: "small" }, s.id), h("span", { class: "chip " + (runClass(s.status) || lampOf(s.status)) }, s.status === "running" ? h("span", { class: "lamp run" }) : null, label(s.status)),
-          ms !== null ? h("span", { class: "muted small" }, "took " + dur(ms)) : s.status === "running" ? h("span", { class: "muted small" }, "running for ", since(s.started_at)) : null,
+          ms !== null ? h("span", { class: "muted small" }, "took " + dur(ms) + (stepCost(s).cost || stepCost(s).unpriced ? ", " + money(stepCost(s).cost, stepCost(s).unpriced) : "")) : s.status === "running" ? h("span", { class: "muted small" }, "running for ", since(s.started_at)) : null,
           D.byId[s.agent] ? h("a", { class: "small right", href: "#/agents/" + encodeURIComponent(s.agent) }, "About this agent") : null),
         s.purpose ? h("p", { class: "small muted", style: "margin-top:4px" }, s.purpose) : null,
         (s.needs || []).length ? h("p", { class: "xs muted", style: "margin-top:4px" }, "Runs after: ", s.needs.map((d, i) => [i ? ", " : "", h("a", { href: "#", onclick: (e) => { e.preventDefault(); selectStep(d); } }, d)])) : null,
@@ -872,12 +904,14 @@
   }
 
   // ------------------------------------------------------------------------------------------------ agents
+  const typicalCost = (id) => { const c = D.stats && D.stats.agent_costs && D.stats.agent_costs[id]; return c && c.runs ? c : null; };
   function agentTile(a) {
     const p = packTag(a);
     return h("a", { class: "tile", href: "#/agents/" + encodeURIComponent(a.id) },
       h("span", { class: "stripe", style: "background:" + catColor(a.category) }),
       h("span", null, h("span", { class: "nm" }, h("span", { class: "t" }, a.name), p ? h("span", { class: "tag", title: a.pack_name }, p) : null),
-        h("span", { class: "sm" }, a.summary), h("span", { class: "ft" }, h("span", null, a.kind === "deterministic" ? "code only" : a.kind === "llm" ? "model with guardrails" : "code and model"), (a.connectors || []).length ? h("span", null, "· " + a.connectors.join(", ")) : null)));
+        h("span", { class: "sm" }, a.summary), h("span", { class: "ft" }, h("span", null, a.kind === "deterministic" ? "code only" : a.kind === "llm" ? "model with guardrails" : "code and model"), (a.connectors || []).length ? h("span", null, ", " + a.connectors.join(", ")) : null,
+          typicalCost(a.id) ? h("span", { class: "right", title: "the mean of its last " + typicalCost(a.id).runs + " run(s)" }, "about " + money(typicalCost(a.id).avg_cost_usd) + " a run") : null)));
   }
   const AGENT_CACHE = {};
   function agentDetails(id) { return AGENT_CACHE[id] || (AGENT_CACHE[id] = api("/agents/" + encodeURIComponent(id)).catch((e) => { delete AGENT_CACHE[id]; throw e; })); }
@@ -971,6 +1005,7 @@
               h("dt", null, "Skills"), h("dd", null, (a.skills || []).length ? a.skills.join(", ") : "none"),
               h("dt", null, "Side effects"), h("dd", null, (a.side_effects || []).length ? a.side_effects.join(", ") + " (held for approval)" : "none"),
               h("dt", null, "Model tier"), h("dd", null, a.tier || "balanced"),
+              h("dt", null, "Typical cost"), h("dd", null, typicalCost(id) ? "about " + money(typicalCost(id).avg_cost_usd) + " a run, the mean of its last " + typicalCost(id).runs + " run(s)" : "no priced run yet"),
               a.feeds && a.feeds.length ? h("dt", null, "Feeds") : null, a.feeds && a.feeds.length ? h("dd", null, a.feeds.map((f, i) => [i ? ", " : "", h("a", { href: "#/agents/" + f }, agent(f).name)])) : null,
               a.pack_name ? h("dt", null, "Source") : null, a.pack_name ? h("dd", null, a.pack_name + (a.accelerator ? ", " + a.accelerator : "")) : null,
               (a.actions || []).length ? h("dt", null, "Actions") : null, (a.actions || []).length ? h("dd", null, a.actions.map((x) => h("div", { class: "small" }, h("code", null, x.id), x.title ? " " + x.title : ""))) : null)),
@@ -1009,7 +1044,8 @@
       }
       clear(c);
       put(c, h("p", { class: "small" }, h("a", { href: "#/flows" }, "Flows"), f.pack_name ? h("span", { class: "muted" }, " › " + f.pack_name) : null),
-        h("div", { class: "row", style: "gap:10px" }, h("h1", { class: "page", style: "margin:0" }, f.name), h("span", { class: "chip " + (f.status === "published" ? "good" : "warn") }, f.status), f.price && f.price.monthly ? h("span", { class: "chip" }, "from $" + f.price.monthly + " a month") : null),
+        h("div", { class: "row", style: "gap:10px" }, h("h1", { class: "page", style: "margin:0" }, f.name), h("span", { class: "chip " + (f.status === "published" ? "good" : "warn") }, f.status), f.price && f.price.monthly ? h("span", { class: "chip" }, "from $" + f.price.monthly + " a month") : null,
+          (() => { const priced = history.filter((r) => r.cost_usd > 0); return priced.length ? h("span", { class: "chip", title: "the mean cost of its last " + priced.length + " priced run(s)" }, "about " + money(priced.reduce((a, r) => a + r.cost_usd, 0) / priced.length) + " a run") : null; })()),
         h("p", { class: "page-lead" }, f.description || ""),
         h("div", { class: "cols" },
           h("div", { class: "stack-lg" },
@@ -1044,7 +1080,10 @@
               h("tbody", null, conns.map((x) => h("tr", null, h("td", null, h("code", null, x.kind)), h("td", null, x.provider), h("td", null, h("span", { class: "chip " + (x.available === false ? "bad" : x.external ? "good" : "") }, x.available === false ? "not configured" : x.external ? "external system" : "local demo data")), h("td", { class: "xs muted" }, (x.providers || []).join(", "))))))))),
         h("div", { class: "stack-lg" },
           h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "Model"),
-            host ? h("dl", { class: "kv" }, h("dt", null, "Provider"), h("dd", null, host.live ? host.label : "Offline (placeholders)"), Object.entries(host.models || {}).map(([t, m]) => [h("dt", null, t), h("dd", null, h("code", null, m))]), h("dt", null, "In flight"), h("dd", null, "up to " + host.max_concurrent + " calls at once")) : h("p", { class: "muted small" }, "The console host is not reachable.")),
+            host ? h("dl", { class: "kv" }, h("dt", null, "Provider"), h("dd", null, host.live ? host.label : "Offline (placeholders)"), Object.entries(host.models || {}).map(([t, m]) => { const rate = hlt.llm && hlt.llm.pricing && hlt.llm.pricing.tiers ? hlt.llm.pricing.tiers[t] : null; return [h("dt", null, t), h("dd", null, h("code", null, m), rate ? h("span", { class: "muted" }, " " + money(rate[0]) + " in, " + money(rate[1]) + " out per million tokens") : h("span", { class: "chip warn", style: "margin-left:6px" }, "not in the price table"))]; }), h("dt", null, "In flight"), h("dd", null, "up to " + host.max_concurrent + " calls at once")) : h("p", { class: "muted small" }, "The console host is not reachable."),
+            hlt.llm && hlt.llm.pricing ? h("details", { style: "margin-top:10px" }, h("summary", { class: "small muted", style: "cursor:pointer" }, "Price table (" + hlt.llm.pricing.models.length + " model families, " + hlt.llm.pricing.currency + " per million tokens)"),
+              h("div", { class: "tw", style: "margin-top:6px" }, h("table", null, h("thead", null, h("tr", null, h("th", null, "Model id contains"), h("th", { class: "num" }, "Input"), h("th", { class: "num" }, "Output"))), h("tbody", null, hlt.llm.pricing.models.map((x) => h("tr", null, h("td", null, h("code", null, x.model)), h("td", { class: "num" }, money(x.input)), h("td", { class: "num" }, money(x.output))))))),
+              h("p", { class: "xs muted", style: "margin-top:6px" }, "A model matches the longest key its id contains. Prompt-cache reads cost " + hlt.llm.pricing.cache_read_factor + "× and writes " + hlt.llm.pricing.cache_write_factor + "× the input rate. Edit config/settings.yaml (llm.pricing) to match your contract; past runs keep the cost recorded at the time.")) : null),
           h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "Agent packs"), packs.map((p) => h("div", { class: "small", style: "margin-bottom:8px" }, h("span", { class: "tag" }, p.tag), " ", h("strong", null, p.name), h("div", { class: "muted" }, p.agents + " agents, " + p.flows + " flows"), p.home ? h("div", { class: "muted" }, p.home.connected ? "Connected to " + p.home.name + ": its agents can run at home" : p.home.name + " is not connected: its agents are modelled here (" + p.home.url_env + ")") : h("div", { class: "muted" }, "Agents modelled on this layer's model")))),
           h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "Service"), h("dl", { class: "kv" }, h("dt", null, "Version"), h("dd", null, hlt.version), h("dt", null, "Model provider"), h("dd", null, hlt.llm && hlt.llm.provider))))));
       probe(false, false);
@@ -1067,11 +1106,11 @@
     put(c, h("h1", { class: "page" }, "Customers"), h("p", { class: "page-lead" }, "Who rents what, and what they used. Keys, subscriptions and policies are edited in the admin console."), h("div", { id: "cust" }, h("div", { class: "empty small" }, "Loading…")));
     Promise.all([api("/shop/admin/api/overview"), api("/shop/admin/api/customers"), api("/shop/admin/api/requests").catch(() => [])]).then(([ov, customers, reqs]) => {
       const box = clear($("#cust"));
-      const usageBy = {}; (ov.usage.lines || []).forEach((l) => { usageBy[l.customer_id] = usageBy[l.customer_id] || { runs: 0, tokens: 0 }; usageBy[l.customer_id].runs += l.runs; usageBy[l.customer_id].tokens += (l.input_tokens || 0) + (l.output_tokens || 0); });
-      put(box, h("div", { class: "figures", style: "margin-bottom:18px" }, h("div", { class: "figure" }, h("div", { class: "v" }, ov.customers), h("div", { class: "l" }, "customers, " + ov.active + " active")), h("div", { class: "figure" }, h("div", { class: "v" }, num(ov.usage.totals.runs)), h("div", { class: "l" }, "metered agent runs in " + ov.usage.month)), h("div", { class: "figure" }, h("div", { class: "v" }, num((ov.usage.totals.input_tokens || 0) + (ov.usage.totals.output_tokens || 0))), h("div", { class: "l" }, "tokens metered")), h("div", { class: "figure" }, h("div", { class: "v" }, ov.requests_new), h("div", { class: "l" }, "new access requests"))),
-        h("div", { class: "tw" }, h("table", null, h("thead", null, h("tr", null, h("th", null, "Customer"), h("th", null, "Run mode"), h("th", null, "Status"), h("th", { class: "num" }, "Runs this month"), h("th", { class: "num" }, "Tokens"), h("th", null, ""))),
+      const usageBy = {}; (ov.usage.lines || []).forEach((l) => { usageBy[l.customer_id] = usageBy[l.customer_id] || { runs: 0, tokens: 0, cost: 0 }; usageBy[l.customer_id].runs += l.runs; usageBy[l.customer_id].tokens += (l.input_tokens || 0) + (l.output_tokens || 0); usageBy[l.customer_id].cost += l.cost_usd || 0; });
+      put(box, h("div", { class: "figures", style: "margin-bottom:18px" }, h("div", { class: "figure" }, h("div", { class: "v" }, ov.customers), h("div", { class: "l" }, "customers, " + ov.active + " active")), h("div", { class: "figure" }, h("div", { class: "v" }, num(ov.usage.totals.runs)), h("div", { class: "l" }, "metered agent runs in " + ov.usage.month)), h("div", { class: "figure" }, h("div", { class: "v" }, num((ov.usage.totals.input_tokens || 0) + (ov.usage.totals.output_tokens || 0))), h("div", { class: "l" }, "tokens metered")), h("div", { class: "figure" }, h("div", { class: "v" }, money(ov.usage.totals.cost_usd || 0)), h("div", { class: "l" }, "model spend metered in " + ov.usage.month)), h("div", { class: "figure" }, h("div", { class: "v" }, ov.requests_new), h("div", { class: "l" }, "new access requests"))),
+        h("div", { class: "tw" }, h("table", null, h("thead", null, h("tr", null, h("th", null, "Customer"), h("th", null, "Run mode"), h("th", null, "Status"), h("th", { class: "num" }, "Runs this month"), h("th", { class: "num" }, "Tokens"), h("th", { class: "num" }, "Spend"), h("th", null, ""))),
           h("tbody", null, customers.map((cu) => h("tr", null, h("td", null, h("strong", null, cu.name), h("div", { class: "xs muted mono" }, cu.id)), h("td", { class: "small" }, cu.run_mode_number + ". " + cu.run_mode.replace(/_/g, " ")), h("td", null, h("span", { class: "chip " + (cu.status === "active" ? "good" : "bad") }, cu.status)),
-            h("td", { class: "num" }, num((usageBy[cu.id] || {}).runs)), h("td", { class: "num" }, num((usageBy[cu.id] || {}).tokens)), h("td", null, h("a", { class: "small", href: "#/runs?q=" + encodeURIComponent(cu.id) }, "Runs"), " ", h("a", { class: "small", href: BASE + "/shop/admin", target: "_blank", rel: "noopener" }, "Manage"))))))),
+            h("td", { class: "num" }, num((usageBy[cu.id] || {}).runs)), h("td", { class: "num" }, num((usageBy[cu.id] || {}).tokens)), h("td", { class: "num" }, money((usageBy[cu.id] || {}).cost || 0)), h("td", null, h("a", { class: "small", href: "#/runs?q=" + encodeURIComponent(cu.id) }, "Runs"), " ", h("a", { class: "small", href: BASE + "/shop/admin", target: "_blank", rel: "noopener" }, "Manage"))))))),
         reqs.length ? h("section", { class: "section" }, h("h2", null, "Access requests", h("span", { class: "muted" }, reqs.length)), h("div", { class: "tw" }, h("table", null, h("thead", null, h("tr", null, h("th", null, "When"), h("th", null, "Who"), h("th", null, "Wants"), h("th", null, "Status"))), h("tbody", null, reqs.slice(0, 20).map((r) => h("tr", null, h("td", { class: "small" }, when(r.created_at)), h("td", { class: "small" }, r.name, h("div", { class: "xs muted" }, r.email + (r.company ? ", " + r.company : ""))), h("td", { class: "small" }, (r.items || []).join(", ") || r.message || ""), h("td", null, h("span", { class: "chip" }, r.status)))))))) : null);
     }).catch((e) => { clear($("#cust")).append(h("div", { class: "notice bad" }, "Could not load: " + e.message)); });
   };
@@ -1079,7 +1118,7 @@
     if (!D.me) { put(c, h("div", { class: "empty" }, "Sign in with a customer key to see an account.")); return; }
     const me = D.me, u = me.usage || { totals: {} };
     put(c, h("h1", { class: "page" }, me.customer.name), h("p", { class: "page-lead" }, "Run mode " + me.customer.run_mode_number + ", " + me.customer.run_mode.replace(/_/g, " ") + ". Customer since " + when(me.customer.created_at) + "."),
-      h("div", { class: "figures", style: "margin-bottom:18px" }, h("div", { class: "figure" }, h("div", { class: "v" }, me.entitled_agents.length), h("div", { class: "l" }, "agents rented")), h("div", { class: "figure" }, h("div", { class: "v" }, me.entitled_flows.length), h("div", { class: "l" }, "flows rented")), h("div", { class: "figure" }, h("div", { class: "v" }, num(u.totals.runs)), h("div", { class: "l" }, "agent runs in " + u.month)), h("div", { class: "figure" }, h("div", { class: "v" }, num((u.totals.input_tokens || 0) + (u.totals.output_tokens || 0))), h("div", { class: "l" }, "tokens"))),
+      h("div", { class: "figures", style: "margin-bottom:18px" }, h("div", { class: "figure" }, h("div", { class: "v" }, me.entitled_agents.length), h("div", { class: "l" }, "agents rented")), h("div", { class: "figure" }, h("div", { class: "v" }, me.entitled_flows.length), h("div", { class: "l" }, "flows rented")), h("div", { class: "figure" }, h("div", { class: "v" }, num(u.totals.runs)), h("div", { class: "l" }, "agent runs in " + u.month)), h("div", { class: "figure" }, h("div", { class: "v" }, num((u.totals.input_tokens || 0) + (u.totals.output_tokens || 0))), h("div", { class: "l" }, "tokens")), h("div", { class: "figure" }, h("div", { class: "v" }, money(u.totals.cost_usd || 0)), h("div", { class: "l" }, "model spend in " + u.month))),
       h("div", { class: "cols" },
         h("div", { class: "stack-lg" },
           h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "Your agents"), me.entitled_agents.length ? h("div", { class: "row", style: "gap:6px" }, me.entitled_agents.map((a) => h("a", { class: "chip", href: "#/agents/" + a }, agent(a).name))) : h("p", { class: "muted small" }, "No agents yet.")),

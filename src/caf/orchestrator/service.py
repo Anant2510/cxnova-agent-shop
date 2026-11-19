@@ -31,6 +31,7 @@ from langgraph.types import Command
 
 from ..config import Settings, data_dir, get_settings
 from ..core import PendingAction, RunContext, get_agent, new_run_id
+from ..core.pricing import Pricing
 from ..core.security import PolicyError, validate_run_id
 from .graph import build_orchestrator_graph, release_run
 from .persistence import SETTLED, MemoryRunStore, RunStore, SqliteSaver, age_s, shown_status
@@ -322,7 +323,8 @@ class Orchestrator:
                         "surface": r.get("surface") or "", "error": r.get("error") or "", "agents": agents,
                         "steps": int(r.get("steps") or 0), "steps_ok": int(r.get("steps_ok") or 0), "llm_calls": int(r.get("llm_calls") or 0),
                         "input_tokens": int(r.get("input_tokens") or 0), "output_tokens": int(r.get("output_tokens") or 0),
-                        "duration_ms": float(r.get("duration_ms") or 0)})
+                        "duration_ms": float(r.get("duration_ms") or 0), "cost_usd": round(float(r.get("cost_usd") or 0), 6),
+                        "unpriced_calls": int(r.get("unpriced_calls") or 0)})
             if len(out) >= limit:
                 break
         return out
@@ -350,10 +352,12 @@ class Orchestrator:
         rows = self.list_runs(limit=2000, customer_id=customer_id)
         today = date.today()
         by_day = {(today - timedelta(days=i)).isoformat(): {"date": (today - timedelta(days=i)).isoformat(), "completed": 0, "failed": 0,
-                                                             "open": 0, "runs": 0, "llm_calls": 0, "tokens": 0} for i in range(days)}
+                                                             "open": 0, "runs": 0, "llm_calls": 0, "tokens": 0, "cost_usd": 0.0} for i in range(days)}
         agents: Counter = Counter()
         labels: Counter = Counter()
-        totals = {"runs": 0, "completed": 0, "failed": 0, "open": 0, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "duration_ms": 0.0}
+        label_cost: dict[str, float] = {}
+        totals = {"runs": 0, "completed": 0, "failed": 0, "open": 0, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "duration_ms": 0.0,
+                  "cost_usd": 0.0, "unpriced_calls": 0}
         for r in rows:
             day = (r.get("created_at") or "")[:10]
             bucket = by_day.get(day)
@@ -364,18 +368,30 @@ class Orchestrator:
                 bucket[kind] += 1
                 bucket["llm_calls"] += r["llm_calls"]
                 bucket["tokens"] += r["input_tokens"] + r["output_tokens"]
+                bucket["cost_usd"] = round(bucket["cost_usd"] + r["cost_usd"], 6)
             totals["runs"] += 1
             totals[kind] += 1
             totals["llm_calls"] += r["llm_calls"]
             totals["input_tokens"] += r["input_tokens"]
             totals["output_tokens"] += r["output_tokens"]
             totals["duration_ms"] += r["duration_ms"]
+            totals["cost_usd"] = round(totals["cost_usd"] + r["cost_usd"], 6)
+            totals["unpriced_calls"] += r["unpriced_calls"]
             agents.update(r["agents"])
             if r.get("label"):
                 labels[r["label"]] += 1
+                label_cost[r["label"]] = label_cost.get(r["label"], 0.0) + r["cost_usd"]
+        history = self.store.agent_costs() if customer_id is None else {}   # per-agent averages are the operator's view
         return {"days": [by_day[k] for k in sorted(by_day)], "today": by_day[today.isoformat()], "totals": totals,
-                "top_agents": [{"agent_id": a, "runs": n} for a, n in agents.most_common(8)],
-                "top_flows": [{"label": a, "runs": n} for a, n in labels.most_common(8)]}
+                "top_agents": [{"agent_id": a, "runs": n, "avg_cost_usd": round(history[a]["total_usd"] / history[a]["runs"], 6) if history.get(a) else None}
+                               for a, n in agents.most_common(8)],
+                "top_flows": [{"label": a, "runs": n, "avg_cost_usd": round(label_cost.get(a, 0.0) / n, 6)} for a, n in labels.most_common(8)],
+                "agent_costs": {a: {"runs": int(h["runs"]), "avg_cost_usd": round(h["total_usd"] / h["runs"], 6)} for a, h in history.items() if h.get("runs")},
+                "currency": Pricing(self.settings.llm.pricing).currency}
+
+    def estimate(self, steps: list[dict[str, Any]]) -> dict[str, Any]:
+        """A plan's likely cost from the agents' earlier runs (see estimate_plan)."""
+        return estimate_plan(steps, self.store.agent_costs())
 
     def prune(self, keep_days: float | None = None) -> int:
         """Delete settled runs older than orchestrator.keep_runs_days from the store (their files under runs/ stay)."""
@@ -619,6 +635,7 @@ def run_wait_s(settings: Any, requested: Any = None) -> float:
 def run_metrics(view: dict[str, Any]) -> dict[str, Any]:
     """What a run's steps add up to (recorded in the run index when the run settles)."""
     agents, calls, tin, tout, ok, dur = [], 0, 0, 0, 0, 0.0
+    cost, unpriced, per_agent = 0.0, 0, {}
     for s in view.get("steps", []):
         if s.get("agent") and s["agent"] not in agents:
             agents.append(s["agent"])
@@ -627,6 +644,10 @@ def run_metrics(view: dict[str, Any]) -> dict[str, Any]:
         calls += int(m.get("llm_calls") or 0)
         tin += int(m.get("input_tokens") or 0)
         tout += int(m.get("output_tokens") or 0)
+        cost += float(m.get("cost_usd") or 0)
+        unpriced += int(m.get("unpriced_calls") or 0)
+        if r and s.get("agent"):   # what each agent cost in this run, for estimates of the next one
+            per_agent[s["agent"]] = round(per_agent.get(s["agent"], 0.0) + float(m.get("cost_usd") or 0), 6)
         if r.get("status") in ("ok", "degraded", "needs_approval"):
             ok += 1
     final = view.get("final") or {}
@@ -643,8 +664,27 @@ def run_metrics(view: dict[str, Any]) -> dict[str, Any]:
                     pass
         if starts and ends:
             dur = max(0.0, (max(ends) - min(starts)) * 1000)
+    final = view.get("final") or {}
+    synth = final.get("metrics") or {}   # the orchestrator's own planning and summary calls, when the view carries them
+    cost += float(synth.get("cost_usd") or 0)
     return {"agents": agents, "steps": len(view.get("steps", [])), "steps_ok": ok, "llm_calls": calls, "input_tokens": tin,
-            "output_tokens": tout, "duration_ms": dur}
+            "output_tokens": tout, "duration_ms": dur, "cost_usd": round(cost, 6), "unpriced_calls": unpriced, "agent_costs": per_agent}
+
+
+def estimate_plan(steps: list[dict[str, Any]], history: dict[str, dict[str, float]]) -> dict[str, Any]:
+    """What a plan is likely to cost, from what its agents cost in earlier runs (the mean per agent). Steps whose agent
+    has not run yet carry no figure, and the estimate says how many steps it covers."""
+    per_step, total, known = [], 0.0, 0
+    for st in steps:
+        h = history.get(st.get("agent") or "")
+        if h and h.get("runs"):
+            avg = round(h["total_usd"] / h["runs"], 6)
+            per_step.append({"id": st.get("id"), "agent": st.get("agent"), "cost_usd": avg, "runs": int(h["runs"])})
+            total += avg
+            known += 1
+        else:
+            per_step.append({"id": st.get("id"), "agent": st.get("agent"), "cost_usd": None, "runs": 0})
+    return {"cost_usd": round(total, 6) if known else None, "known_steps": known, "steps": len(steps), "per_step": per_step}
 
 
 def follow_hint(view: dict[str, Any], surface: str = "api") -> dict[str, Any]:

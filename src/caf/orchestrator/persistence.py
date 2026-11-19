@@ -55,7 +55,8 @@ CREATE TABLE IF NOT EXISTS run_index (
     goal TEXT NOT NULL DEFAULT '', label TEXT NOT NULL DEFAULT '',
     agents TEXT NOT NULL DEFAULT '', steps INTEGER NOT NULL DEFAULT 0, steps_ok INTEGER NOT NULL DEFAULT 0,
     llm_calls INTEGER NOT NULL DEFAULT 0, input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0,
-    duration_ms REAL NOT NULL DEFAULT 0);
+    duration_ms REAL NOT NULL DEFAULT 0, cost_usd REAL NOT NULL DEFAULT 0, unpriced_calls INTEGER NOT NULL DEFAULT 0,
+    agent_costs TEXT NOT NULL DEFAULT '');
 CREATE INDEX IF NOT EXISTS run_index_created ON run_index(created_at);
 CREATE TABLE IF NOT EXISTS run_actions (
     run_id TEXT NOT NULL, action_key TEXT NOT NULL, decision TEXT NOT NULL, status TEXT NOT NULL, result TEXT NOT NULL DEFAULT '{}',
@@ -65,6 +66,20 @@ CREATE TABLE IF NOT EXISTS run_actions (
 
 SETTLED = ("completed", "completed_with_errors", "failed")
 _STAMP = re.compile(r"-(\d{8})-(\d{6})-[0-9a-f]{6}$")
+
+
+def _agent_costs(blobs: Sequence[str]) -> dict[str, dict[str, float]]:
+    out: dict[str, dict[str, float]] = {}
+    for blob in blobs:
+        try:
+            costs = json.loads(blob) if blob else {}
+        except ValueError:
+            continue
+        for agent_id, dollars in (costs or {}).items():
+            acc = out.setdefault(str(agent_id), {"runs": 0, "total_usd": 0.0})
+            acc["runs"] += 1
+            acc["total_usd"] += float(dollars or 0)
+    return out
 
 
 def now_iso() -> str:
@@ -105,7 +120,9 @@ class _DB:
             for col, typ in (("goal", "TEXT NOT NULL DEFAULT ''"), ("label", "TEXT NOT NULL DEFAULT ''"), ("agents", "TEXT NOT NULL DEFAULT ''"),
                              ("steps", "INTEGER NOT NULL DEFAULT 0"), ("steps_ok", "INTEGER NOT NULL DEFAULT 0"),
                              ("llm_calls", "INTEGER NOT NULL DEFAULT 0"), ("input_tokens", "INTEGER NOT NULL DEFAULT 0"),
-                             ("output_tokens", "INTEGER NOT NULL DEFAULT 0"), ("duration_ms", "REAL NOT NULL DEFAULT 0")):
+                             ("output_tokens", "INTEGER NOT NULL DEFAULT 0"), ("duration_ms", "REAL NOT NULL DEFAULT 0"),
+                             ("cost_usd", "REAL NOT NULL DEFAULT 0"), ("unpriced_calls", "INTEGER NOT NULL DEFAULT 0"),
+                             ("agent_costs", "TEXT NOT NULL DEFAULT ''")):
                 if col not in cols:  # files made by earlier releases of the run store
                     self.con.execute(f"ALTER TABLE run_index ADD COLUMN {col} {typ}")
 
@@ -359,12 +376,21 @@ class RunStore:
                         ((goal or "")[:500], (label or "")[:120], run_id))
 
     def set_metrics(self, run_id: str, m: dict[str, Any]) -> None:
-        """What the run did so far: its agents, step counts, model calls, tokens and time (for history and statistics)."""
+        """What the run did so far: its agents, step counts, model calls, tokens, cost and time (for history and statistics)."""
         with self.db.tx() as con:
-            con.execute("UPDATE run_index SET agents=?, steps=?, steps_ok=?, llm_calls=?, input_tokens=?, output_tokens=?, duration_ms=? "
-                        "WHERE run_id=?", (",".join(m.get("agents") or []), int(m.get("steps") or 0), int(m.get("steps_ok") or 0),
-                                           int(m.get("llm_calls") or 0), int(m.get("input_tokens") or 0), int(m.get("output_tokens") or 0),
-                                           float(m.get("duration_ms") or 0), run_id))
+            con.execute("UPDATE run_index SET agents=?, steps=?, steps_ok=?, llm_calls=?, input_tokens=?, output_tokens=?, duration_ms=?, "
+                        "cost_usd=?, unpriced_calls=?, agent_costs=? WHERE run_id=?",
+                        (",".join(m.get("agents") or []), int(m.get("steps") or 0), int(m.get("steps_ok") or 0),
+                         int(m.get("llm_calls") or 0), int(m.get("input_tokens") or 0), int(m.get("output_tokens") or 0),
+                         float(m.get("duration_ms") or 0), float(m.get("cost_usd") or 0), int(m.get("unpriced_calls") or 0),
+                         json.dumps(m.get("agent_costs") or {}, separators=(",", ":")), run_id))
+
+    def agent_costs(self, *, limit: int = 500) -> dict[str, dict[str, float]]:
+        """What each agent cost in the last `limit` runs that recorded it: {agent_id: {runs, total_usd}} (for estimates)."""
+        with self.db.lock:
+            rows = self.db.con.execute("SELECT agent_costs FROM run_index WHERE agent_costs<>'' AND agent_costs<>'{}' "
+                                       "ORDER BY created_at DESC LIMIT ?", (int(limit),)).fetchall()
+        return _agent_costs([r[0] for r in rows])
 
     def touch(self, run_ids: Sequence[str]) -> None:
         """Heartbeat of the runs this process is executing."""
@@ -443,7 +469,8 @@ class MemoryRunStore:
             row = self._index.setdefault(run_id, {"run_id": run_id, "created_at": now_iso(), "error": "",
                                                   "customer_id": customer_id or "", "surface": surface or "",
                                                   "goal": (goal or "")[:500], "label": (label or "")[:120], "agents": "", "steps": 0,
-                                                  "steps_ok": 0, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "duration_ms": 0})
+                                                  "steps_ok": 0, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0, "duration_ms": 0,
+                                                  "cost_usd": 0.0, "unpriced_calls": 0, "agent_costs": ""})
             row.update(status=status, updated_at=now_iso())
             if error is not None:
                 row["error"] = error
@@ -475,7 +502,14 @@ class MemoryRunStore:
             if row is not None:
                 row.update(agents=",".join(m.get("agents") or []), steps=int(m.get("steps") or 0), steps_ok=int(m.get("steps_ok") or 0),
                            llm_calls=int(m.get("llm_calls") or 0), input_tokens=int(m.get("input_tokens") or 0),
-                           output_tokens=int(m.get("output_tokens") or 0), duration_ms=float(m.get("duration_ms") or 0))
+                           output_tokens=int(m.get("output_tokens") or 0), duration_ms=float(m.get("duration_ms") or 0),
+                           cost_usd=float(m.get("cost_usd") or 0), unpriced_calls=int(m.get("unpriced_calls") or 0),
+                           agent_costs=json.dumps(m.get("agent_costs") or {}, separators=(",", ":")))
+
+    def agent_costs(self, *, limit: int = 500) -> dict[str, dict[str, float]]:
+        with self._lock:
+            rows = sorted(self._index.values(), key=lambda r: r["created_at"], reverse=True)[: int(limit)]
+        return _agent_costs([r.get("agent_costs") or "" for r in rows])
 
     def touch(self, run_ids: Sequence[str]) -> None:
         with self._lock:
