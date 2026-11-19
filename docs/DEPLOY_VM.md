@@ -140,7 +140,7 @@ From the VM (the CLI needs no token) or from the admin console:
 Open the **Designer** (`.../agentshop/shop/designer`, or Admin → Flows → **New flow in the designer**); it asks
 for the operator token once per browser.
 
-1. **Add agents.** The palette on the left lists all 97 agents by pack. Click one to add it after the selected
+1. **Add agents.** The palette on the left lists all 110 agents by pack. Click one to add it after the selected
    step (clicking down a list builds a chain), or drag it onto the canvas to place it unconnected.
 2. **Connect.** Drag from the port on a node's right edge to another node: the second runs after the first and
    sees its output. Steps with no wire between them run in parallel. Click a wire to remove it.

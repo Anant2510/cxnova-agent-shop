@@ -75,9 +75,10 @@ def _tier(value: str) -> Tier:
 
 def build_agent_class(pack: Pack, agent: PackAgent) -> type[BaseAgent]:
     home = pack.home
-    runners = (["home"] if home and home.kind and agent.home_id else []) + ["model", "twin"]
+    runners = (["code"] if agent.code else []) + (["home"] if home and home.kind and agent.home_id else []) + ["model", "twin"]
     spec = AgentSpec(
-        id=agent.id, name=agent.name, category=_category(agent.category), summary=agent.summary, kind=AgentKind.LLM, tier=_tier(agent.tier),
+        id=agent.id, name=agent.name, category=_category(agent.category), summary=agent.summary,
+        kind=AgentKind.HYBRID if agent.code else AgentKind.LLM, tier=_tier(agent.tier),
         connectors=[], keywords=agent.keywords, produces=sorted({p for a in agent.actions for p in a.produces}), feeds=agent.feeds,
         primary_inputs=["request"], description=agent.description or agent.summary, use_cases=agent.use_cases,
         pack=pack.id, pack_name=pack.name, accelerator=agent.accelerator or agent.family,
@@ -85,7 +86,8 @@ def build_agent_class(pack: Pack, agent: PackAgent) -> type[BaseAgent]:
                  for a in agent.actions],
         runners=runners, auto_route=pack.auto_route, independence=f"Declared in the {pack.name} pack; modelled on this layer's model, or served by {home.name}"
         if home and home.name else f"Made in this layer's workshop; modelled on this layer's model" if pack.auto_route
-        else f"Declared in the {pack.name} pack; modelled on this layer's model")
+        else f"Declared in the {pack.name} pack; its own code does the work on this layer, the model where the work is judgement"
+        if agent.code else f"Declared in the {pack.name} pack; modelled on this layer's model")
 
     def run_stage(state: dict[str, Any], ctx: Any) -> dict[str, Any]:
         return serve(pack, agent, state["inputs"], ctx)
@@ -117,7 +119,14 @@ def serve(pack: Pack, agent: PackAgent, inputs: dict[str, Any], ctx: Any) -> dic
     if wants_home and ctx.options.get("customer_id"):
         wants_home = False  # a customer's run never acts inside the operator's own product
         reasons.append(f"{home.name} serves the operator's runs only; modelled here")  # type: ignore[union-attr]
-    if wants_home:
+    if agent.code:   # an accelerator's own logic runs first; the model and the twin stand in only if it breaks
+        try:
+            served = run_code(agent, action, inputs, ctx)
+        except ValueError:   # wrong or missing inputs: the step fails and says so; nothing is modelled in its place
+            raise
+        except Exception as exc:
+            reasons.append(f"the agent's code could not do it ({type(exc).__name__}: {str(exc)[:160]}); modelled here instead")
+    if served is None and wants_home:
         try:
             served = run_home(home, agent, inputs, ctx)  # type: ignore[arg-type]
         except HomeError as exc:
@@ -167,6 +176,20 @@ def serve(pack: Pack, agent: PackAgent, inputs: dict[str, Any], ctx: Any) -> dic
     if reasons:
         provenance["degraded_reasons"] = reasons
     return {"output": output, "summary": summary, "checks": checks, "artifacts": refs, "provenance": provenance}
+
+
+def run_code(agent: PackAgent, action: PackAction, inputs: dict[str, Any], ctx: Any) -> dict[str, Any]:
+    """The coded runner: `module:function(action_id, inputs, ctx)` returns {summary, result, artifacts?, checks?, human_followups?}."""
+    import importlib
+
+    module, _, func = agent.code.partition(":")
+    fn = getattr(importlib.import_module(module), func or "run")
+    served = fn(action.id, dict(inputs), ctx)
+    if not isinstance(served, dict) or not isinstance(served.get("result"), dict):
+        raise TypeError("the coded runner must return a dict with a 'result' object")
+    served.setdefault("summary", f"{agent.name}: {action.title or action.id}")
+    served["runner"] = "code"
+    return served
 
 
 def run_twin(agent: PackAgent, action: PackAction) -> dict[str, Any]:

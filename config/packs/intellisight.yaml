@@ -1,0 +1,350 @@
+# IntelliSight on the CX Nova Agent Orchestration Layer.
+#
+# IntelliSight (github.com/Anant2510/IntelliSight) is the privacy-first analytics accelerator of the CX Nova Marketplace: it
+# turns a raw Adobe Analytics Data Warehouse export (or any flat dataset) into dashboards, custom reports, strategic
+# recommendations and conversational answers, with three engines: the data interpreter, the analytics engine and the
+# decision layer. This pack carries those engines as five agents. Their arithmetic runs as code on this layer
+# (src/caf/accelerators/intellisight.py, ported from the accelerator's own index.html: the same column classification,
+# Adobe labels, KPI priority, year-over-year, breakdowns, funnel and rate formulas); the model is asked only for
+# judgement, always from exact pre-computed numbers. Without a model the recommendations and the chat answer carry the
+# computed facts and say so.
+pack:
+  id: intellisight
+  name: IntelliSight
+  product: CX Nova IntelliSight
+  tag: IS
+  description: >-
+    IntelliSight's analytics engines: read an Adobe Analytics export, compute the KPIs, trends, breakdowns and funnel rates on the
+    full dataset, build custom reports, and turn the computed facts into prioritised recommendations and conversational answers.
+  color: "#E8613C"
+  auto_route: true   # a goal about an analytics export, KPIs, trends or recommendations from data may be planned onto these agents
+  source: ported from IntelliSight's engines (github.com/Anant2510/IntelliSight, index.html); the model is used only for the decision layer and chat
+  context: >-
+    You are part of IntelliSight, the CX Nova analytics accelerator. Every number you cite was computed on the full dataset by the
+    engine; you never recalculate, approximate or invent a figure, and you name the period every figure belongs to.
+
+agents:
+  - id: is_data_interpreter
+    name: Data Interpreter
+    accelerator: IntelliSight
+    category: analytics
+    tier: fast
+    code: caf.accelerators.intellisight:run
+    summary: >-
+      Reads and profiles an Adobe Analytics export: classifies every column (eVars and props as dimensions, events as metrics, the time columns), labels them, and proposes the KPIs and the dimension to open with.
+    description: >-
+      Engine 01 of IntelliSight. Parses the export, classifies the columns the Adobe way (eVar and prop are dimensions, event is a
+      metric, Date / Week / Month / Year are time, anything else by its name or its values), labels them (Marketing Channel,
+      Device Type, Loyalty Tier, Bookings, Booking Revenue ...), finds the date range, and proposes the six KPIs and the first
+      dimension the dashboard would open with. Keeps the dataset with the run so the engine and the chat read it from there.
+    keywords: [adobe analytics, data warehouse export, profile, schema, columns, evar, prop, event, dataset, interpret, csv]
+    feeds: [is_analytics_engine, is_analytics_chat]
+    use_cases:
+      - Profile this Adobe Analytics export and tell me what it contains
+      - Which columns are metrics and which are dimensions in this dataset
+    inputs:
+      - name: dataset
+        type: text
+        description: The export as CSV text (Adobe Analytics Data Warehouse format or any flat CSV); leave empty to use a bundled sample
+      - name: dataset_name
+        description: "A bundled sample instead of pasted data: westjet (an airline's 2023-2024 web analytics)"
+        example: westjet
+    actions:
+      - id: interpret
+        title: Profile the dataset
+        produces: [dataset_profile]
+        output_keys: [dataset, industry, rows, columns, date_column, date_range, years, counts, suggested_kpis, suggested_dimension, key_dimensions, columns_detail, schema, dataset_file]
+        example:
+          summary: "westjet sample: 1,800 rows x 79 columns, 2023-01-01 to 2024-12-31; 50 metrics with data, 20 labelled dimensions; Airlines & Travel."
+          result:
+            dataset: westjet sample
+            industry: Airlines & Travel
+            rows: 1800
+            columns: 79
+            date_column: Date
+            date_range: {from: "2023-01-01", to: "2024-12-31"}
+            years: ["2023", "2024"]
+            counts: {evars: 20, props: 0, events: 50, events_with_data: 50, metrics: 0, dimensions: 9, time: 6}
+            suggested_kpis:
+              - {column: event1, label: Page Views}
+              - {column: event2, label: Visits}
+              - {column: event9, label: Booking Revenue}
+            suggested_dimension: {column: eVar4, label: Marketing Channel}
+            key_dimensions:
+              - {column: eVar4, label: Marketing Channel}
+              - {column: eVar13, label: Loyalty Tier}
+            columns_detail: []
+            schema: "DATASET: 1800 rows x 79 cols ..."
+            dataset_file: run/is_data_interpreter/dataset.csv
+    skill:
+      system_prompt: You are IntelliSight's data interpreter. You read the export and describe exactly what it contains; you never guess at a column's meaning when its values do not support it.
+      checklist:
+        - Every column is classified and the classification is defensible from its name or its values
+        - The date column and the date range are stated
+        - Suggested KPIs exist in the data and carry values
+
+  - id: is_analytics_engine
+    name: Analytics Engine
+    accelerator: IntelliSight
+    category: analytics
+    tier: fast
+    code: caf.accelerators.intellisight:run
+    summary: >-
+      Computes the dashboard on the full dataset: KPI totals with year-over-year, weekly, monthly or yearly series, breakdowns by the key dimensions, the conversion funnel and the derived rates (cart abandonment, checkout completion, AOV), as chart-ready series.
+    description: >-
+      Engine 02 of IntelliSight. Sums every KPI over the dataset and per year, computes the year-over-year change, draws each
+      KPI by week, month or year, breaks revenue down by the key dimensions (channel, device, loyalty tier, cabin, route type ...),
+      follows the conversion funnel (page views, searches, booking starts, cart additions, checkouts, purchases, bookings) by year,
+      and derives the rates IntelliSight shows: cart abandonment, checkout completion, average order value, removals vs additions.
+      All of it in code, on every row.
+    keywords: [kpi dashboard, year over year, yoy, breakdown, funnel, cart abandonment, aov, adobe analytics, dataset, export, csv]
+    feeds: [is_recommendations]
+    use_cases:
+      - Compute the KPI dashboard for this export with year-over-year changes
+      - How did booking revenue trend by month, and what is the cart abandonment rate
+    inputs:
+      - name: dataset
+        type: text
+        description: The export as CSV text; leave empty when an earlier step of the run interpreted it, or name a bundled sample
+      - name: dataset_name
+        description: "A bundled sample: westjet"
+        example: westjet
+      - name: grain
+        description: "The period of the series: weekly, monthly (default) or yearly"
+        example: monthly
+      - name: metrics
+        type: list
+        description: "Metric columns or labels to use as KPIs (default: IntelliSight's KPI priority, six metrics)"
+      - name: dimensions
+        type: list
+        description: "Dimension columns for the breakdowns (default: the key dimensions of the industry)"
+    actions:
+      - id: analyse
+        title: Compute the dashboard
+        produces: [kpi_table, charts]
+        output_keys: [dataset, industry, rows, period, grain, kpis, series, breakdowns, funnel, rates, revenue_column, charts, dataset_file]
+        example:
+          summary: "6 KPIs over 2023-01-01 to 2024-12-31; Page Views 1,218,409 (+9.3% 2023 to 2024)"
+          result:
+            period: {from: "2023-01-01", to: "2024-12-31", year1: "2023", year2: "2024"}
+            grain: monthly
+            kpis:
+              - {column: event9, label: Booking Revenue, total: 8412930.5, year1: "2023", year1_total: 3980110.2, year2: "2024", year2_total: 4432820.3, yoy_pct: 11.4}
+            series: {event9: {labels: ["2023-01", "2023-02"], values: [301220.4, 288114.9]}}
+            breakdowns: {"Marketing Channel (eVar4)": [{value: Paid Search, rows: 312, event9: 1420110.2}]}
+            funnel: {Cart Additions: {total: 61240, year1_total: 29110, year2_total: 32130, yoy_pct: 10.4}}
+            rates: {overall: {cart_abandonment_pct: 58.2, checkout_completion_pct: 71.4, average_order_value: 328.5}}
+            charts: []
+    skill:
+      system_prompt: You are IntelliSight's analytics engine. You compute; you do not interpret. Every figure is a sum, a ratio or a difference over the rows, with its formula stated.
+      checklist:
+        - Totals are over every row, not a sample
+        - Year-over-year compares the last two complete years present in the data
+        - Rates use IntelliSight's formulas and say so
+
+  - id: is_custom_report
+    name: Custom Report Builder
+    accelerator: IntelliSight
+    category: analytics
+    tier: fast
+    code: caf.accelerators.intellisight:run
+    summary: >-
+      Builds a focused report on chosen dimensions and metrics without waiting for a dashboard to be developed: a series over time per metric, the top values per dimension, narrowed by filters, each panel chart-ready.
+    description: >-
+      IntelliSight's Custom Reports tab. Pick the fields: each metric becomes its weekly, monthly or yearly series, each dimension
+      its top values by row count; filters (a value, a list of values, a date range, a text match) narrow the rows first. Every
+      panel comes with a chart specification.
+    keywords: [custom report, report builder, dimensions and metrics, filter, panels, adobe analytics, dataset]
+    use_cases:
+      - Report bookings and booking revenue by month for mobile visits only
+      - Top routes and cabin classes in Q4 2024
+    inputs:
+      - name: dataset
+        type: text
+        description: The export as CSV text; leave empty when an earlier step of the run interpreted it, or name a bundled sample
+      - name: dataset_name
+        description: "A bundled sample: westjet"
+        example: westjet
+      - name: fields
+        type: list
+        description: The columns or labels to report on (metrics become series, dimensions become top values)
+        example: ["Booking Revenue", "Marketing Channel", "Cabin Class"]
+      - name: grain
+        description: weekly, monthly (default) or yearly
+      - name: filters
+        type: object
+        description: "{column: value | [values] | {from, to} on the date column | {contains: text}}"
+        example: {"eVar5": "Mobile", "Date": {"from": "2024-10-01", "to": "2024-12-31"}}
+      - name: top
+        type: number
+        description: How many values per dimension (default 10)
+    actions:
+      - id: report
+        title: Build the report
+        produces: [report]
+        output_keys: [dataset, rows_in_scope, rows_total, filters, panels]
+        example:
+          summary: "3 panel(s) on 410 of 1,800 rows"
+          result:
+            rows_in_scope: 410
+            rows_total: 1800
+            filters: {eVar5: Mobile}
+            panels:
+              - {field: event9, label: Booking Revenue, kind: series, grain: monthly, total: 912330.1, chart: {type: line, title: Booking Revenue, labels: ["2024-10", "2024-11", "2024-12"], datasets: [{label: Booking Revenue, data: [301000, 299000, 312330.1]}]}}
+              - {field: eVar4, label: Marketing Channel, kind: breakdown, chart: {type: bar, title: Marketing Channel, labels: [Paid Search, Email - Promotional], datasets: [{label: rows, data: [120, 96]}]}}
+    skill:
+      system_prompt: You are IntelliSight's custom report builder. You show exactly the fields asked for, over exactly the rows the filters leave, and you state both.
+      checklist:
+        - Every requested field is a panel, or the panel says why it could not be
+        - The rows in scope after filtering are stated
+
+  - id: is_recommendations
+    name: Decision Layer
+    accelerator: IntelliSight
+    category: strategy
+    tier: pro
+    code: caf.accelerators.intellisight:run
+    summary: Turns the computed facts into six prioritised, specific recommendations, each citing the exact numbers and year-over-year changes it rests on and the metric to track.
+    description: >-
+      Engine 03 of IntelliSight. Takes the analytics engine's output (KPI totals with year-over-year, breakdowns, the funnel, the
+      pre-computed rates) and asks the model for six recommendations across cart abandonment, revenue and AOV, the funnel,
+      channels, device and platform, loyalty and engagement, with a priority, an insight that cites the numbers, the action and
+      the metric to track. The model reasons; it never recomputes. Without a model the items carry the computed facts only.
+    keywords: [recommendations from data, insights from the export, decision layer, strategic recommendations, executive summary, adobe analytics, dataset]
+    use_cases:
+      - What should we focus on, given this year's numbers versus last year's
+      - Six recommendations for the airline website from the Adobe Analytics export
+    inputs:
+      - name: analysis
+        type: object
+        description: The analytics engine's result; leave empty when the engine ran earlier in this run, or give a dataset to analyse first
+      - name: dataset
+        type: text
+        description: The export as CSV text, when no analysis is given
+      - name: dataset_name
+        description: "A bundled sample: westjet"
+        example: westjet
+      - name: focus
+        description: An area to weight (the funnel, mobile, loyalty ...)
+    actions:
+      - id: recommend
+        title: Recommend
+        produces: [recommendations]
+        output_keys: [recommendations, method, based_on]
+        example:
+          summary: "6 recommendation(s), model, from the computed facts of 2023 vs 2024"
+          result:
+            method: model
+            recommendations:
+              - title: Recover the cart before checkout
+                priority: high
+                insight: "Cart abandonment stands at 58.2% overall and rose from 56.9% in 2023 to 59.4% in 2024 while cart additions grew 10.4%."
+                recommendation: "Trigger a 30-minute cart reminder on the app and email channels for carts above the average order value of $328.50, and test a fare-hold option at checkout."
+                metric: cart abandonment rate, checkout completion rate
+            based_on: {period: {year1: "2023", year2: "2024"}, rows: 1800, kpis: [Page Views, Visits, Booking Revenue]}
+    skill:
+      system_prompt: You are a senior digital analytics strategist. You reason from exact computed facts, cite them, name the period, and recommend specific actions with the metric that proves them.
+      checklist:
+        - Every insight cites exact numbers and the year-over-year change
+        - Rates are the pre-computed ones, never recalculated
+        - Each recommendation names the metric to track
+
+  - id: is_analytics_chat
+    name: Conversational Analytics
+    accelerator: IntelliSight
+    category: analytics
+    tier: balanced
+    code: caf.accelerators.intellisight:run
+    summary: Answers a natural-language question about the dataset with data-backed numbers and a chart when one helps, by planning what to compute, computing it on the full dataset, and writing the answer from the exact results.
+    description: >-
+      IntelliSight's chat. The model turns the question into a query plan (metrics, a dimension, the period, filters), the engine
+      runs it on every row, and the model writes the answer from the exact results, with a chart specification when it helps and
+      three follow-up questions. The browser product runs model-written JavaScript on the data; here the plan is a declared query
+      the engine executes, so no generated code runs on the server. Without a model the plan comes from keyword matching and the
+      answer is the computed data itself.
+    keywords: [ask the data, chat, conversational analytics, natural-language question, adobe analytics, dataset, export]
+    use_cases:
+      - What changed in booking revenue last quarter, and which channel drove it
+      - Which routes had the most cart abandonment in 2024
+    inputs:
+      - name: question
+        description: The question, in plain words
+        required: true
+        example: Which marketing channel brought the most booking revenue in 2024, and how did it trend by month?
+      - name: dataset
+        type: text
+        description: The export as CSV text; leave empty when an earlier step of the run interpreted it, or name a bundled sample
+      - name: dataset_name
+        description: "A bundled sample: westjet"
+        example: westjet
+      - name: history
+        type: list
+        description: "Earlier turns of the conversation: [{role, content}]"
+    actions:
+      - id: ask
+        title: Answer a question
+        produces: [answer]
+        output_keys: [method, plan, computed, answer_markdown, chart, follow_ups]
+        example:
+          summary: "Paid Search brought the most booking revenue in 2024: $1,420,110 (32% of the year), ahead of Email - Promotional at $980,220."
+          result:
+            method: model
+            plan: {metrics: [event9], dimension: eVar4, grain: none, filters: {Date: {from: "2024-01-01", to: "2024-12-31"}}, chart: bar}
+            computed: {rows_in_scope: 905, metrics: [{column: event9, label: Booking Revenue, total: 4432820.3}]}
+            answer_markdown: "**Paid Search** brought the most booking revenue in 2024: **$1,420,110** ..."
+            chart: {type: bar, title: Booking Revenue by Marketing Channel, labels: [Paid Search, Email - Promotional], datasets: [{label: Booking Revenue, data: [1420110.2, 980220.4]}]}
+            follow_ups: ["How did Paid Search revenue trend by month in 2024?"]
+    skill:
+      system_prompt: You are IntelliSight's analyst. You answer from exact computed results, with the numbers, and you say what the data cannot answer.
+      checklist:
+        - Every number in the answer appears in the computed results
+        - A chart is built only from computed results
+        - What the data cannot answer is said plainly
+
+flows:
+  - id: is_executive_review
+    name: IntelliSight · Export to decisions
+    stage: Executive review
+    description: Interpret an Adobe Analytics export, compute the dashboard on every row, and turn the computed facts into six prioritised recommendations.
+    triggers: [adobe analytics, analytics export, data warehouse export, raw data file, dataset, csv, kpi dashboard, recommendations and insights, executive review]
+    inputs:
+      - name: dataset
+        description: The export as CSV text (leave empty to use the bundled sample)
+      - name: dataset_name
+        description: "A bundled sample instead: westjet"
+        example: westjet
+    steps:
+      - id: interpret
+        agent: is_data_interpreter
+        purpose: Profile the export and keep it with the run
+      - id: dashboard
+        agent: is_analytics_engine
+        purpose: KPIs with year-over-year, monthly series, breakdowns, the funnel and its rates
+        needs: [interpret]
+      - id: recommend
+        agent: is_recommendations
+        purpose: Six prioritised recommendations from the computed facts
+        needs: [dashboard]
+  - id: is_question
+    name: IntelliSight · Ask the data
+    stage: Conversational analytics
+    description: Interpret an export, then answer a question about it with exact numbers and a chart.
+    triggers: [ask the data, question about the data, conversational analytics, what changed in, which channel, by month]
+    inputs:
+      - name: question
+        description: The question to answer
+        required: true
+        example: Which marketing channel brought the most booking revenue in 2024, and how did it trend by month?
+      - name: dataset
+        description: The export as CSV text (leave empty to use the bundled sample)
+      - name: dataset_name
+        description: "A bundled sample instead: westjet"
+        example: westjet
+    steps:
+      - id: interpret
+        agent: is_data_interpreter
+        purpose: Profile the export and keep it with the run
+      - id: answer
+        agent: is_analytics_chat
+        purpose: Plan, compute and answer
+        needs: [interpret]

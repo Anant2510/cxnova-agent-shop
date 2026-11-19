@@ -1,11 +1,12 @@
 # CX Nova Agent Orchestration Layer
 
 **One layer for every CX Nova agent: design a flow on a canvas, publish it, rent it, run it from your tools on the
-model your policy allows.** The layer carries 97 agents: the 28 blueprint agents of the Coforge Agentic Framework
-below, plus two **agent packs**, Campaign Studio (18 agents) and the ARM SDLC Factory (51 agents). Flows are
+model your policy allows.** The layer carries 110 agents: the 28 blueprint agents of the Coforge Agentic Framework
+below, plus four **agent packs**: Campaign Studio (18 agents), the ARM SDLC Factory (51 agents), IntelliSight
+(5 agents, its analytics engines running as code) and VoyagerAI (8 agents, the airline CX journey). Flows are
 composed from any of them in the **orchestration designer** (`/shop/designer`): agents are nodes, a wire means
-"runs after", and the inspector sets what each step is asked to do. 21 flows ship built in (8 playbooks, 4 Campaign
-Studio stages, 9 ARM SDLC stages including the 50-step AI-to-Z release).
+"runs after", and the inspector sets what each step is asked to do. 27 flows ship built in (8 playbooks, 4 Campaign
+Studio stages, 9 ARM SDLC stages including the 50-step AI-to-Z release, 2 IntelliSight flows, 4 VoyagerAI journeys).
 
 Around that: a storefront with indicative prices, customer accounts with API keys, subscriptions per agent or per
 flow, a model policy per customer (its own LLM deployment, masking, allowed websites, limits), usage metering, and
@@ -126,26 +127,48 @@ storefront, REST, MCP, A2A and the console.
 |---|---|---|---|
 | Campaign Studio (`cs_*`) | 18 | 4 (foresight, variants, checks, brief to measure) | `config/packs/campaign_studio.yaml`, written by hand from the studio's agent catalogue |
 | ARM SDLC Factory (`arm_*`) | 51 | 9 (one per team stage, plus the 50-step AI-to-Z release) | generated: `python3 scripts/build_pack_arm.py --from <factory>/config` |
+| IntelliSight (`is_*`) | 5 | 2 (export to decisions: interpret → dashboard → recommend; ask the data) | `config/packs/intellisight.yaml`; the engines are ported to Python in `src/caf/accelerators/intellisight.py` from the accelerator's own `index.html` (github.com/Anant2510/IntelliSight) and run as **code** |
+| VoyagerAI (`vai_*`) | 8 | 4 (passenger journey, churn prevention, IROPS recovery, airport disruption) | `config/packs/voyagerai.yaml`, written from the eight agents VoyagerAI describes (github.com/Anant2510/VoyagerAI); modelled here, since VoyagerAI's own systems are not connected |
 
 Every pack agent takes `action` (one of the things it can do), `request` (plain words), the inputs its pack
 declares and `context`, and answers `{action, runner, summary, result, artifacts, human_followups, dry_run}`.
 `runner` says who did the work:
 
-1. **home**: the agent's own product ran it, when the pack has a home adapter and it is connected. Campaign
+1. **code**: the pack declares `code: module:function` for the agent and that function did the work on this layer,
+   deterministically, with no model call. IntelliSight's five agents run this way: the Data Interpreter classifies
+   the columns of an Adobe Analytics export the Adobe way (eVar and prop are dimensions, event is a metric, Date /
+   Week / Month / Year are time), the Analytics Engine computes the KPIs, year-over-year, monthly series,
+   breakdowns, funnel and derived rates (cart abandonment, average order value, bounce, conversion) on every row,
+   the Custom Report Builder answers a field list with filters, the Decision Layer turns the computed facts into
+   prioritised recommendations (one model call for the judgement, offline a plain reading of the numbers) and
+   Conversational Analytics answers a question in two steps (the model writes a query plan, the engine runs it, the
+   model narrates the result; no generated code is ever executed). Wrong input (not a CSV, an unknown column) is an
+   error, never a modelled sample. Give any of them `dataset` (the CSV text), `dataset_name: westjet` (the sample
+   under `sample_data/intellisight/`, 1,800 rows of a fictional airline's Adobe export) or let a flow hand the
+   `dataset_file` kept with the run from one step to the next.
+2. **home**: the agent's own product ran it, when the pack has a home adapter and it is connected. Campaign
    Studio has one: set `CAF_PACK_CAMPAIGN_STUDIO_URL` and `CAF_PACK_CAMPAIGN_STUDIO_PASSCODE`, and pass
    `campaign_id`. Operator runs only; a customer's run never acts inside the operator's product.
-2. **model**: this layer's model, working from the pack's skill prompt, checklist and standards, on the tier the
+3. **model**: this layer's model, working from the pack's skill prompt, checklist and standards, on the tier the
    pack names (and the customer's own deployment when the policy says so).
-3. **twin**: with no model (offline), the contract's sample output, marked as a sample.
+4. **twin**: with no model (offline), the contract's sample output, marked as a sample.
 
 Actions that change another system (publish, send, platform writes) are marked `needs_home`: unless the home
 product serves them they come back as a dry run with the follow-up a person has to do. The ARM SDLC Factory has no
-run-one-agent API, so its agents are modelled here.
+run-one-agent API, so its agents are modelled here. VoyagerAI's eight agents (data ingestion, data modelling,
+identity stitching, predictive propensity, 1:1 personalization, content generation, omnichannel activation,
+continuous feedback) are modelled here too: its journeys bind each stage's output into the next (the scored
+propensity into the offer, the offer into the creatives, the creatives into the activation), and the activation
+is a dry run that lists what would have been sent, because no airline channel (PSS, loyalty, email, push, contact
+centre) is connected to this layer.
 
-Packs do not change routing by goal: the planner and the router still choose among the 28 blueprint agents, the 8
-playbooks and the flows you publish. Pack agents and the packs' own flows run when named, inside a flow you design,
-or from the console's registry.
-`CAF_PACKS_DISABLED=*` (or a list of pack ids) switches packs off; `caf health --packs` probes them
+A product pack does not change routing by goal: the planner and the router choose among the 28 blueprint agents,
+the 8 playbooks and the flows you publish, and the pack's agents and flows run when named, inside a flow you
+design, or from the console's registry. A pack declared `auto_route: true` (IntelliSight, VoyagerAI and the
+`made` pack of the workshop) offers its agents and flows to the routers and the planner like the blueprint's: a
+goal about an Adobe Analytics export goes to IntelliSight's *Export to decisions* flow, a goal about retaining a
+passenger to VoyagerAI's agents, and the blueprint's goals route as before.
+`CAF_PACKS_DISABLED=*` (or a list of pack ids) switches the product packs off (the made agents stay); `caf health --packs` probes them
 (`--packs --live` makes one model call per pack agent).
 
 ## Orchestrator
@@ -265,9 +288,9 @@ routing tier of each step (fast/balanced on Sonnet, pro/complex on Opus) and the
 reaches the browser. Files the agents produce are downloaded by the browser; the status chip reads
 "Claude on Microsoft Foundry connected" (or the provider in use).
 
-The hosted console, the designer and the storefront group all 97 agents by the work they do (strategy, analytics, design,
+The hosted console, the designer and the storefront group all 110 agents by the work they do (strategy, analytics, design,
 content, website optimization, engineering, quality, experimentation, compliance, activation, release), the blueprint's
-agents first in each group and a pack's agents beside them with the pack's tag (`CS`, `ARM`); the order is
+agents first in each group and a pack's agents beside them with the pack's tag (`CS`, `ARM`, `IS`, `VAI`); the order is
 `caf.core.spec.CATEGORY_ORDER`. A pack names its tag and each agent's category in its YAML. Blueprint agents run in
 the browser with their model steps on the server; pack agents and pack flows run on the server (`POST
 /agents/{id}/run`) and report `runtime: server` with the runner that served them.
@@ -306,7 +329,10 @@ make package                                            # source zip in dist/ (n
 * **Add an agent pack:** add `config/packs/<pack>.yaml` (pack head, `agents:` with their actions, inputs and skill
   prompt, optional `flows:`) and restart. `config/packs/campaign_studio.yaml` is the hand-written reference;
   `scripts/build_pack_arm.py` shows how to generate one from another product's own configuration. A home adapter
-  (running an agent inside its own product) is code: see `run_home` in `src/caf/packs/agent.py`.
+  (running an agent inside its own product) is code: see `run_home` in `src/caf/packs/agent.py`. An agent whose
+  work is arithmetic rather than judgement declares `code: module:function`; the function takes
+  `(action_id, inputs, ctx)` and returns `{"summary", "result", "artifacts"?}` (`src/caf/accelerators/intellisight.py`
+  is the reference); raise `ValueError` for wrong input and the step fails with that message.
 
 ## What was verified, and what needs your credentials
 
@@ -314,10 +340,13 @@ make package                                            # source zip in dist/ (n
   surfaces and every local connector, using the offline model and the demo data; axe-core and Playwright paths in
   Chromium; vendor adapters' request/response shapes against mocked APIs; all 28 browser twins and all 8 playbooks in
   Chromium (offline and mock-Claude paths); statistics recomputed against scipy/statsmodels; an independent security
-  review (findings fixed and covered by `tests/test_security.py`). Agent packs (`tests/test_packs.py`): all 97
-  agents registered and answering, the three runners (home against a stand-in studio, model against a stand-in
-  model, twin offline), dry runs, every surface, and designed flows including a 50-step clone. The designer was
-  driven end to end in Chromium.
+  review (findings fixed and covered by `tests/test_security.py`). Agent packs (`tests/test_packs.py`): all 110
+  agents registered and answering, the four runners (code, home against a stand-in studio, model against a stand-in
+  model, twin offline), dry runs, every surface, and designed flows including a 50-step clone. IntelliSight and
+  VoyagerAI (`tests/test_intellisight_voyagerai.py`): the engine's totals, year-over-year, monthly series, rates and
+  filtered reports checked against an independent sum over the sample's 1,800 rows; the flows hand the dataset on;
+  wrong input fails plainly; every VoyagerAI stage's output reaches the next; the routers reach both packs without
+  moving the blueprint's goals. The designer was driven end to end in Chromium.
 * Needs your environment: real model calls (set a provider key and run `caf health --live`; add `--packs` for the
   pack agents), the Campaign Studio home runner against the real studio, and vendor adapters
   against live tenants (GA4, Adobe Analytics/Target/AJO/AEM, Optimizely, Braze, Jira ...). Open questions per vendor

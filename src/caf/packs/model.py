@@ -76,6 +76,8 @@ class PackAgent(BaseModel):
     guardrails: list[str] = Field(default_factory=list)
     feeds: list[str] = Field(default_factory=list)
     use_cases: list[str] = Field(default_factory=list)
+    code: str = Field(default="", description="module:function of a coded runner (an accelerator's own logic): called first, with the "
+                                              "action id, the inputs and the context; the model and the twin stand in if it raises")
 
     @field_validator("id")
     @classmethod

@@ -1,0 +1,499 @@
+# VoyagerAI on the CX Nova Agent Orchestration Layer.
+#
+# VoyagerAI (github.com/Anant2510/VoyagerAI) is the AI-powered engine for airlines of CX Nova: a pipeline of eight agents that
+# takes a passenger from raw signals to a measured 1:1 journey - ingestion, modelling, identity stitching, propensity,
+# personalisation, content, omnichannel activation and the feedback loop - shown on three journeys: churn prevention, IROPS
+# disruption recovery and a hub-wide airport disruption. This pack carries the eight agents with the contract each stage
+# shows on the page (what it uses, what it does, what it hands on) and the three journeys as flows. The systems the engine
+# acts on (PSS such as Amadeus or SABRE, the loyalty engine, OpsCenter, the channels) are not connected here, so the agents
+# are modelled on this layer's model from the data they are given; actions that would reach a passenger are held for a
+# person, and a run says so.
+pack:
+  id: voyagerai
+  name: VoyagerAI
+  product: CX Nova VoyagerAI
+  tag: VAI
+  description: >-
+    VoyagerAI's passenger pipeline: ingest the signals, model and enrich them, stitch the identity, score the propensity,
+    compose the 1:1 offer, generate the channel creatives, activate across channels with fatigue rules, and arm the feedback loop.
+  color: "#E8613C"
+  auto_route: true   # a goal about a passenger, a disruption or a churn risk may be planned onto these agents and journeys
+  source: "written from the VoyagerAI page (github.com/Anant2510/VoyagerAI, index.html: the pipeline stages and the three use cases)"
+  context: >-
+    You are an agent of VoyagerAI, the CX Nova engine for airlines. You work on one passenger or one event at a time, from the
+    signals, profile and offer you are given and the earlier stages' work. Figures are computed or sourced, never invented; where
+    a live system (PSS, loyalty engine, OpsCenter, a channel) would be needed, you say what it would provide and model the rest.
+
+agents:
+  - id: vai_data_ingestion
+    name: Data Ingestion Agent
+    accelerator: VoyagerAI
+    category: analytics
+    tier: fast
+    summary: Ingests real-time passenger signals from PSS (Amadeus, SABRE), loyalty engines, web analytics, app telemetry and third-party sources through prebuilt connectors, onto one event bus.
+    description: >-
+      The first stage of the VoyagerAI pipeline. Captures the live signals that start a journey - a disruption log from the PSS,
+      a competitor fare-page view from web analytics, a declined redemption from the loyalty engine, uninstall intent from app
+      telemetry, a cancellation or ground stop from OpsCenter - and places them on the event bus as one typed event set, with
+      the source, the severity and the latency of each. Prebuilt connectors; no custom integration.
+    keywords: [ingestion, signals, pss, amadeus, sabre, loyalty, web analytics, app telemetry, opscenter, event bus, connectors]
+    feeds: [vai_data_modelling]
+    use_cases:
+      - Capture the signals behind Elena Chen's churn risk from the PSS, web analytics, the loyalty engine and the app
+      - Capture the BA 217 cancellation and its 186-passenger manifest onto the event bus
+    inputs:
+      - name: signals
+        type: any
+        description: "The raw signals, as text or [{source, event, severity}]: disruption logs, fare-page views, redemptions, telemetry, cancellations"
+        example:
+          - {source: "PSS / Amadeus", event: "3 disruptions in 28 days", severity: high}
+          - {source: "Web Analytics", event: "Browsed Emirates SIN→DXB fare page", severity: critical}
+          - {source: "Loyalty Engine", event: "Miles redemption declined twice", severity: medium}
+          - {source: "App Telemetry", event: "Uninstall-intent detected", severity: high}
+      - name: passenger
+        type: any
+        description: "Who the signals are about: name or PNR, loyalty id, tier, hub (text or an object)"
+        example: {name: Elena Chen, tier: Platinum Elite, hub: SIN}
+    actions:
+      - id: ingest
+        title: Capture the signals onto the event bus
+        produces: [event_set]
+        output_keys: [events, sources, trigger, latency_ms]
+        example:
+          summary: "Pulled 4 live signals from 4 source systems onto the event bus via prebuilt connectors (210 ms)"
+          result:
+            trigger: {title: Composite Churn Signal, severity: critical}
+            sources: ["PSS / Amadeus", "Web Analytics", "Loyalty Engine", "App Telemetry"]
+            events:
+              - {source: "PSS / Amadeus", type: disruption.history, event: "3 disruptions in 28 days", severity: high}
+              - {source: "Web Analytics", type: competitor.fare_view, event: "Browsed Emirates SIN→DXB fare page", severity: critical}
+            latency_ms: 210
+    skill:
+      system_prompt: You are VoyagerAI's data ingestion agent. You turn the raw signals you are given into one typed event set with source, type, severity and the trigger they compose; you add nothing that was not in the signals.
+      checklist:
+        - Every event names its source system and severity
+        - The composite trigger is named and justified by the events
+        - Nothing is inferred beyond the signals given
+
+  - id: vai_data_modelling
+    name: Data Modelling Agent
+    accelerator: VoyagerAI
+    category: analytics
+    tier: balanced
+    summary: Normalises raw signals into airline-specific schemas and enriches them with AI-derived fields such as disruption severity, competitor-intent score and loyalty-tier context.
+    description: >-
+      The second stage. Maps the event set onto the airline schema (pax_360, IROPS reason codes, overnight-impact) and enriches
+      the fields the later stages need: disruption severity, competitor intent, uninstall risk, missed-connection and overnight
+      impact, loyalty context. Prebuilt airline schemas enhanced with AI: 60% less modelling time than by hand.
+    keywords: [modelling, schema, normalise, enrich, pax 360, irops, severity, competitor intent, uninstall risk]
+    feeds: [vai_identity_stitching]
+    use_cases:
+      - Normalise these signals into the pax_360 schema and enrich the competitor-intent and uninstall-risk fields
+      - Map the IROPS reason codes of this cancellation to a severity schema
+    inputs:
+      - name: events
+        type: any
+        description: The event set from ingestion (text or the ingestion agent's result)
+      - name: target_schema
+        description: "The target schema: pax_360_v4 (default), irops_v2, overnight_impact_v1"
+        example: pax_360_v4
+    actions:
+      - id: model
+        title: Normalise and enrich
+        produces: [modelled_record]
+        output_keys: [schema, record, fields_enriched, enrichments]
+        example:
+          summary: "Normalized into the pax_360_v4 schema and AI-enriched 18 fields incl. competitor-intent & uninstall-risk"
+          result:
+            schema: pax_360_v4
+            fields_enriched: 18
+            enrichments: {competitor_intent: 0.85, uninstall_risk: elevated, disruption_severity: high, loyalty_context: "Platinum Elite, 38 flights YTD"}
+            record: {disruptions_28d: 3, competitor_route: "SIN→DXB", redemption_declines: 2}
+    skill:
+      system_prompt: You are VoyagerAI's data modelling agent. You map events onto the named airline schema and derive the enrichment fields with the evidence for each; a field you cannot support from the events stays empty and is listed as such.
+      checklist:
+        - Every enriched field cites the events it is derived from
+        - The schema name and the count of enriched fields are stated
+        - Unsupported fields are left empty, not guessed
+
+  - id: vai_identity_stitching
+    name: Identity Stitching Agent
+    accelerator: VoyagerAI
+    category: analytics
+    tier: balanced
+    summary: >-
+      Resolves passenger identity across PNRs, loyalty ids, device fingerprints, hashed emails, cookies and app ids into one unified profile, the foundation for 1:1 personalisation.
+    description: >-
+      The third stage. Joins the identity fragments of a passenger - PNR, loyalty id, device fingerprint, hashed email, cookie,
+      app id - into a single profile with a confidence score and the identity graph, and links companions on a shared PNR
+      into a travel group.
+    keywords: [identity, stitching, resolution, pnr, loyalty id, device, cookie, profile, "360", travel group, companion]
+    feeds: [vai_predictive_propensity]
+    use_cases:
+      - Resolve the 6 identity fragments of this passenger into one profile
+      - Link James and his companion on the shared PNR into one travel group
+    inputs:
+      - name: fragments
+        type: any
+        description: "The identity fragments: [{kind, value}] or text (PNR, loyalty id, device, hashed email, cookie, app id)"
+        example:
+          - {kind: pnr, value: ABC123}
+          - {kind: loyalty_id, value: WS198800}
+          - {kind: device, value: fp_8d1a}
+      - name: record
+        type: any
+        description: The modelled record from the previous stage
+    actions:
+      - id: stitch
+        title: Resolve to one profile
+        produces: [unified_profile]
+        output_keys: [profile, confidence, fragments, graph, group]
+        example:
+          summary: "Resolved all 6 fragments to a single passenger and built the unified 360 profile (99.6%)"
+          result:
+            confidence: 0.996
+            fragments: 6
+            graph: "PNR↔Loyalty↔Device↔Email↔Cookie↔App"
+            group: {kind: solo-traveler, companions: 0}
+            profile: {name: Elena Chen, tier: Platinum Elite, hub: SIN, ltv_usd: 52400, miles: 196800, flights_ytd: 38, segments: [platinum-elite, long-haul-business]}
+    skill:
+      system_prompt: You are VoyagerAI's identity stitching agent. You join the fragments you are given into one profile with the confidence the matches support, draw the identity graph, and link companions only on evidence such as a shared PNR.
+      checklist:
+        - Confidence reflects how many fragments corroborate each other
+        - The identity graph names every fragment joined
+        - Companions are linked only on a shared booking or explicit evidence
+
+  - id: vai_predictive_propensity
+    name: Predictive Propensity Agent
+    accelerator: VoyagerAI
+    category: analytics
+    tier: pro
+    summary: Scores conversion, churn and upsell propensity in real time from airline-specific signals, with the drivers behind the score and the decision it triggers (retain, protect, prioritise rebooking).
+    description: >-
+      The fourth stage. From the unified profile and the behavioural history, scores churn propensity, disruption sensitivity,
+      conversion and upsell, explains the drivers with their weights, and sets the decision: RETAIN CRITICAL, PROTECT MID-TIER
+      VALUE, rebooking priority HIGH. Predictive AI for conversion and churn; 40% more accurate targeting than rules.
+    keywords: [propensity, churn, score, prediction, drivers, conversion, upsell, disruption sensitivity, priority, retain]
+    feeds: [vai_personalization]
+    use_cases:
+      - Score this passenger's churn propensity and name the drivers
+      - Score the disruption sensitivity of this travel group and set the rebooking priority
+    inputs:
+      - name: profile
+        type: any
+        description: The unified profile (text or the stitching agent's result)
+      - name: history
+        type: any
+        description: The behavioural history to score on (28-day events, prior disruptions, redemptions)
+      - name: objective
+        description: "What to score: churn (default), disruption_sensitivity, conversion, upsell"
+        example: churn
+    actions:
+      - id: score
+        title: Score the propensity
+        produces: [propensity_score]
+        output_keys: [objective, score, drivers, decision, priority, window]
+        example:
+          summary: "Scored churn propensity at 81% and flagged the account RETAIN CRITICAL"
+          result:
+            objective: churn
+            score: 0.81
+            drivers: [{driver: disruptions, weight: 0.38}, {driver: competitor browsing, weight: 0.28}, {driver: redemption declines, weight: 0.19}]
+            decision: RETAIN CRITICAL
+            priority: HIGH
+            window: immediate
+    skill:
+      system_prompt: You are VoyagerAI's predictive propensity agent. You score from the profile and history you are given, show the drivers with weights that sum to the score's explanation, and set the decision the score triggers; a score without evidence is not given.
+      checklist:
+        - The score is explained by named drivers with weights
+        - The decision follows the airline's thresholds and is stated
+        - Missing history lowers confidence and is said
+
+  - id: vai_personalization
+    name: 1:1 Personalization Agent
+    accelerator: VoyagerAI
+    category: strategy
+    tier: pro
+    summary: Matches the passenger to a pre-built micro-segment and composes a bespoke offer calibrated to lifetime value, route preferences, behavioural context and policy cost guardrails.
+    description: >-
+      The fifth stage. From the score, the lifetime value, the tier and the route preferences, matches the passenger to a
+      micro-segment (platinum-at-risk-premium-ltv, silver-overnight-care ...) and composes the 1:1 offer - an upgrade, bonus
+      miles, a travel credit, lounge access, a pre-selected alternative flight, a hotel and meal - within the policy's cost
+      guardrails, with the personalisation match. 50% faster than manual segmentation.
+    keywords: [personalization, micro-segment, offer, upgrade, miles, credit, lounge, rebooking, guardrails, ltv]
+    feeds: [vai_content_generation]
+    use_cases:
+      - Compose a 1:1 retention offer for a Platinum Elite passenger scored 81% churn with $52,400 LTV
+      - Pre-select the best alternative flight and compose the re-accommodation for this travel group
+    inputs:
+      - name: score
+        type: any
+        description: The propensity result (score, drivers, decision)
+      - name: profile
+        type: any
+        description: The unified profile (tier, LTV, hub, route preferences, segments)
+      - name: inventory
+        type: any
+        description: "What can be offered: live seat inventory, alternative flights, hotel availability, miles and credit budgets"
+      - name: guardrails
+        type: any
+        description: "The policy cost guardrails: maximum offer value by tier, what needs a person's approval"
+    actions:
+      - id: compose
+        title: Match the segment and compose the offer
+        produces: [offer]
+        output_keys: [segment, offer, personalization_match, cost, within_guardrails, rationale]
+        example:
+          summary: "Matched to micro-segment 'platinum-at-risk-premium-ltv' and composed a 1:1 retention offer"
+          result:
+            segment: platinum-at-risk-premium-ltv
+            offer: {headline: "Elena, your loyalty means the world to us.", action: "First Class upgrade SIN → LHR", miles: "30,000 bonus miles", credit: "$500 travel credit", lounge: "Flagship First + Arrivals Lounge LHR"}
+            personalization_match: 0.97
+            cost: {miles: 30000, credit_usd: 500, upgrade: "F from J, SIN-LHR"}
+            within_guardrails: true
+            rationale: "Retention of a $52,400 LTV passenger at 81% churn risk; the upgrade answers the three disruptions, the miles the declined redemptions."
+    skill:
+      system_prompt: You are VoyagerAI's personalisation agent. You pick the micro-segment the evidence supports and compose one offer that answers the drivers of the score, priced within the guardrails you are given; an offer that would breach them is flagged for a person, not sent.
+      checklist:
+        - The segment match is explained by the profile and the score
+        - Each element of the offer answers a named driver
+        - The cost is stated and checked against the guardrails
+
+  - id: vai_content_generation
+    name: Content Generation Agent
+    accelerator: VoyagerAI
+    category: content
+    tier: balanced
+    summary: Generates channel-specific creatives - email, push, SMS, in-app banner, a one-tap rebooking card - personalised to the passenger and the offer, with A/B variants and the tone profile applied.
+    description: >-
+      The sixth stage. Writes the creatives that carry the offer on each channel - push, email, SMS, in-app banner, a one-tap
+      rebooking or care card - in the tone profile the journey calls for (premium-appreciative, proactive-empathetic,
+      reassuring-clear), with A/B subject lines. 60% faster content variation.
+    keywords: [creatives, email, push, sms, banner, rebooking card, a/b, subject lines, tone, variants]
+    feeds: [vai_omnichannel_activation]
+    use_cases:
+      - Generate 4 channel creatives and 2 A/B subject lines for this retention offer in a premium-appreciative tone
+      - Generate a one-tap rebooking card and 3 message variants in a proactive-empathetic tone
+    inputs:
+      - name: offer
+        type: any
+        description: The composed offer (headline, action, miles, credit, lounge, flight); bound from the personalisation stage in a journey
+        example: {headline: "Elena, your loyalty means the world to us.", action: "First Class upgrade SIN → LHR", miles: "30,000 bonus miles"}
+      - name: channels
+        type: list
+        description: "The channels to write for (default: push, email, sms, banner)"
+        example: [push, email, sms, banner]
+      - name: tone
+        description: "The tone profile: premium-appreciative, proactive-empathetic, reassuring-clear"
+        example: premium-appreciative
+      - name: passenger
+        type: any
+        description: Who it is for (name, tier, language)
+    actions:
+      - id: generate
+        title: Generate the channel creatives
+        produces: [creatives]
+        output_keys: [variants, channels, tone, ab_test, creatives]
+        example:
+          summary: "Generated 4 channel creatives and 2 A/B subject lines in 2.1s"
+          result:
+            variants: 4
+            channels: [push, email, sms, banner]
+            tone: premium-appreciative
+            ab_test: {subject_a: "Elena, a First Class thank-you for your loyalty", subject_b: "Your next SIN → LHR, in First, on us"}
+            creatives:
+              - {channel: push, text: "Elena, your loyalty means the world to us. A First Class upgrade on SIN → LHR is waiting - tap to claim.", cta: Claim upgrade}
+              - {channel: sms, text: "WestJet: Elena, we've added 30,000 bonus miles and a $500 travel credit to your account. Your First Class upgrade SIN → LHR is ready: wj.co/elena", cta: ""}
+    skill:
+      system_prompt: You are VoyagerAI's content generation agent. You write every creative from the offer as composed, in the tone profile named, within each channel's length and format, and you never promise anything the offer does not contain.
+      checklist:
+        - Every creative carries only what the offer contains
+        - Channel limits are respected (push and SMS short, email full)
+        - The tone profile is applied consistently; A/B variants differ in one thing
+
+  - id: vai_omnichannel_activation
+    name: Omnichannel Activation Agent
+    accelerator: VoyagerAI
+    category: activation
+    tier: balanced
+    summary: Activates across website, app, push, SMS, email, social and offline channels with intelligent sequencing, per-channel fatigue and frequency rules, and fallbacks; the send itself is held for a person here.
+    description: >-
+      The seventh stage. Sequences the creatives across the channels - push immediately, email a few minutes later, SMS as a
+      backup, the banner on the next open - under the fatigue and frequency rules, with fallbacks and 100% coverage. On this
+      layer the channels are not connected: the activation plan is produced and the send is held as an action for a person.
+    keywords: [activation, omnichannel, sequencing, fatigue, frequency, push, email, sms, banner, delivery, fallback]
+    feeds: [vai_continuous_feedback]
+    use_cases:
+      - Sequence these 4 creatives across push, email, SMS and banner with fatigue suppression
+      - Push the rebooking card immediately with email and SMS as backups
+    inputs:
+      - name: creatives
+        type: any
+        description: The creatives per channel from content generation; bound from that stage in a journey
+        example: [{channel: push, text: "..."}, {channel: email, text: "..."}]
+      - name: rules
+        type: any
+        description: "Fatigue and frequency rules per channel, quiet hours, the passenger's channel preferences"
+      - name: urgency
+        description: "immediate (disruptions) or standard (default)"
+        example: standard
+    actions:
+      - id: activate
+        title: Sequence and activate
+        produces: [activation_plan]
+        output_keys: [sequence, coverage, suppressed, fallbacks]
+        needs_home: true
+        example:
+          summary: "Activated all 4 channels with intelligent sequencing and fatigue suppression (plan; the send is held for approval)"
+          result:
+            sequence: [{channel: push, at: immediate}, {channel: email, at: "+3 min"}, {channel: sms, at: "+8 min"}, {channel: banner, at: next open}]
+            coverage: "100%"
+            suppressed: []
+            fallbacks: {push_unread_2h: sms}
+    skill:
+      system_prompt: "You are VoyagerAI's omnichannel activation agent. You order the creatives across channels under the fatigue, frequency and preference rules you are given, with fallbacks, and you present the plan: the send is a person's decision here."
+      checklist:
+        - Every creative has a channel, a time and a fallback
+        - Fatigue and frequency rules are applied and suppressions listed
+        - The plan says what would be sent, by which system, and that it is held
+
+  - id: vai_continuous_feedback
+    name: Continuous Feedback Agent
+    accelerator: VoyagerAI
+    category: experimentation
+    tier: balanced
+    summary: Arms the feedback loop - tracks engagement, conversion and revenue impact, auto-selects winning variants, and fires escalation journeys when there is no engagement - and reports the result against the baseline.
+    description: >-
+      The eighth stage. Defines the metrics the journey is measured on, the A/B auto-selection, the escalation (an enhanced
+      offer after 18 hours without engagement, an agent callback after 2 hours during a disruption) and the surveys (NPS at
+      +24 h or post-arrival), and reports the outcome: churn risk before and after.
+    keywords: [feedback loop, measurement, engagement, conversion, revenue impact, a/b, escalation, nps, optimization]
+    use_cases:
+      - Arm the loop for this retention journey with 18h escalation to an enhanced offer
+      - Confirm the rebooking, queue a +24h satisfaction survey and arm the loop
+    inputs:
+      - name: activation
+        type: any
+        description: The activation plan (channels, sequence)
+      - name: offer
+        type: any
+        description: The offer sent, for the escalation to build on
+      - name: baseline
+        type: any
+        description: "The metric before the journey (churn risk 81%, sensitivity 72% ...)"
+        example: {metric: churn risk, before: 0.81}
+    actions:
+      - id: arm
+        title: Arm the feedback loop
+        produces: [feedback_loop]
+        output_keys: [metrics_tracked, escalation, optimization, surveys, result, loop]
+        example:
+          summary: "Armed the loop tracking 9 metrics, with 18h escalation to an enhanced offer if no engagement"
+          result:
+            metrics_tracked: [push open, email open, email click, sms click, banner click, offer claimed, booking made, revenue, churn risk]
+            escalation: {after: 18h, condition: no engagement, action: enhanced offer}
+            optimization: AI auto A/B
+            surveys: [{kind: NPS, at: "+24h"}]
+            result: {metric: churn risk, before: 0.81, after: 0.19, basis: "modelled from comparable journeys; measured values replace it as events arrive"}
+            loop: ARMED
+    skill:
+      system_prompt: You are VoyagerAI's continuous feedback agent. You define what the journey is measured on, the escalation and the surveys, and you report outcomes as measured where events exist and as modelled - said so - where they do not yet.
+      checklist:
+        - Every tracked metric has a source event
+        - Escalation has a condition, a delay and an action
+        - A projected result is labelled modelled until measured
+
+flows:
+  - id: vai_passenger_journey
+    name: VoyagerAI · Passenger journey
+    stage: Journey
+    description: The whole VoyagerAI pipeline for one passenger and one trigger, from the raw signals to the armed feedback loop.
+    inputs:
+      - name: signals
+        description: "The raw signals: [{source, event, severity}] or text"
+        required: true
+        example: [{source: "PSS / Amadeus", event: "3 disruptions in 28 days", severity: high}, {source: "Web Analytics", event: "Browsed Emirates SIN→DXB fare page", severity: critical}]
+      - name: passenger
+        description: "Who it is about: name, tier, hub, LTV, segments"
+        example: {name: Elena Chen, tier: Platinum Elite, hub: SIN, ltv_usd: 52400}
+      - name: tone
+        description: "The tone profile for the creatives: premium-appreciative, proactive-empathetic, reassuring-clear"
+        example: premium-appreciative
+    steps:
+      - {id: ingest, agent: vai_data_ingestion, purpose: Capture the signals onto the event bus}
+      - {id: model, agent: vai_data_modelling, purpose: Normalise and enrich, inputs: {events: "${steps.ingest.output.result}"}, needs: [ingest]}
+      - {id: identity, agent: vai_identity_stitching, purpose: One profile from the fragments, inputs: {record: "${steps.model.output.result}"}, needs: [model]}
+      - {id: score, agent: vai_predictive_propensity, purpose: Score the propensity and set the decision, inputs: {profile: "${steps.identity.output.result.profile}"}, needs: [identity]}
+      - {id: offer, agent: vai_personalization, purpose: Match the segment and compose the offer, inputs: {score: "${steps.score.output.result}", profile: "${steps.identity.output.result.profile}"}, needs: [score]}
+      - {id: creatives, agent: vai_content_generation, purpose: Generate the channel creatives, inputs: {offer: "${steps.offer.output.result.offer}"}, needs: [offer]}
+      - {id: activate, agent: vai_omnichannel_activation, purpose: Sequence across channels (the send is held), inputs: {creatives: "${steps.creatives.output.result.creatives}"}, needs: [creatives]}
+      - {id: feedback, agent: vai_continuous_feedback, purpose: Arm the feedback loop, inputs: {activation: "${steps.activate.output.result}", offer: "${steps.offer.output.result.offer}"}, needs: [activate]}
+  - id: vai_churn_prevention
+    name: VoyagerAI · Churn prevention
+    stage: Journey
+    description: Retain a high-value passenger showing competitor-browsing behaviour; the page's first use case.
+    inputs:
+      - name: signals
+        description: The composite churn signals
+        required: true
+        example: [{source: "PSS / Amadeus", event: "3 disruptions in 28 days", severity: high}, {source: "Web Analytics", event: "Browsed Emirates SIN→DXB fare page", severity: critical}, {source: "Loyalty Engine", event: "Miles redemption declined twice", severity: medium}, {source: "App Telemetry", event: "Uninstall-intent detected", severity: high}]
+      - name: passenger
+        description: The passenger
+        example: {name: Elena Chen, tier: Platinum Elite, hub: SIN, ltv_usd: 52400, miles: 196800, flights_ytd: 38, segments: [platinum-elite, long-haul-business, churn-risk-high, competitor-browser]}
+    steps:
+      - {id: ingest, agent: vai_data_ingestion, purpose: Multi-source signals captured}
+      - {id: model, agent: vai_data_modelling, purpose: "Raw signals normalised and enriched (competitor intent, uninstall risk)", inputs: {events: "${steps.ingest.output.result}"}, needs: [ingest]}
+      - {id: identity, agent: vai_identity_stitching, purpose: 6 identity fragments to one profile, inputs: {record: "${steps.model.output.result}"}, needs: [model]}
+      - {id: score, agent: vai_predictive_propensity, purpose: Churn propensity scored, inputs: {profile: "${steps.identity.output.result.profile}", objective: churn}, needs: [identity]}
+      - {id: offer, agent: vai_personalization, purpose: Matched to the micro-segment and the retention offer composed, inputs: {score: "${steps.score.output.result}", profile: "${steps.identity.output.result.profile}"}, needs: [score]}
+      - {id: creatives, agent: vai_content_generation, purpose: Channel creatives generated, inputs: {offer: "${steps.offer.output.result.offer}", tone: premium-appreciative}, needs: [offer]}
+      - {id: activate, agent: vai_omnichannel_activation, purpose: Sequenced delivery with fatigue suppression (held), inputs: {creatives: "${steps.creatives.output.result.creatives}"}, needs: [creatives]}
+      - {id: feedback, agent: vai_continuous_feedback, purpose: Feedback loop armed with 18h escalation, inputs: {activation: "${steps.activate.output.result}", offer: "${steps.offer.output.result.offer}"}, needs: [activate]}
+  - id: vai_irops_recovery
+    name: VoyagerAI · IROPS disruption recovery
+    stage: Journey
+    description: Proactive rebooking and compensation for a cancelled flight; the page's second use case.
+    inputs:
+      - name: signals
+        description: The cancellation and the manifest
+        required: true
+        example: [{source: OpsCenter, event: "BA 217 LHR→JFK cancelled — mechanical", severity: critical}, {source: "PSS / Amadeus", event: "186 passengers affected", severity: high}, {source: "Loyalty Engine", event: "Gold member + companion travel", severity: medium}]
+      - name: passenger
+        description: The passenger and companions
+        example: {name: James Okonkwo, tier: Gold Member, hub: LHR, ltv_usd: 28600, companions: 1}
+      - name: inventory
+        description: Alternative flights and seats available
+        example: "BA 219 LHR→JFK 16:40 Business, 2 adjacent seats"
+    steps:
+      - {id: ingest, agent: vai_data_ingestion, purpose: Cancellation event captured}
+      - {id: model, agent: vai_data_modelling, purpose: IROPS codes mapped to severity, inputs: {events: "${steps.ingest.output.result}", target_schema: irops_v2}, needs: [ingest]}
+      - {id: identity, agent: vai_identity_stitching, purpose: Traveller group resolved, inputs: {record: "${steps.model.output.result}"}, needs: [model]}
+      - {id: score, agent: vai_predictive_propensity, purpose: Disruption sensitivity scored and rebooking priority set, inputs: {profile: "${steps.identity.output.result.profile}", objective: disruption_sensitivity}, needs: [identity]}
+      - {id: offer, agent: vai_personalization, purpose: Best alternative pre-selected and compensation composed, inputs: {score: "${steps.score.output.result}", profile: "${steps.identity.output.result.profile}"}, needs: [score]}
+      - {id: creatives, agent: vai_content_generation, purpose: Rebooking card and message variants, inputs: {offer: "${steps.offer.output.result.offer}", tone: proactive-empathetic, channels: [push, email, sms]}, needs: [offer]}
+      - {id: activate, agent: vai_omnichannel_activation, purpose: Delivered immediately with backups (held), inputs: {creatives: "${steps.creatives.output.result.creatives}", urgency: immediate}, needs: [creatives]}
+      - {id: feedback, agent: vai_continuous_feedback, purpose: Rebooking confirmed and +24h survey queued, inputs: {activation: "${steps.activate.output.result}", offer: "${steps.offer.output.result.offer}"}, needs: [activate]}
+  - id: vai_airport_disruption
+    name: VoyagerAI · Airport disruption
+    stage: Journey
+    description: Proactive overnight care for a mid-tier flyer during a hub-wide ground stop; the page's third use case.
+    inputs:
+      - name: signals
+        description: The ground stop, the weather and the at-risk itinerary
+        required: true
+        example: [{source: OpsCenter, event: "FAA ground stop issued at ORD — winter storm", severity: critical}, {source: "Weather Feed", event: "6–9 in. snow · ramp closed until 22:00", severity: high}, {source: "PSS / Amadeus", event: "AA 1492 ORD→AUS delayed 4h+ · connection at risk", severity: high}]
+      - name: passenger
+        description: The passenger
+        example: {name: Daniel Brooks, tier: Silver Member, hub: ORD, ltv_usd: 9800, segments: [silver-member, mid-tier-frequent, price-sensitive]}
+      - name: guardrails
+        description: The cost guardrails for mid-tier care
+        example: "hotel up to $180, meal voucher $40, goodwill miles up to 5,000"
+    steps:
+      - {id: ingest, agent: vai_data_ingestion, purpose: Airport ground-stop event captured}
+      - {id: model, agent: vai_data_modelling, purpose: Mapped to the overnight-impact schema, inputs: {events: "${steps.ingest.output.result}", target_schema: overnight_impact_v1}, needs: [ingest]}
+      - {id: identity, agent: vai_identity_stitching, purpose: Profile resolved across the fragments, inputs: {record: "${steps.model.output.result}"}, needs: [model]}
+      - {id: score, agent: vai_predictive_propensity, purpose: Mid-tier disruption-churn risk scored, inputs: {profile: "${steps.identity.output.result.profile}", objective: churn}, needs: [identity]}
+      - {id: offer, agent: vai_personalization, purpose: Matched to the mid-tier care segment within the cost guardrails, inputs: {score: "${steps.score.output.result}", profile: "${steps.identity.output.result.profile}"}, needs: [score]}
+      - {id: creatives, agent: vai_content_generation, purpose: Re-accommodation pack generated, inputs: {offer: "${steps.offer.output.result.offer}", tone: reassuring-clear, channels: [push, sms, email]}, needs: [offer]}
+      - {id: activate, agent: vai_omnichannel_activation, purpose: Delivered before the gate announcement (held), inputs: {creatives: "${steps.creatives.output.result.creatives}", urgency: immediate}, needs: [creatives]}
+      - {id: feedback, agent: vai_continuous_feedback, purpose: Loop armed to resolution with 2h agent-callback escalation, inputs: {activation: "${steps.activate.output.result}", offer: "${steps.offer.output.result.offer}"}, needs: [activate]}

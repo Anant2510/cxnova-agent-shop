@@ -348,10 +348,10 @@
     ["Competitive pitch vs Harborline", "Prepare a competitive pitch against Harborline Insurance for the insurance industry", { competitors: "Harborline Insurance, Crestview Assurance", industry: "insurance" }],
     ["Explain the August dip", "Explain the August dip in sessions and conversion", { question: "Why did sessions and conversion rate dip in August?" }],
   ];
-  const SHARED = [["url", "Page URL"], ["audience", "Audience"], ["industry", "Industry"], ["competitors", "Competitors (comma-separated)"], ["campaign_type", "Campaign type"], ["test_idea", "Test idea"], ["question", "Question for the data"]];
+  const SHARED = [["url", "Page URL"], ["audience", "Audience"], ["industry", "Industry"], ["competitors", "Competitors (comma-separated)"], ["campaign_type", "Campaign type"], ["test_idea", "Test idea"], ["question", "Question for the data"], ["dataset", "Data file"]];
   const L = { goal: "", inputs: {}, mode: "auto", plan: null, planning: false, launching: false, autoApprove: false, open: false };
   try { Object.assign(L, JSON.parse(localStorage.getItem("cxnova.launch") || "{}"), { plan: null, planning: false, launching: false }); } catch (e) {}
-  function remember() { try { localStorage.setItem("cxnova.launch", JSON.stringify({ goal: L.goal, inputs: L.inputs, mode: L.mode, open: L.open })); } catch (e) {} }
+  function remember() { try { const inputs = {}; for (const [k, v] of Object.entries(L.inputs)) if (!FILE_INPUTS[k]) inputs[k] = v; localStorage.setItem("cxnova.launch", JSON.stringify({ goal: L.goal, inputs, mode: L.mode, open: L.open })); } catch (e) {} }
   function launchBox(opts) {
     opts = opts || {};
     const box = h("section", { class: "goal" });
@@ -371,8 +371,9 @@
     const mustOpen = declared.some((i) => i.required) || L.mode.startsWith("agent:");
     const inputsBox = h("div", { class: "inputs-grid" + (L.open || mustOpen || opts.compact === false ? "" : " hidden") });
     const textField = (k, lbl, desc, required, example) => { const i = h("input", { type: "text", placeholder: example ? "e.g. " + example : "", "aria-label": lbl, oninput: (e) => { const v = e.target.value.trim(); if (v) L.inputs[k] = v; else delete L.inputs[k]; changed(); } }); i.value = L.inputs[k] === undefined ? "" : (typeof L.inputs[k] === "string" ? L.inputs[k] : JSON.stringify(L.inputs[k])); return h("label", { class: "f" }, h("span", null, lbl, required ? h("span", { class: "muted" }, " required") : null), desc ? h("span", { class: "xs muted", style: "font-weight:400" }, desc) : null, i); };
-    put(inputsBox, declared.map((i) => textField(i.name, i.name, i.description, i.required, i.example)),
-      SHARED.filter(([k]) => !declared.some((i) => i.name === k)).map(([k, lbl]) => textField(k, lbl)));
+    const anyField = (k, lbl, desc, required, example) => FILE_INPUTS[k] ? fileField(k, FILE_INPUTS[k][0], desc || FILE_INPUTS[k][1], L.inputs, changed, required) : textField(k, lbl, desc, required, example);
+    put(inputsBox, declared.map((i) => anyField(i.name, i.name, i.description, i.required, i.example)),
+      SHARED.filter(([k]) => !declared.some((i) => i.name === k)).map(([k, lbl]) => anyField(k, lbl)));
     if (L.mode.startsWith("agent:")) {  // one agent: its own contract, filled with its self-test values the first time
       const id = L.mode.slice(6);
       clear(inputsBox).append(h("div", { class: "muted small" }, "Loading the agent's inputs…"));
@@ -953,6 +954,23 @@
   const AGENT_CACHE = {};
   function agentDetails(id) { return AGENT_CACHE[id] || (AGENT_CACHE[id] = api("/agents/" + encodeURIComponent(id)).catch((e) => { delete AGENT_CACHE[id]; throw e; })); }
   // fields for an agent's input contract; typed values go into `values` as the person types
+  // A data file as an input (IntelliSight reads `dataset`): picked from the computer and read in the browser, or pasted.
+  // The text travels with the run as a run input; it is never kept in this browser's storage.
+  const FILE_INPUTS = { dataset: ["Data file", "The export as CSV: Adobe Analytics Data Warehouse, GA4, any flat table. IntelliSight computes on every row."] };
+  const FILE_NAMES = {};
+  function fileField(k, lbl, desc, values, onChange, required) {
+    const note = h("span", { class: "xs" }, values[k] ? "attached: " + (FILE_NAMES[k] || String(values[k]).length + " characters") : "");
+    const attached = (name) => { FILE_NAMES[k] = name; note.textContent = name ? "attached: " + name : ""; if (name && values.dataset_name) delete values.dataset_name; if (onChange) onChange(); };
+    const pick = h("input", { type: "file", accept: ".csv,.tsv,.txt,text/csv,text/plain", "aria-label": lbl, onchange: (e) => {
+      const f = e.target.files && e.target.files[0]; if (!f) return;
+      if (f.size > 25 * 1024 * 1024) { toast("That file is over 25 MB: export a shorter range or fewer columns"); e.target.value = ""; return; }
+      f.text().then((t) => { values[k] = t; attached(f.name + ", " + Math.max(0, t.split("\n").filter((l) => l.trim()).length - 1) + " rows"); }).catch((err) => toast("Could not read the file: " + err.message));
+    } });
+    const paste = h("textarea", { class: "hidden", style: "min-height:70px", placeholder: "Paste the CSV text", oninput: (e) => { const v = e.target.value.trim(); if (v) values[k] = v; else delete values[k]; attached(v ? "pasted text, " + Math.max(0, v.split("\n").length - 1) + " rows" : ""); } });
+    return h("div", { class: "f" },
+      h("label", { class: "f" }, h("span", null, lbl, required ? h("span", { class: "muted" }, " required") : null), desc ? h("span", { class: "xs muted", style: "font-weight:400" }, desc) : null, pick),
+      h("div", { class: "row small", style: "gap:10px" }, note, h("button", { class: "btn sm ghost", type: "button", onclick: () => paste.classList.toggle("hidden") }, "or paste the text")), paste);
+  }
   function schemaFields(props, required, values, onChange) {
     const req = new Set(required || []);
     const kind = (p) => { const t = Array.isArray(p.type) ? p.type.find((x) => x !== "null") : p.type; return t || (p.anyOf ? (p.anyOf.find((x) => x.type && x.type !== "null") || {}).type : "string") || "string"; };
@@ -961,6 +979,7 @@
       const type = kind(p), init = values[k] !== undefined ? values[k] : p.default;
       const set = (v) => { if (v === undefined || v === "" || (Array.isArray(v) && !v.length)) delete values[k]; else values[k] = v; if (onChange) onChange(); };
       let input;
+      if (FILE_INPUTS[k] && type === "string") return fileField(k, k, p.description ? String(p.description).slice(0, 140) : FILE_INPUTS[k][1], values, onChange, req.has(k));
       if (type === "boolean") { input = h("input", { type: "checkbox", checked: !!init, onchange: (e) => set(e.target.checked) }); if (init !== undefined) values[k] = !!init; }
       else if (type === "array" || type === "object") { input = h("textarea", { style: "min-height:60px", oninput: (e) => { const v = e.target.value.trim(); if (!v) return set(undefined); try { set(JSON.parse(v)); } catch (err) { set(type === "array" ? v.split(",").map((x) => x.trim()).filter(Boolean) : v); } } }); input.value = init === undefined ? "" : JSON.stringify(init, null, 1); }
       else if (long(k, p) && type === "string") { input = h("textarea", { style: "min-height:70px;font-family:var(--font);font-size:13px", oninput: (e) => set(e.target.value.trim() || undefined) }); input.value = init === undefined || init === null ? "" : String(init); }
@@ -1071,7 +1090,7 @@
     Promise.all([api("/flows/" + encodeURIComponent(id)), api("/runs?label=" + encodeURIComponent(id) + "&limit=12").catch(() => [])]).then(([f, history]) => {
       const steps = f.steps.map((s) => Object.assign({}, s, { status: "planned" }));
       const vals = {};
-      const inputs = (f.inputs || []).map((i) => { const el = h("input", { type: "text", placeholder: i.example ? "e.g. " + i.example : "", oninput: (e) => { vals[i.name] = e.target.value; } }); return h("label", { class: "f" }, h("span", null, i.name, i.required ? h("span", { class: "muted" }, " required") : null), h("span", { class: "xs muted", style: "font-weight:400" }, i.description || ""), el); });
+      const inputs = (f.inputs || []).map((i) => { if (FILE_INPUTS[i.name]) return fileField(i.name, FILE_INPUTS[i.name][0], i.description || FILE_INPUTS[i.name][1], vals, null, i.required); const el = h("input", { type: "text", placeholder: i.example ? "e.g. " + i.example : "", oninput: (e) => { vals[i.name] = e.target.value; } }); return h("label", { class: "f" }, h("span", null, i.name, i.required ? h("span", { class: "muted" }, " required") : null), h("span", { class: "xs muted", style: "font-weight:400" }, i.description || ""), el); });
       const goal = h("input", { type: "text", placeholder: "Optional goal text that steers the agents" });
       const out = h("div");
       async function run(btn) {

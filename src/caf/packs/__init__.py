@@ -21,8 +21,9 @@ def list_packs() -> list[dict[str, Any]]:
 
 
 def pack_playbooks() -> dict[str, Any]:
-    """The flows a pack ships (a product's own process), as playbooks the orchestrator can run by name. They are
-    never picked by the routers or the planner by themselves (auto_route False): a caller or a flow names them."""
+    """The flows a pack ships (a product's own process), as playbooks the orchestrator can run by name. A product pack's
+    flows are never picked by the routers or the planner by themselves (a caller or a flow names them); a pack declared
+    `auto_route: true` (IntelliSight, VoyagerAI, the made agents) offers its flows and agents to the routers like the blueprint's."""
     from ..orchestrator.playbooks import Playbook, StepDef
 
     out: dict[str, Any] = {}
@@ -30,7 +31,7 @@ def pack_playbooks() -> dict[str, Any]:
         for f in pack.flows:
             out[f.id] = Playbook(id=f.id, name=f.name, description=f.description, triggers=f.triggers, inputs=[i["name"] for i in f.inputs if i.get("name")],
                                  steps=[StepDef(id=s.id, agent=s.agent, purpose=s.purpose, inputs=dict(s.inputs), needs=list(s.needs)) for s in f.steps],
-                                 auto_route=False, pack=pack.id, pack_name=pack.name, input_defs=list(f.inputs))
+                                 auto_route=pack.auto_route, pack=pack.id, pack_name=pack.name, input_defs=list(f.inputs))
     return out
 
 
