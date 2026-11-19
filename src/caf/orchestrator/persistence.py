@@ -51,7 +51,8 @@ CREATE TABLE IF NOT EXISTS checkpoint_writes (
     PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id, task_id, idx));
 CREATE TABLE IF NOT EXISTS run_index (
     run_id TEXT PRIMARY KEY, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, status TEXT NOT NULL,
-    error TEXT NOT NULL DEFAULT '', customer_id TEXT NOT NULL DEFAULT '', surface TEXT NOT NULL DEFAULT '');
+    error TEXT NOT NULL DEFAULT '', customer_id TEXT NOT NULL DEFAULT '', surface TEXT NOT NULL DEFAULT '',
+    goal TEXT NOT NULL DEFAULT '', label TEXT NOT NULL DEFAULT '');
 CREATE INDEX IF NOT EXISTS run_index_created ON run_index(created_at);
 CREATE TABLE IF NOT EXISTS run_actions (
     run_id TEXT NOT NULL, action_key TEXT NOT NULL, decision TEXT NOT NULL, status TEXT NOT NULL, result TEXT NOT NULL DEFAULT '{}',
@@ -97,6 +98,10 @@ class _DB:
                 pass
             self.con.execute("PRAGMA synchronous=NORMAL")
             self.con.executescript(SCHEMA)
+            cols = {r[1] for r in self.con.execute("PRAGMA table_info(run_index)")}
+            for col in ("goal", "label"):  # files made by the first release of the run store
+                if col not in cols:
+                    self.con.execute(f"ALTER TABLE run_index ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
 
     @contextmanager
     def tx(self) -> Iterator[sqlite3.Connection]:
@@ -311,13 +316,14 @@ class RunStore:
 
     # -------------------------------------------------------------------------------- run index
     def record(self, run_id: str, status: str, *, error: str | None = None, customer_id: str | None = None,
-               surface: str | None = None) -> None:
+               surface: str | None = None, goal: str | None = None, label: str | None = None) -> None:
         now = now_iso()
         with self.db.tx() as con:
             row = con.execute("SELECT run_id FROM run_index WHERE run_id=?", (run_id,)).fetchone()
             if row is None:
-                con.execute("INSERT INTO run_index(run_id,created_at,updated_at,status,error,customer_id,surface) VALUES(?,?,?,?,?,?,?)",
-                            (run_id, now, now, status, error or "", customer_id or "", surface or ""))
+                con.execute("INSERT INTO run_index(run_id,created_at,updated_at,status,error,customer_id,surface,goal,label) "
+                            "VALUES(?,?,?,?,?,?,?,?,?)", (run_id, now, now, status, error or "", customer_id or "", surface or "",
+                                                          (goal or "")[:500], (label or "")[:120]))
             else:
                 sets, params = ["updated_at=?", "status=?"], [now, status]
                 if error is not None:
@@ -329,6 +335,22 @@ class RunStore:
         with self.db.lock:
             row = self.db.con.execute("SELECT * FROM run_index WHERE run_id=?", (run_id,)).fetchone()
         return dict(row) if row else None
+
+    def list(self, *, limit: int = 50, customer_id: str | None = None) -> list[dict[str, Any]]:
+        """The newest runs first (one customer's, or everyone's)."""
+        sql, params = "SELECT * FROM run_index", []
+        if customer_id is not None:
+            sql += " WHERE customer_id=?"
+            params.append(customer_id)
+        sql += " ORDER BY created_at DESC LIMIT ?"
+        params.append(int(limit))
+        with self.db.lock:
+            return [dict(r) for r in self.db.con.execute(sql, params).fetchall()]
+
+    def set_meta(self, run_id: str, *, goal: str, label: str = "") -> None:
+        with self.db.tx() as con:
+            con.execute("UPDATE run_index SET goal=?, label=CASE WHEN label='' THEN ? ELSE label END WHERE run_id=?",
+                        ((goal or "")[:500], (label or "")[:120], run_id))
 
     def touch(self, run_ids: Sequence[str]) -> None:
         """Heartbeat of the runs this process is executing."""
@@ -402,10 +424,11 @@ class MemoryRunStore:
         self._actions: dict[str, dict[str, dict[str, Any]]] = {}
 
     def record(self, run_id: str, status: str, *, error: str | None = None, customer_id: str | None = None,
-               surface: str | None = None) -> None:
+               surface: str | None = None, goal: str | None = None, label: str | None = None) -> None:
         with self._lock:
             row = self._index.setdefault(run_id, {"run_id": run_id, "created_at": now_iso(), "error": "",
-                                                  "customer_id": customer_id or "", "surface": surface or ""})
+                                                  "customer_id": customer_id or "", "surface": surface or "",
+                                                  "goal": (goal or "")[:500], "label": (label or "")[:120]})
             row.update(status=status, updated_at=now_iso())
             if error is not None:
                 row["error"] = error
@@ -418,6 +441,18 @@ class MemoryRunStore:
     def unsettled(self) -> list[dict[str, Any]]:
         with self._lock:
             return [dict(r) for r in self._index.values() if r["status"] not in SETTLED]
+
+    def list(self, *, limit: int = 50, customer_id: str | None = None) -> list[dict[str, Any]]:
+        with self._lock:
+            rows = [dict(r) for r in self._index.values() if customer_id is None or r.get("customer_id") == customer_id]
+        return sorted(rows, key=lambda r: r["created_at"], reverse=True)[: int(limit)]
+
+    def set_meta(self, run_id: str, *, goal: str, label: str = "") -> None:
+        with self._lock:
+            row = self._index.get(run_id)
+            if row is not None:
+                row["goal"] = (goal or "")[:500]
+                row["label"] = row.get("label") or (label or "")[:120]
 
     def touch(self, run_ids: Sequence[str]) -> None:
         with self._lock:

@@ -87,7 +87,7 @@ class ContinueRequest(BaseModel):
 
 
 PUBLIC_PATHS = {"/", "/console", "/health", "/docs", "/docs/oauth2-redirect", "/redoc", "/openapi.json", "/.well-known/agent-card.json",
-                "/shop", "/shop/account", "/shop/admin", "/shop/designer", "/shop/catalog", "/shop/requests", "/favicon.svg", "/favicon.ico"}
+                "/shop", "/shop/account", "/shop/admin", "/shop/designer", "/shop/runs", "/shop/catalog", "/shop/requests", "/favicon.svg", "/favicon.ico"}
 PUBLIC_PREFIXES = ("/shop/static/", "/shop/catalog/", "/shop/agents/", "/shop/flows/")
 LOOPBACK = {"127.0.0.1", "::1", "localhost", "testclient"}
 
@@ -423,6 +423,14 @@ def create_app() -> FastAPI:
         shop.record_view(cust, view, surface="api", provider=provider)   # steps done so far (each step is metered once)
         return answer(view, response)
 
+    @app.get("/runs")
+    def list_runs(request: Request, limit: int = Query(50, ge=1, le=500),
+                  status: str | None = Query(None, description="queued | running | awaiting_approval | completed | "
+                                                              "completed_with_errors | failed | stalled")) -> list[dict[str, Any]]:
+        """Runs, newest first: the operator sees every run, a customer key its own."""
+        cust = customer(request)
+        return orch.list_runs(limit=limit, customer_id=cust["id"] if cust else None, status=status)
+
     @app.get("/runs/{run_id}")
     def get_run(request: Request, run_id: str) -> dict[str, Any]:
         """The run as it stands. status: queued | running | awaiting_approval | completed | completed_with_errors |
@@ -482,12 +490,20 @@ def create_app() -> FastAPI:
         return FileResponse(target, media_type=mimetypes.guess_type(target.name)[0] or "application/octet-stream")
 
     @app.get("/runs/{run_id}/trace")
-    def trace(request: Request, run_id: str) -> list[dict[str, Any]]:
+    def trace(request: Request, run_id: str,
+              since: int = Query(0, ge=0, description="Skip the first `since` events (a viewer following a live run)")) -> list[dict[str, Any]]:
         own_run(request, run_id)
         f = run_folder(run_id) / "trace.jsonl"
         if not f.exists():
             raise HTTPException(404, "no trace for this run")
-        return [json.loads(line) for line in f.read_text(encoding="utf-8").splitlines() if line.strip()]
+        lines = [line for line in f.read_text(encoding="utf-8").splitlines() if line.strip()]
+        out = []
+        for line in lines[since:]:
+            try:
+                out.append(json.loads(line))
+            except ValueError:  # a line being written right now
+                break
+        return out
 
     # ------------------------------------------------------------------ connectors + short links
     @app.get("/connectors")

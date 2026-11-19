@@ -497,3 +497,54 @@ def test_rest_approvals_work_mid_run(shop_client, monkeypatch):
     assert settle(lambda: shop_client.get(f"/runs/{rid}", headers=ADMIN).json())["status"] == "completed"
     assert shop_client.post(f"/runs/{rid}/approvals", json={"decisions": {"*": "approve"}}, headers=ADMIN).status_code == 409
     assert shop_client.post(f"/runs/{rid}/continue", headers=ADMIN).status_code == 409
+
+
+# ------------------------------------------------------------------------------------------------ the run viewer (/shop/runs)
+def test_running_steps_show_live_and_finished_steps_carry_timing_and_upstream(orch, monkeypatch):
+    g = Gate()
+    g.install(monkeypatch, {"qr_code_generation"})
+    plan = {"mode": "custom", "steps": [{"id": "links", "agent": "utm_generation", "inputs": {"base_url": DEMO, "channels": ["email"]}},
+                                        {"id": "slow", "agent": "qr_code_generation", "needs": ["links"]}]}
+    rid = orch.start("Tag and print", plan=plan, wait=0)["run_id"]
+    until(lambda: {s["id"]: s["status"] for s in orch.view(rid)["steps"]}.get("slow") == "running")
+    live = {s["id"]: s for s in orch.view(rid)["steps"]}
+    assert live["slow"]["started_at"] and live["slow"]["result"] is None
+    links = live["links"]["result"]
+    assert links["timing"]["started_at"] <= links["timing"]["finished_at"] and links["upstream"] == []
+    g.gate("qr_code_generation").set()
+    done = {s["id"]: s for s in settle(lambda: orch.view(rid))["steps"]}
+    assert done["slow"]["result"]["upstream"] == [{"step": "links", "agent_id": "utm_generation", "direct": True}]
+    rows = orch.list_runs()
+    assert rows[0]["run_id"] == rid and rows[0]["goal"] == "Tag and print" and rows[0]["label"] == "custom plan" and rows[0]["status"] == "completed"
+
+
+def test_runs_list_trace_and_page(shop_client):
+    hdr = _customer(shop_client, [{"kind": "all"}])
+    mine = shop_client.post("/orchestrate", json={"goal": "Write the webinar invitation", "agent": "email_creation"}, headers=hdr).json()
+    ops = shop_client.post("/orchestrate", json={"goal": "Tag links", "agent": "utm_generation", "inputs": {"url": DEMO}}, headers=ADMIN).json()
+    everyone = {r["run_id"]: r for r in shop_client.get("/runs", headers=ADMIN).json()}
+    assert {mine["run_id"], ops["run_id"]} <= set(everyone)
+    assert everyone[mine["run_id"]]["customer_id"] == "meridian-mutual" and everyone[mine["run_id"]]["label"] == "email_creation"
+    assert [r["run_id"] for r in shop_client.get("/runs", headers=hdr).json()] == [mine["run_id"]]   # a customer: its own runs only
+    assert shop_client.get("/runs?status=awaiting_approval", headers=ADMIN).json()[0]["run_id"] == mine["run_id"]
+    trace = shop_client.get(f"/runs/{mine['run_id']}/trace", headers=hdr).json()
+    kinds = [e["kind"] for e in trace]
+    assert "orchestrator.step.start" in kinds and any(e["kind"] == "model.done" and e["agent"] == "email_creation" for e in trace)
+    assert shop_client.get(f"/runs/{mine['run_id']}/trace?since={len(trace) - 2}", headers=hdr).json() == trace[-2:]
+    page = shop_client.get("/shop/runs")
+    assert page.status_code == 200 and "Runs ·" in page.text and "/shop/static/shop.js" in page.text
+    assert shop_client.get("/runs").status_code == 401   # the list needs a token
+
+
+def test_deciding_some_held_actions_at_the_gate_keeps_the_others_held(orch, monkeypatch):
+    executed = _count_actions(monkeypatch)
+    plan = {"mode": "custom", "steps": [{"id": "a", "agent": "email_creation", "inputs": {"overview": "Flood webinar invitation"}},
+                                        {"id": "b", "agent": "email_creation", "inputs": {"overview": "Renewal reminder"}}]}
+    view = orch.start("Two emails", plan=plan)
+    assert view["status"] == "awaiting_approval" and len(view["pending_approvals"]) == 2
+    one = orch.resume(view["run_id"], {"a/esp-1": "approve"})          # b is not named: it stays held, it is not rejected
+    assert one["status"] == "awaiting_approval" and [p["key"] for p in one["pending_approvals"]] == ["b/esp-1"]
+    assert executed == ["esp-1"]
+    done = orch.resume(view["run_id"], {"b/esp-1": "reject"})
+    status = {s["id"]: s["result"]["pending_actions"][0]["status"] for s in done["steps"]}
+    assert done["status"] == "completed" and status == {"a": "done", "b": "rejected"} and executed == ["esp-1"]

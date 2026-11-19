@@ -140,6 +140,11 @@ def register(app: FastAPI, settings: Any, shop: ShopService, orchestrator: Any =
         """The orchestration designer: agents on a canvas, connections between them, check, test, publish (operator)."""
         return page(request, "designer.html")
 
+    @app.get("/shop/runs", response_class=HTMLResponse, include_in_schema=False)
+    def runs_page(request: Request) -> HTMLResponse:
+        """Runs: every run, live, step by step: what each agent was given, where it came from, what it produced."""
+        return page(request, "runs.html")
+
     @app.get("/shop/static/{name}", include_in_schema=False)
     def static_file(name: str) -> FileResponse:
         target = (WEB / name).resolve()

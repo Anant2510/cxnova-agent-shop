@@ -228,6 +228,8 @@
       h("span", { class: "spacer" }),
       h("button", { class: "btn sm", type: "button", onclick: check, disabled: !f.steps.length }, "Check"),
       h("button", { class: "btn sm", type: "button", onclick: testRun, disabled: !f.steps.length, title: "Runs every step once with sample inputs on this server's model" }, S.test && S.test.running ? "Running…" : "Test run"),
+      S.test && S.test.run_id ? h("a", { class: "btn sm ghost", href: BASE + "/shop/runs#run=" + encodeURIComponent(S.test.run_id), target: "_blank", rel: "noopener",
+        title: "Each step's inputs, output, files and model calls, live" }, S.test.running ? "Watch live ↗" : "View run ↗") : null,
       ro ? h("button", { class: "btn sm primary", type: "button", onclick: cloneFlow }, "Clone to edit") : [
         h("button", { class: "btn sm", type: "button", onclick: () => save(null), disabled: !f.steps.length }, S.isNew ? "Save draft" : "Save"),
         h("button", { class: "btn sm primary", type: "button", onclick: () => save(true), disabled: !f.steps.length }, f.status === "published" ? "Save and republish" : "Publish"),
@@ -473,7 +475,9 @@
     });
     if (t) put(pad, h("hr"), h("h3", null, "Last test run"), h("p", { class: "small", style: "margin:6px 0" }, h("span", { class: "chip " + (statusOf(s.id) || "bad") }, t.status), " ", (t.result && (t.result.error || t.result.summary) || "")),
       t.result && t.result.provenance && t.result.provenance.degraded_reasons ? h("ul", { class: "xs muted", style: "padding-left:16px;margin:0" }, t.result.provenance.degraded_reasons.map(r => h("li", null, r))) : null,
-      t.result && t.result.output ? h("details", null, h("summary", { class: "xs", style: "cursor:pointer" }, "Output"), h("pre", { class: "xs", style: "max-height:260px" }, JSON.stringify(t.result.output, null, 2).slice(0, 6000))) : null);
+      t.result && t.result.output ? h("details", null, h("summary", { class: "xs", style: "cursor:pointer" }, "Output"), h("pre", { class: "xs", style: "max-height:260px" }, JSON.stringify(t.result.output, null, 2).slice(0, 6000))) : null,
+      S.test && S.test.run_id ? h("p", { class: "xs", style: "margin-top:6px" }, h("a", { href: BASE + "/shop/runs#run=" + encodeURIComponent(S.test.run_id) + "&step=" + encodeURIComponent(s.id), target: "_blank", rel: "noopener" },
+        "Inputs, output and files of this step ↗")) : null);
     put(pad, h("hr"), h("div", { class: "row" }, h("a", { class: "btn sm ghost", href: BASE + "/shop/agents/" + a.id, target: "_blank", rel: "noopener" }, "Agent details"),
       ro ? null : h("button", { class: "btn sm danger right", type: "button", onclick: () => removeStep(s.id) }, "Remove step")));
   }

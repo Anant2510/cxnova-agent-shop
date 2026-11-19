@@ -51,6 +51,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .nav a { padding: 6px 10px; border-radius: var(--r-ctl); color: var(--ink-2); font-weight: 500; }
 .nav a:hover { background: var(--wash); text-decoration: none; } .nav a[aria-current="page"] { color: var(--ai); background: var(--ai-soft); }
 .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 60px; }
+@media (max-width: 760px) {  /* phones: the sections go on their own row and scroll sideways, the page does not */
+  .topbar .inner { flex-wrap: wrap; gap: 6px 12px; }
+  .nav { margin-left: 0; width: 100%; overflow-x: auto; scrollbar-width: none; } .nav a { white-space: nowrap; }
+}
 
 /* buttons, inputs, chips */
 .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: var(--r-ctl); border: 1px solid var(--rule-2); background: var(--sheet); color: var(--ink); font-weight: 500; cursor: pointer; line-height: 1.2; }

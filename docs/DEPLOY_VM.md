@@ -115,6 +115,7 @@ Public addresses once that is in place:
 | Agent console | `.../agentshop/console` |
 | Customer account | `.../agentshop/shop/account` |
 | Orchestration designer | `.../agentshop/shop/designer` (operator token) |
+| Runs (live, step by step) | `.../agentshop/shop/runs` (operator token: every run; customer key: its own) |
 | Admin | `.../agentshop/shop/admin` (operator token) |
 | API docs | `.../agentshop/docs` |
 | MCP | `.../agentshop/mcp` |

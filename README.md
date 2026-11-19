@@ -163,7 +163,8 @@ or from the console's registry.
   finishes, and can be decided right away while the rest of the run goes on:
   `POST /runs/{id}/approvals {"decisions": {"<step>/<action>": "approve"}}` executes it at once. Whatever is still
   undecided when the last step finishes is held by a LangGraph `interrupt` (status `awaiting_approval`), and the same
-  call resumes the run. Every decision, who took it and what executing it returned is kept in the run's approvals ledger,
+  call resumes the run once every held action is decided (or `"*"`): an action left out of a decision stays held, it is
+  never rejected by omission. Every decision, who took it and what executing it returned is kept in the run's approvals ledger,
   so no action is executed twice, even across a restart.
 * **Runs off the request.** REST, MCP and A2A runs execute on a worker pool (`orchestrator.max_concurrent_runs`, more wait
   in a queue). A call waits up to `orchestrator.run_wait_s` (`CAF_RUN_WAIT_S`, default 60; a request can pass `wait_s`)
@@ -183,7 +184,7 @@ or from the console's registry.
 
 | Surface | Where | Notes |
 |---|---|---|
-| REST | `caf serve` then `/docs` | `/agents`, `/agents/{id}/run`, `/flows`, `/flows/{id}/run`, `/orchestrate`, `/runs/{id}`, `/runs/{id}/approvals`, `/runs/{id}/continue`, `/runs/{id}/artifacts/...`, `/health`, `/health/agents`, `/playbooks`, `/connectors`, `/r/{code}` short links |
+| REST | `caf serve` then `/docs` | `/agents`, `/agents/{id}/run`, `/flows`, `/flows/{id}/run`, `/orchestrate`, `/runs` (list), `/runs/{id}`, `/runs/{id}/trace`, `/runs/{id}/approvals`, `/runs/{id}/continue`, `/runs/{id}/artifacts/...`, `/health`, `/health/agents`, `/playbooks`, `/connectors`, `/r/{code}` short links |
 | MCP | `/mcp` (streamable HTTP) or `caf mcp` (stdio) | `run_<agent_id>` for every agent, `run_flow_<flow_id>` for every published flow, plus `list_agents`, `list_flows`, `run_flow`, `orchestrate`, `approve_actions`, `get_run`; with a customer key the tool list is that customer's subscription |
 | A2A | `/.well-known/agent-card.json`, `POST /a2a` | Orchestrator card listing every agent as a skill; JSON-RPC `message/send`, `tasks/get` |
 | CLI | `caf` | `agents`, `describe`, `run`, `orchestrate`, `playbooks`, `health`, `serve`, `mcp`, `export-catalog` |
@@ -232,6 +233,7 @@ and the API, MCP and A2A surfaces underneath.
 | Piece | What it does |
 | --- | --- |
 | Orchestration designer (`/shop/designer`, operator token) | A canvas: pick agents from the palette (grouped by pack), click to chain them or drag them in, drag from one node's port to another to say "runs after", and set each step's action, purpose and input bindings in the inspector (suggestions for `$goal`, `${input.x}`, `${steps.s.output...}`). Check validates the flow, Test run executes it and lights each node, Save and Publish put it on sale. Built-in flows open read-only; Clone makes an editable copy. The console's "Save plan as flow" opens the plan here |
+| Runs (`/shop/runs`, operator token or a customer key) | Every run, live: the flow as a graph with each step's status and timing (running steps show the model call they are on), a timeline of what ran in parallel, and a live log. Select a step to see what it was given (each field as set in the flow, the value the agent received, and where it came from: the goal, a run input or an earlier step's output), which earlier steps' work it could read, its output, files (previewed and downloadable), checks, model calls and its own activity. Held actions are approved or rejected from the page, one at a time; a stalled run is continued from it. A customer key sees its own runs only. The designer's Test run links here |
 | Storefront (`/shop`, `/shop/agents/{id}`, `/shop/flows/{id}`) | Every agent and published flow with its contract, steps and stages, model steps, connectors and indicative price (`config/shop_catalog.yaml`); an access-request form |
 | Orchestration flows | A published flow is a storefront item, a playbook for the router, the planner and the console, the MCP tool `run_flow_<id>`, `POST /flows/{id}/run` and the A2A skill `flow:<id>`; unpublishing removes all of that. Admin → Flows lists your flows, the built-in playbooks and each pack's flows. CLI: `caf shop flows list / show / save / publish / clone / test` |
 | Customers, keys, subscriptions | `caf shop add / key / subscribe --agents a,b --flows f`, or the admin console. Keys are `cxn_...`, stored as hashes, shown once. A flow is rented as a whole: the customer runs the flow (every agent in it, for runs of the flow), not its agents one by one |

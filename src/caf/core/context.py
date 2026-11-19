@@ -189,6 +189,7 @@ class RunContext:
                     return self.llm.complete(user, system=system, tier=decision.tier, images=images, meter=self.meter, **kw)
                 return self.llm.structured(user, schema, system=system, tier=decision.tier, images=images, meter=self.meter, **kw)
 
+            tokens0 = (self.meter.input_tokens, self.meter.output_tokens)
             try:
                 try:
                     result = call(**extra)
@@ -196,6 +197,10 @@ class RunContext:
                     if not extra or "effort" not in str(exc):
                         raise
                     result = call()
+                # the shared model client cannot say which agent called it: the agent's context does (run viewer)
+                self.tracer.event("model.done", agent=self.agent_id, step=template, model=model,
+                                  duration_ms=round((time.perf_counter() - t0) * 1000, 1),
+                                  input_tokens=self.meter.input_tokens - tokens0[0], output_tokens=self.meter.output_tokens - tokens0[1])
                 if progress:  # labelled: parallel steps finish out of order
                     print(f"      {self.agent_id}.{template} done in {time.perf_counter() - t0:.1f}s", file=sys.stderr, flush=True)
                 return result

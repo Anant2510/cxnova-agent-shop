@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Runs · {{PRODUCT}}</title>
+<link rel="icon" href="{{BASE}}/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="{{BASE}}/shop/static/shop.css">
+<style>
+  .app { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; max-width: 1480px; margin: 0 auto; padding: 16px 16px 60px; align-items: start; }
+  @media (max-width: 900px) { .app { grid-template-columns: minmax(0, 1fr); } .list { position: static !important; max-height: 300px !important; }
+    .tl .r, .tl .axis { grid-template-columns: 120px 1fr 56px; } .log .e { grid-template-columns: 48px 90px 1fr; } }
+  .tw { overflow-x: auto; max-width: 100%; }
+  .panel { min-width: 0; }
+  .list { position: sticky; top: 62px; max-height: calc(100vh - 78px); display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+  .list .head { padding: 12px 12px 8px; display: grid; gap: 8px; border-bottom: 1px solid var(--rule); }
+  .list .seg { display: flex; flex-wrap: wrap; gap: 4px; }
+  .list .seg button { font-size: 12px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--rule-2); background: var(--sheet); cursor: pointer; color: var(--ink-2); }
+  .list .seg button[aria-pressed="true"] { background: var(--ai-soft); color: var(--ai); border-color: var(--ai); }
+  .list .items { overflow: auto; flex: 1; }
+  .item { display: grid; grid-template-columns: 10px 1fr; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--rule); cursor: pointer; background: none; border-left: 3px solid transparent; width: 100%; text-align: left; border-top: 0; border-right: 0; }
+  .item:hover { background: var(--wash); } .item[aria-current="true"] { background: var(--ai-soft); border-left-color: var(--ai); }
+  .item .g { font-weight: 500; font-size: 13px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--ink); }
+  .item .m { display: block; font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+  .item .lamp { margin-top: 5px; }
+  .lamp.run { background: var(--ai); animation: pulse 1.2s ease-in-out infinite; } .lamp.off { background: var(--rule-2); }
+  @keyframes pulse { 50% { opacity: .3; } }
+  @media (prefers-reduced-motion: reduce) { .lamp.run { animation: none; } }
+  .chip.live { background: var(--ai-soft); color: var(--ai); border-color: transparent; }
+  .detail { display: grid; gap: 14px; min-width: 0; }
+  .runhead h1 { font-size: 21px; line-height: 1.25; }
+  .meta { color: var(--ink-3); font-size: 12.5px; display: flex; gap: 6px 14px; flex-wrap: wrap; align-items: center; }
+  .meta code { font-size: 12px; }
+  .graph { position: relative; overflow: auto; max-height: 470px; min-height: 140px; border: 1px solid var(--rule); border-radius: var(--r-ctl);
+           background: radial-gradient(var(--rule) 1px, transparent 1px) 0 0 / 18px 18px, var(--paper); }
+  .graph svg { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+  .node { position: absolute; width: 230px; background: var(--sheet); border: 1px solid var(--rule-2); border-radius: 8px; box-shadow: var(--shadow); cursor: pointer;
+          display: grid; grid-template-columns: 5px 1fr; text-align: left; padding: 0; font: inherit; color: inherit; }
+  .node .bar { border-radius: 7px 0 0 7px; } .node .body { padding: 7px 10px 8px; min-width: 0; }
+  .node .nm { font-weight: 600; font-size: 13px; line-height: 1.25; display: flex; gap: 6px; align-items: center; }
+  .node .nm span.t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .node .sub { font-size: 11px; color: var(--ink-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .node .act { font-size: 11px; color: var(--ai); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .node.sel { border-color: var(--ai); box-shadow: 0 0 0 2px var(--ai); }
+  .node.running { border-color: var(--ai); } .node.skipped, .node.pending { opacity: .62; } .node.pending.sel, .node.skipped.sel { opacity: 1; }
+  .tl { display: grid; gap: 4px; font-size: 12px; }
+  .tl .r { display: grid; grid-template-columns: 210px 1fr 76px; gap: 10px; align-items: center; cursor: pointer; border-radius: 4px; padding: 2px 4px; }
+  .tl .r:hover, .tl .r.sel { background: var(--wash); }
+  .tl .lab { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tl .track { position: relative; height: 14px; background: var(--wash); border-radius: 3px; }
+  .tl .bar { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: var(--matsu); min-width: 3px; }
+  .tl .bar.warn { background: var(--kin); } .tl .bar.bad { background: var(--shu); } .tl .bar.run { background: var(--ai); }
+  .tl .axis { display: grid; grid-template-columns: 210px 1fr 76px; gap: 10px; color: var(--ink-3); font-size: 11px; padding: 0 4px; }
+  .tl .axis .ticks { display: flex; justify-content: space-between; }
+  .log { max-height: 420px; overflow: auto; font-size: 12px; display: grid; }
+  .log .e { display: grid; grid-template-columns: 62px 150px 1fr; gap: 10px; padding: 3px 4px; border-bottom: 1px solid var(--rule); }
+  .log .e .t { color: var(--ink-3); font-variant-numeric: tabular-nums; } .log .e .w { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .log .e.model .d { color: var(--ai); } .log .e.bad .d { color: var(--shu); } .log .e.good .d { color: var(--matsu); }
+  .stephead { display: grid; grid-template-columns: 5px 1fr; gap: 12px; }
+  .stephead .bar { border-radius: 3px; }
+  .bind td:first-child { white-space: nowrap; } .bind code { font-size: 12px; }
+  .src { display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+  .src .chip.used { background: var(--matsu-soft); color: var(--matsu); border-color: transparent; }
+  .src button.chip { cursor: pointer; } .src button.chip:hover { border-color: var(--ai); }
+  .val { white-space: pre-wrap; word-break: break-word; max-width: 520px; }
+  .jt { font-family: var(--mono); font-size: 12px; line-height: 1.55; }
+  .jt details { padding-left: 14px; } .jt summary { cursor: pointer; margin-left: -14px; list-style: none; }
+  .jt summary::before { content: "▸ "; color: var(--ink-3); } .jt details[open] > summary::before { content: "▾ "; }
+  .jt .k { color: var(--ink-2); } .jt .s { color: var(--matsu); white-space: pre-wrap; word-break: break-word; } .jt .n { color: var(--ai); } .jt .b { color: var(--kin); } .jt .z { color: var(--ink-3); }
+  .jt .row { padding-left: 14px; display: block; } .jt .c { color: var(--ink-3); }
+  .md p { margin: 0 0 6px; } .md ul { margin: 0 0 6px; padding-left: 18px; } .md h3, .md h4 { margin: 8px 0 4px; font-size: 14px; color: var(--ink); }
+  .files .f { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--rule); }
+  .preview iframe { width: 100%; height: 520px; border: 1px solid var(--rule); border-radius: var(--r-ctl); background: #fff; }
+  .preview img { max-width: 100%; border: 1px solid var(--rule); border-radius: var(--r-ctl); }
+  .preview pre { max-height: 520px; }
+  .empty { padding: 40px 20px; text-align: center; color: var(--ink-3); }
+  .tabs { flex-wrap: wrap; } .tabs button .n { font-size: 11px; color: var(--ink-3); margin-left: 4px; }
+  .approvals .a { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--rule); }
+</style>
+</head>
+<body data-product="{{PRODUCT}}" data-company="{{COMPANY}}">
+<div id="top"></div>
+<main class="app" id="app">
+  <aside class="panel list" aria-label="Runs">
+    <div class="head">
+      <div class="row"><h2 style="font-size:16px">Runs</h2><span class="muted xs right" id="count"></span></div>
+      <input type="text" id="q" placeholder="Find a run (goal, flow, id)" aria-label="Find a run">
+      <div class="seg" id="seg" role="group" aria-label="Show"></div>
+    </div>
+    <div class="items" id="items"><div class="empty small">Loading…</div></div>
+  </aside>
+  <section class="detail" id="detail" aria-live="polite"></section>
+</main>
+<script src="{{BASE}}/shop/static/shop.js"></script>
+<script>
+(function () {
+  const { h, $, $$, clear, toast, when, catColor, topbar, copy, BASE } = Shop;
+  $("#top").replaceWith(topbar("runs"));
+  // the operator token (designer, admin) or a customer key (my account): a customer sees its own runs only
+  const ADMIN_KEY = "cxnova.shop.admin";
+  const readKey = (k) => { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } };
+  const tok = () => readKey(ADMIN_KEY) || Shop.token();
+  const api = (path, opts) => Shop.api(path, Object.assign({ token: tok() }, opts || {}));
+  const W = 230, COL = 280, ROW = 78, PAD = 16;
+  const S = { runs: [], filter: "all", q: "", agents: {}, id: null, view: null, trace: [], sel: null, gtab: "flow", stab: null,
+              stepSig: "", preview: null, timer: null, listTimer: null };
+
+  // ---------------------------------------------------------------- formatting
+  function put(el, ...kids) { for (const c of kids.flat(Infinity)) { if (c === null || c === undefined || c === false) continue; el.append(c.nodeType ? c : document.createTextNode(String(c))); } return el; }
+  const LABEL = { awaiting_approval: "waiting for approval", completed_with_errors: "completed with errors", needs_approval: "action held",
+                  queued: "queued", running: "running", stalled: "stalled", completed: "completed", failed: "failed", pending: "waiting",
+                  ok: "ok", degraded: "degraded", error: "error", skipped: "skipped" };
+  const label = (s) => LABEL[s] || s || "";
+  function runClass(s) { return s === "completed" ? "good" : (s === "completed_with_errors" || s === "awaiting_approval") ? "warn" : (s === "failed" || s === "stalled") ? "bad" : (s === "running" || s === "queued") ? "live" : ""; }
+  function lampOf(s) { return s === "ok" || s === "completed" ? "good" : ["degraded", "needs_approval", "awaiting_approval", "completed_with_errors"].includes(s) ? "warn" : ["error", "failed", "stalled"].includes(s) ? "bad" : s === "running" || s === "queued" ? "run" : s === "skipped" ? "off" : ""; }
+  function dur(ms) { if (ms === null || ms === undefined || isNaN(ms)) return ""; if (ms < 1000) return Math.round(ms) + " ms"; const s = ms / 1000; if (s < 60) return s.toFixed(1) + " s"; const m = Math.floor(s / 60); return m + " min " + String(Math.round(s % 60)).padStart(2, "0") + " s"; }
+  function ago(iso) { const t = Date.parse(iso); if (isNaN(t)) return ""; const s = (Date.now() - t) / 1000; if (s < 45) return "just now"; if (s < 3600) return Math.round(s / 60) + " min ago"; if (s < 86400) return Math.round(s / 3600) + " h ago"; return when(iso); }
+  const ts = (iso) => { const t = Date.parse(iso); return isNaN(t) ? null : t; };
+  function agent(id) { return S.agents[id] || { id, name: (id || "").replace(/_/g, " "), category: "" }; }
+  function since(iso) { return h("span", { dataset: { since: iso } }, dur(Date.now() - ts(iso))); }
+  function md(text) {   // the run summary: escaped first, then bold, code, bullets and headings
+    const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const inline = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/`([^`]+)`/g, "<code>$1</code>");
+    let html = "", list = false;
+    for (const line of String(text || "").split("\n")) {
+      const b = /^\s*[-*]\s+(.*)$/.exec(line), hd = /^(#{1,4})\s+(.*)$/.exec(line);
+      if (b) { if (!list) { html += "<ul>"; list = true; } html += "<li>" + inline(b[1]) + "</li>"; continue; }
+      if (list) { html += "</ul>"; list = false; }
+      if (hd) html += "<h4>" + inline(hd[2]) + "</h4>"; else if (line.trim()) html += "<p>" + inline(line) + "</p>";
+    }
+    if (list) html += "</ul>";
+    return h("div", { class: "md small", html });
+  }
+
+  // ---------------------------------------------------------------- a small JSON viewer (children render when opened)
+  function jt(value, key, open) {   // open: how many levels start expanded (true = 1)
+    const depth = open === true ? 1 : Number(open) || 0;
+    const k = key === undefined ? null : h("span", { class: "k" }, key + ": ");
+    if (value === null || value === undefined) return h("span", { class: "row" }, k, h("span", { class: "z" }, "null"));
+    if (typeof value !== "object") {
+      const cls = typeof value === "string" ? "s" : typeof value === "number" ? "n" : "b";
+      let text = typeof value === "string" ? JSON.stringify(value) : String(value);
+      if (typeof value === "string" && text.length > 600) {
+        const short = text.slice(0, 600) + "…\"";
+        const span = h("span", { class: cls }, short);
+        return h("span", { class: "row" }, k, span, " ", h("button", { class: "btn sm ghost", type: "button", onclick: (e) => { span.textContent = text; e.target.remove(); } }, "show all"));
+      }
+      return h("span", { class: "row" }, k, h("span", { class: cls }, text));
+    }
+    const arr = Array.isArray(value), n = arr ? value.length : Object.keys(value).length;
+    const d = h("details", null, h("summary", null, k, h("span", { class: "c" }, arr ? "[" + n + " item" + (n === 1 ? "" : "s") + "]" : "{" + n + " field" + (n === 1 ? "" : "s") + "}")));
+    let done = false;
+    const fill = () => { if (done) return; done = true; for (const [ck, cv] of arr ? value.map((v, i) => [i, v]) : Object.entries(value)) d.append(jt(cv, ck, depth - 1)); };
+    d.addEventListener("toggle", () => { if (d.open) fill(); });
+    if (depth > 0 && n) { d.open = true; fill(); }
+    return d;
+  }
+  function valueView(v) {
+    if (v === undefined) return h("span", { class: "muted" }, "—");
+    if (v !== null && typeof v === "object") return h("div", { class: "jt" }, jt(v, undefined, false));
+    const s = String(v);
+    if (s.length <= 240) return h("div", { class: "val" }, s);
+    const el = h("div", { class: "val" }, s.slice(0, 240) + "…");
+    return h("div", null, el, h("button", { class: "btn sm ghost", type: "button", onclick: (e) => { el.textContent = s; e.target.remove(); } }, "show all"));
+  }
+
+  // ---------------------------------------------------------------- the list of runs
+  const FILTERS = [["all", "All"], ["live", "Live"], ["approval", "Needs approval"], ["done", "Completed"], ["bad", "Failed"]];
+  function matches(r) {
+    const f = S.filter, s = r.status;
+    if (f === "live" && !["running", "queued"].includes(s)) return false;
+    if (f === "approval" && s !== "awaiting_approval") return false;
+    if (f === "done" && !["completed", "completed_with_errors"].includes(s)) return false;
+    if (f === "bad" && !["failed", "stalled"].includes(s)) return false;
+    const q = S.q.toLowerCase();
+    return !q || [r.goal, r.label, r.run_id, r.customer_id].some(x => (x || "").toLowerCase().includes(q));
+  }
+  function renderSeg() {
+    put(clear($("#seg")), FILTERS.map(([id, text]) => h("button", { type: "button", "aria-pressed": String(S.filter === id), onclick: () => { S.filter = id; renderSeg(); renderList(); } }, text)));
+  }
+  function renderList() {
+    const rows = S.runs.filter(matches), box = clear($("#items"));
+    $("#count").textContent = S.runs.length ? rows.length + " of " + S.runs.length : "";
+    if (!S.runs.length) { box.append(h("div", { class: "empty small" }, "No runs yet. Runs from the API, MCP, A2A, the designer's Test run and the CLI appear here as they start.")); return; }
+    if (!rows.length) { box.append(h("div", { class: "empty small" }, "No run matches.")); return; }
+    for (const r of rows) {
+      const who = [r.label, r.surface === "check" ? "test" : r.surface, r.customer_id].filter(Boolean).join(" · ");
+      box.append(h("button", { class: "item", type: "button", "aria-current": String(r.run_id === S.id), onclick: () => open(r.run_id) },
+        h("span", { class: "lamp " + lampOf(r.status), title: label(r.status) }),
+        h("span", null, h("span", { class: "g" }, r.goal || r.run_id), h("span", { class: "m" }, label(r.status) + " · " + ago(r.created_at)), who ? h("span", { class: "m" }, who) : null)));
+    }
+  }
+  async function loadList() {
+    try { S.runs = await api("/runs?limit=200"); renderList(); }
+    catch (e) { if (e.status === 401 || e.status === 403) gate(e.message); else toast("Runs: " + e.message, 5000); }
+  }
+
+  // ---------------------------------------------------------------- one run
+  function open(id, keepStep) {
+    if (S.id !== id) { S.id = id; S.view = null; S.trace = []; S.sel = keepStep || null; S.stab = null; S.stepSig = ""; S.preview = null; S.opened = {}; }
+    history.replaceState(null, "", "#run=" + encodeURIComponent(id) + (S.sel ? "&step=" + encodeURIComponent(S.sel) : ""));
+    renderList();
+    clear($("#detail")).append(h("div", { class: "panel empty" }, "Loading the run…"));
+    refresh(true);
+  }
+  async function refresh(first) {
+    clearTimeout(S.timer);
+    const id = S.id;
+    if (!id) return;
+    try {
+      const v = await api("/runs/" + encodeURIComponent(id));
+      let tr = [];
+      try { tr = await api("/runs/" + encodeURIComponent(id) + "/trace?since=" + S.trace.length); } catch (e) { /* no trace yet */ }
+      if (id !== S.id) return;
+      S.view = v; S.trace = S.trace.concat(tr || []);
+      if (!S.sel || !v.steps.some(s => s.id === S.sel)) S.sel = pickStep(v);
+      render(first);
+      const row = S.runs.find(r => r.run_id === id);
+      if (row && row.status !== v.status) { row.status = v.status; renderList(); }
+    } catch (e) {
+      if (e.status === 401 || e.status === 403) return gate(e.message);
+      if (id === S.id) clear($("#detail")).append(h("div", { class: "panel notice bad" }, "Could not load the run: " + e.message));
+      return;
+    }
+    if (!S.view.settled && S.view.status !== "stalled") {
+      const again = () => { if (id !== S.id) return; if (document.hidden) { S.timer = setTimeout(again, 2000); return; } refresh(); };
+      S.timer = setTimeout(again, 2000);
+    }
+  }
+  function pickStep(v) {
+    const run = v.steps.find(s => s.status === "running"); if (run) return run.id;
+    const held = v.steps.find(s => s.status === "needs_approval"); if (held) return held.id;
+    const done = v.steps.filter(s => s.result); return (done.length ? done[done.length - 1] : v.steps[0] || {}).id || null;
+  }
+  function select(sid) { S.sel = sid; S.stab = null; S.stepSig = ""; S.preview = null; history.replaceState(null, "", "#run=" + encodeURIComponent(S.id) + "&step=" + encodeURIComponent(sid)); renderGraphArea(); renderStep(); const p = $("#steppanel"); if (p) p.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
+
+  function render(first) {
+    const box = $("#detail");
+    if (first || !$("#runhead")) {
+      clear(box).append(h("section", { class: "panel", id: "runhead" }), h("section", { class: "panel", id: "graphpanel" }), h("section", { class: "panel", id: "steppanel" }));
+    }
+    renderHead(); renderGraphArea(); renderStep();
+  }
+  function stats(v) {
+    let calls = 0, tin = 0, tout = 0, files = 0, fails = 0, done = 0;
+    for (const s of v.steps) { const r = s.result; if (!r) continue; done++; const m = r.metrics || {}; calls += m.llm_calls || 0; tin += m.input_tokens || 0; tout += m.output_tokens || 0; files += (r.artifacts || []).length; fails += (r.checks || []).filter(c => c.status === "fail").length; }
+    return { calls, tin, tout, files, fails, done };
+  }
+  function times(v) {   // run start and end, from the steps' timing (and the trace's first event)
+    let start = null, end = null;
+    for (const s of v.steps) { const t = (s.result || {}).timing || {}; const a = ts(t.started_at || s.started_at), b = ts(t.finished_at); if (a && (!start || a < start)) start = a; if (b && (!end || b > end)) end = b; }
+    const first = S.trace.length ? ts(S.trace[0].ts) : null; if (first && (!start || first < start)) start = first;
+    return { start, end };
+  }
+  function renderHead() {
+    const old = $("#runhead");
+    $$("details[data-k]", old).forEach(d => { S.opened = S.opened || {}; S.opened[d.dataset.k] = d.open; });
+    const isOpen = (k, dflt) => (S.opened && k in S.opened) ? S.opened[k] : dflt;
+    const v = S.view, p = clear(old), st = stats(v), t = times(v), live = !v.settled && v.status !== "stalled";
+    const row = S.runs.find(r => r.run_id === v.run_id) || {};
+    const took = t.start ? (live ? since(new Date(t.start).toISOString()) : dur(((t.end || Date.now()) - t.start))) : "";
+    put(p, h("div", { class: "row", style: "align-items:flex-start;gap:12px" },
+      h("div", { class: "grow runhead", style: "min-width:260px" },
+        h("div", { class: "row", style: "gap:6px;margin-bottom:6px" },
+          h("span", { class: "chip " + runClass(v.status) }, live ? h("span", { class: "lamp run" }) : null, label(v.status)),
+          row.label ? h("span", { class: "chip ai" }, row.label) : null,
+          v.route && v.route.method ? h("span", { class: "chip", title: v.route.reason || "" }, { explicit: "steps named by the caller", planner: "planned by the model", router: "picked by the router" }[v.route.method] || v.route.method) : null),
+        h("h1", null, v.goal || "(no goal)"),
+        h("div", { class: "meta", style: "margin-top:6px" },
+          h("span", null, "Run ", h("code", null, v.run_id), " ", h("button", { class: "btn sm ghost", type: "button", onclick: () => copy(v.run_id), title: "Copy the run id" }, "copy")),
+          t.start ? h("span", null, "started " + when(new Date(t.start).toISOString())) : null,
+          took ? h("span", null, live ? "running for " : "took ", took) : null,
+          row.customer_id ? h("span", null, "customer ", h("code", null, row.customer_id)) : null,
+          row.surface ? h("span", null, "via " + (row.surface === "check" ? "designer test" : row.surface)) : null)),
+      h("div", { class: "row" },
+        v.pending_approvals.length ? h("button", { class: "btn primary", type: "button", onclick: () => decide({ "*": "approve" }, "Approve all " + v.pending_approvals.length + " held action(s)?") }, "Approve all held") : null,
+        v.resumable && (v.status === "stalled" || v.status === "failed") ? h("button", { class: "btn primary", type: "button", onclick: cont }, "Continue the run") : null,
+        v.final && v.final.report ? h("button", { class: "btn", type: "button", onclick: () => download(v.final.report.replace(/^[^/]+\//, ""), "summary.md") }, "summary.md") : null,
+        h("button", { class: "btn ghost", type: "button", onclick: () => refresh(), title: "Refresh now" }, "Refresh"))),
+      h("div", { class: "stats", style: "margin-top:14px" },
+        h("div", { class: "stat" }, h("div", { class: "v" }, st.done + " / " + v.steps.length), h("div", { class: "l" }, "steps finished")),
+        h("div", { class: "stat" }, h("div", { class: "v" }, st.calls.toLocaleString()), h("div", { class: "l" }, "model calls")),
+        h("div", { class: "stat" }, h("div", { class: "v" }, (st.tin + st.tout).toLocaleString()), h("div", { class: "l" }, "tokens (" + st.tin.toLocaleString() + " in · " + st.tout.toLocaleString() + " out)")),
+        h("div", { class: "stat" }, h("div", { class: "v" }, st.files), h("div", { class: "l" }, "files produced")),
+        h("div", { class: "stat" }, h("div", { class: "v", style: st.fails ? "color:var(--shu)" : "" }, st.fails), h("div", { class: "l" }, "failed checks"))));
+    if (v.status === "stalled") put(p, h("div", { class: "notice bad", style: "margin-top:12px" }, "This run stopped mid-way (the service restarted). Continue it: the finished steps are not run again."));
+    if (v.error) put(p, h("div", { class: "notice bad", style: "margin-top:12px" }, v.error));
+    if (v.pending_approvals.length) put(p, h("div", { class: "notice warn approvals", style: "margin-top:12px" },
+      h("strong", null, v.pending_approvals.length + " action(s) waiting for a decision"), v.status === "running" ? h("span", { class: "small" }, " · decide now: the rest of the run goes on") : null,
+      v.pending_approvals.map(a => h("div", { class: "a" },
+        h("div", { class: "small" }, h("button", { class: "chip", type: "button", onclick: () => select(a.step), style: "cursor:pointer" }, a.step), " ", h("code", null, a.kind), " ", a.summary, a.mandatory ? h("span", { class: "chip bad", style: "margin-left:6px" }, "always needs a person") : null),
+        h("div", { class: "row" }, h("button", { class: "btn sm primary", type: "button", onclick: () => decide({ [a.key]: "approve" }) }, "Approve"), h("button", { class: "btn sm", type: "button", onclick: () => decide({ [a.key]: "reject" }) }, "Reject"))))));
+    const f = v.final;
+    if (f && (f.headline || f.summary_markdown)) put(p, h("details", { style: "margin-top:12px", open: isOpen("outcome", true), dataset: { k: "outcome" } }, h("summary", { class: "strong", style: "cursor:pointer" }, "Outcome: " + (f.headline || "")),
+      h("div", { style: "margin-top:8px" }, f.method === "model" ? md(f.summary_markdown) : null,
+        (f.next_steps || []).length ? h("div", null, h("h4", { style: "margin:8px 0 4px" }, "Next steps"), h("ul", { class: "small", style: "margin:0;padding-left:18px" }, f.next_steps.map(x => h("li", null, x)))) : null)));
+    put(p, h("details", { style: "margin-top:10px", open: isOpen("inputs", false), dataset: { k: "inputs" } }, h("summary", { class: "small muted", style: "cursor:pointer" }, "Run inputs" + (v.warnings && v.warnings.length ? " and " + v.warnings.length + " warning(s)" : "")),
+      h("div", { class: "kv", style: "margin-top:8px" }, h("dt", null, "Goal"), h("dd", null, v.goal || "—"), h("dt", null, "Shared inputs"), h("dd", null, v.inputs && Object.keys(v.inputs).length ? h("div", { class: "jt" }, jt(v.inputs, undefined, true)) : "none")),
+      v.warnings && v.warnings.length ? h("ul", { class: "small", style: "margin:8px 0 0;padding-left:18px" }, v.warnings.map(w => h("li", null, w))) : null));
+  }
+
+  // ---------------------------------------------------------------- flow graph, timeline, log
+  function renderGraphArea() {
+    const p = $("#graphpanel"); if (!p) return;
+    const prev = $(".graph", p) || $(".log", p), keep = prev ? { top: prev.scrollTop, left: prev.scrollLeft, bottom: prev.scrollHeight - prev.scrollTop - prev.clientHeight < 8 } : null;
+    clear(p).append(h("div", { class: "tabs", role: "tablist" }, [["flow", "Flow"], ["timeline", "Timeline"], ["log", "Live log"]].map(([id, text]) =>
+      h("button", { type: "button", role: "tab", "aria-selected": String(S.gtab === id), onclick: () => { S.gtab = id; renderGraphArea(); } }, text, id === "log" ? h("span", { class: "n" }, S.trace.length) : null))));
+    if (S.gtab === "flow") p.append(graph()); else if (S.gtab === "timeline") p.append(timeline()); else p.append(log(S.trace, null));
+    const now = $(".graph", p) || $(".log", p);
+    if (now && keep) { if (S.gtab === "log" && keep.bottom) now.scrollTop = now.scrollHeight; else { now.scrollTop = keep.top; now.scrollLeft = keep.left; } }
+    else if (now && S.gtab === "log") now.scrollTop = now.scrollHeight;
+  }
+  function levels(steps) {
+    const lv = {};
+    for (const s of steps) lv[s.id] = (s.needs || []).reduce((m, d) => Math.max(m, (lv[d] ?? -1) + 1), 0);
+    return lv;
+  }
+  function graph() {
+    const v = S.view, lv = levels(v.steps), rows = {}, at = {};
+    for (const s of v.steps) { const l = lv[s.id]; rows[l] = (rows[l] || 0); at[s.id] = { x: PAD + l * COL, y: PAD + rows[l] * ROW }; rows[l]++; }
+    const maxRow = Math.max(1, ...Object.values(rows)), cols = Math.max(1, ...Object.values(lv).map(x => x + 1));
+    const g = h("div", { class: "graph" }), inner = h("div", { style: `position:relative;width:${PAD * 2 + (cols - 1) * COL + W}px;height:${PAD * 2 + maxRow * ROW - 14}px` });
+    const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("width", "100%"); svg.setAttribute("height", "100%");
+    const H = 60;
+    for (const s of v.steps) for (const d of s.needs || []) {
+      if (!at[d]) continue;
+      const a = at[d], b = at[s.id], x1 = a.x + W, y1 = a.y + H / 2, x2 = b.x, y2 = b.y + H / 2, mx = (x1 + x2) / 2;
+      const path = document.createElementNS(NS, "path"), dep = v.steps.find(x => x.id === d);
+      path.setAttribute("d", `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2 - 2},${y2}`);
+      path.setAttribute("fill", "none"); path.setAttribute("stroke-width", "1.5");
+      path.setAttribute("stroke", dep && dep.result && ["ok", "degraded", "needs_approval"].includes(dep.result.status) ? "var(--matsu)" : "var(--rule-2)");
+      svg.append(path);
+    }
+    inner.append(svg);
+    for (const s of v.steps) {
+      const a = agent(s.agent), r = s.result, pos = at[s.id];
+      const t = (r || {}).timing || {}, ms = r && t.started_at && t.finished_at ? ts(t.finished_at) - ts(t.started_at) : (r && r.metrics ? r.metrics.duration_ms : null);
+      const sub = s.status === "running" ? h("span", null, s.id + " · ", since(s.started_at)) : s.id + " · " + (r ? label(r.status) + (ms ? " · " + dur(ms) : "") : label(s.status));
+      inner.append(h("button", { type: "button", class: "node " + s.status + (S.sel === s.id ? " sel" : ""), style: `left:${pos.x}px;top:${pos.y}px;height:${H}px`, onclick: () => select(s.id),
+        title: (a.name || s.agent) + (s.purpose ? ": " + s.purpose : "") },
+        h("span", { class: "bar", style: "background:" + catColor(a.category) }),
+        h("span", { class: "body" }, h("span", { class: "nm" }, h("span", { class: "t" }, a.name || s.agent), h("span", { class: "lamp " + lampOf(s.status), title: label(s.status) })),
+          h("span", { class: "sub", style: "display:block" }, sub),
+          s.activity ? h("span", { class: "act", style: "display:block" }, "▸ " + (s.activity.call || "") + " · " + (s.activity.model || "")) : null)));
+    }
+    g.append(inner);
+    return g;
+  }
+  function timeline() {
+    const v = S.view, now = Date.now(), spans = {};
+    let t0 = null, t1 = null;
+    for (const s of v.steps) {
+      const t = (s.result || {}).timing || {}, a = ts(t.started_at || s.started_at), b = ts(t.finished_at) || (s.status === "running" ? now : null);
+      if (a) { spans[s.id] = [a, b || a]; t0 = t0 === null ? a : Math.min(t0, a); t1 = t1 === null ? (b || a) : Math.max(t1, b || a); }
+    }
+    if (t0 === null) return h("div", { class: "empty small" }, "No step has started yet.");
+    const total = Math.max(1, t1 - t0);
+    const tl = h("div", { class: "tl" }, h("div", { class: "axis" }, h("span", null, "Step"), h("div", { class: "ticks" }, [0, .25, .5, .75, 1].map(f => h("span", null, dur(total * f) || "0 s"))), h("span", null, "Took")));
+    for (const s of v.steps) {
+      const sp = spans[s.id], a = agent(s.agent);
+      const bar = sp ? h("span", { class: "bar " + (s.status === "running" ? "run" : lampOf(s.status) === "warn" ? "warn" : lampOf(s.status) === "bad" ? "bad" : ""),
+        style: `left:${((sp[0] - t0) / total) * 100}%;width:${Math.max(0.4, ((sp[1] - sp[0]) / total) * 100)}%` }) : null;
+      tl.append(h("div", { class: "r" + (S.sel === s.id ? " sel" : ""), onclick: () => select(s.id), title: a.name },
+        h("span", { class: "lab" }, h("span", { class: "lamp " + lampOf(s.status), style: "margin-right:6px" }), s.id, h("span", { class: "muted" }, " · " + (a.name || s.agent))),
+        h("span", { class: "track" }, bar), h("span", { class: "muted", style: "text-align:right" }, sp ? (s.status === "running" ? since(s.started_at) : dur(sp[1] - sp[0])) : label(s.status))));
+    }
+    return h("div", null, tl, h("p", { class: "xs muted", style: "margin-top:8px" }, "Bars that overlap ran in parallel. A step starts when the steps it depends on have finished and a slot is free (orchestrator.max_parallel)."));
+  }
+  const QUIET = new Set(["span.start", "agent.start", "llm.call"]);
+  function describe(e) {
+    const k = e.kind;
+    if (k === "model.route") return ["model", "Model call " + (e.step || "") + " → " + (e.model || "") + (e.work ? " (" + e.work + (e.effort ? ", effort " + e.effort : "") + ")" : "")];
+    if (k === "model.done") return ["model", "Model answered " + (e.step || "") + " in " + dur(e.duration_ms) + (e.input_tokens || e.output_tokens ? " · " + (e.input_tokens || 0).toLocaleString() + " tokens in, " + (e.output_tokens || 0).toLocaleString() + " out" : "")];
+    if (k === "llm.structured_by_prompt" || k === "llm.structured_fallback") return ["", "Structured answer asked for in the prompt (" + (e.provider || "") + ")"];
+    if (k === "pack.home") return ["good", "Served by " + (e.home || "the home product") + (e.run ? " (run " + e.run + ")" : "")];
+    if (k === "span.end") return ["", "Stage " + (e.stage || e.name || "") + " done in " + dur(e.duration_ms)];
+    if (k === "span.error") return ["bad", "Stage " + (e.stage || e.name || "") + " failed: " + (e.error || "")];
+    if (k === "agent.end") return [e.status === "error" ? "bad" : "good", "Agent finished: " + label(e.status) + (e.duration_ms ? " in " + dur(e.duration_ms) : "") + (e.error ? " · " + e.error : "")];
+    if (k === "agent.log") return ["", e.message || ""];
+    if (k === "orchestrator.start") return ["", "Run started"];
+    if (k === "orchestrator.plan") return ["", "Plan: " + (e.steps || []).length + " step(s) via " + (e.method || e.mode || "")];
+    if (k === "orchestrator.step.start") return ["", "Step " + e.step + " started"];
+    if (k === "orchestrator.step.end") return [e.status === "error" ? "bad" : "good", "Step " + e.step + " " + label(e.status)];
+    if (k === "orchestrator.step.skipped") return ["bad", "Step " + e.step + " skipped: " + (e.reason || "")];
+    if (k === "orchestrator.decision") return ["", "Decision on " + e.key + ": " + e.decision + (e.by ? " by " + e.by : "")];
+    if (k === "orchestrator.end") return [e.status === "failed" ? "bad" : "good", "Run " + label(e.status) + (e.headline ? ": " + e.headline : "")];
+    if (k === "orchestrator.error") return ["bad", "Run error: " + (e.error || "")];
+    if (k === "action.done") return ["good", "Action executed: " + (e.action || "")];
+    if (k === "action.failed") return ["bad", "Action failed: " + (e.action || "") + " " + (e.error || "")];
+    if (k === "llm.throttled") return ["", "Waited " + dur(e.waited_ms) + " for a model slot"];
+    if (k === "llm.rate_limited") return ["bad", "Rate limited by the model provider; retry " + (e.retry || "")];
+    if (k === "shop.customer") return ["", "Customer " + e.customer + " on " + (e.provider || "")];
+    if (k.startsWith("shop.flow")) return ["", "Flow " + (e.flow || "") + " v" + (e.version || "")];
+    return ["", k.replace(/[._]/g, " ")];
+  }
+  function log(events, filter) {
+    const box = h("div", { class: "log" });
+    const t0 = S.trace.length ? ts(S.trace[0].ts) : null;
+    const rows = events.filter(e => !QUIET.has(e.kind) && (!filter || filter(e)));
+    if (!rows.length) return h("div", { class: "empty small" }, "Nothing recorded yet.");
+    for (const e of rows.slice(-1500)) {
+      const [cls, text] = describe(e), off = t0 && ts(e.ts) ? (ts(e.ts) - t0) / 1000 : 0;
+      const who = e.step && e.kind.startsWith("orchestrator") ? e.step : e.agent ? agent(e.agent).name : "run";
+      box.append(h("div", { class: "e " + cls }, h("span", { class: "t" }, "+" + Math.floor(off / 60) + ":" + String(Math.floor(off % 60)).padStart(2, "0")),
+        h("span", { class: "w", title: who }, who), h("span", { class: "d" }, text)));
+    }
+    return box;
+  }
+
+  // ---------------------------------------------------------------- one step: inputs, output, files, checks, model calls
+  function lookup(expr) {   // which source of a binding gave the value (mirrors caf.orchestrator.bindings)
+    const v = S.view, walk = (obj, parts) => { let cur = obj; for (const p of parts) { if (cur === null || cur === undefined) return undefined; cur = Array.isArray(cur) ? cur[Number(p)] : cur[p]; } return cur; };
+    const out = [];
+    for (const raw of expr.split("|")) {
+      const o = raw.trim(); let src = null, val;
+      if (o === "goal") { src = { kind: "goal" }; val = v.goal; }
+      else if (o.startsWith("input.")) { src = { kind: "input", name: o.slice(6) }; val = walk(v.inputs || {}, o.split(".").slice(1)); }
+      else if (o.startsWith("steps.")) { const p = o.split("."); const st = v.steps.find(s => s.id === p[1]); src = { kind: "step", step: p[1], path: p.slice(3).join(".") || p.slice(2).join(".") }; val = st && st.result ? walk(st.result, p.slice(2)) : undefined; }
+      else if (/^'.*'$/.test(o)) { src = { kind: "literal", text: o.slice(1, -1) }; val = o.slice(1, -1); }
+      if (src) out.push(Object.assign(src, { found: !(val === undefined || val === null || val === "" || (Array.isArray(val) && !val.length)) }));
+    }
+    let used = false;
+    for (const s of out) { if (!used && s.found) { s.used = true; used = true; } }
+    return out;
+  }
+  function sourcesOf(raw) {
+    if (raw === undefined) return null;
+    if (raw === "$goal") return [{ kind: "goal", used: true, found: true }];
+    if (raw && typeof raw === "object" && !Array.isArray(raw) && Object.keys(raw).length === 1 && raw.$ref) return lookup(String(raw.$ref));
+    if (typeof raw === "string") { const refs = [...raw.matchAll(/\$\{([^}]+)\}/g)]; if (refs.length) return refs.flatMap(m => lookup(m[1])); }
+    return [{ kind: "fixed", used: true, found: true }];
+  }
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  function srcChip(s) {
+    const cls = "chip" + (s.used ? " used" : "");
+    if (s.kind === "goal") return h("span", { class: cls }, "run goal");
+    if (s.kind === "input") return h("span", { class: cls }, "run input · " + s.name);
+    if (s.kind === "step") return h("button", { type: "button", class: cls, onclick: () => select(s.step), title: "Open step " + s.step }, "step " + s.step + (s.path ? " → " + s.path : ""));
+    if (s.kind === "literal") return h("span", { class: cls }, "fallback '" + s.text + "'");
+    if (s.kind === "fixed") return h("span", { class: cls }, "set in the flow");
+    return h("span", { class: cls }, s.text || s.kind);
+  }
+  function inferred(name, val) {
+    const v = S.view, inp = v.inputs || {};
+    if (val === undefined) return null;
+    if (v.goal && same(val, v.goal)) return [{ kind: "goal", used: true }, { kind: "note", text: "the agent's main input takes the goal" }];
+    if (name in inp && same(inp[name], val)) return [{ kind: "input", name, used: true }];
+    const url = inp.url || inp.page_url;
+    if (url && (same(val, url) || same(val, [url]))) return [{ kind: "input", name: inp.url ? "url" : "page_url", used: true }];
+    return [{ kind: "note", text: "filled by the orchestrator" }];
+  }
+  function inputsTab(s) {
+    const r = s.result, raw = s.inputs || {}, got = (r && r.step_inputs) || null;
+    const keys = [...new Set([...Object.keys(raw), ...Object.keys(got || {})])];
+    const out = h("div", { class: "stack" });
+    if (!got) out.append(h("div", { class: "notice" }, s.status === "skipped" ? "This step was skipped, so its inputs were never resolved." : "The values are resolved when the step starts. Below is what the flow sets."));
+    if (keys.length) {
+      out.append(h("div", { class: "tw" }, h("table", { class: "bind" }, h("thead", null, h("tr", null, h("th", null, "Field"), h("th", null, "Set in the flow"), got ? h("th", null, "Value the agent received") : null, h("th", null, "Came from"))),
+        h("tbody", null, keys.map(k => {
+          const has = Object.prototype.hasOwnProperty.call(raw, k), val = got ? got[k] : undefined;
+          const src = has ? sourcesOf(raw[k]) : inferred(k, val);
+          const missing = got && val === undefined;
+          return h("tr", null, h("td", null, h("code", null, k)),
+            h("td", null, has ? h("code", null, typeof raw[k] === "string" ? raw[k] : JSON.stringify(raw[k])) : h("span", { class: "muted small" }, "not set")),
+            got ? h("td", null, missing ? h("span", { class: "muted small" }, "nothing: the agent's own default applies") : valueView(val)) : null,
+            h("td", null, h("span", { class: "src" }, (src || []).map(x => x.kind === "note" ? h("span", { class: "muted xs" }, x.text) : srcChip(x)))));
+        })))));
+    } else out.append(h("p", { class: "muted small" }, "This step takes no inputs: the agent works from its defaults and the earlier steps."));
+    const up = (r && r.upstream) || [];
+    out.append(h("div", null, h("h4", { style: "margin:6px 0" }, "Earlier work this agent could read"),
+      up.length ? h("div", { class: "row", style: "gap:6px" }, up.slice().reverse().map(u => h("button", { type: "button", class: "chip" + (u.direct ? " ai" : ""), style: "cursor:pointer", onclick: () => select(u.step), title: "Open step " + u.step },
+        u.step + " · " + agent(u.agent_id).name + (u.direct ? " (depends on)" : "")))) :
+        h("p", { class: "muted small" }, r ? "None: nothing had finished when this step started." : (s.needs || []).length ? "It will read the output of " + s.needs.join(", ") + " and of every step finished before it." : "None: this step starts the flow."),
+      h("p", { class: "xs muted", style: "margin-top:6px" }, "Every finished step's output is context for the agents after it; the steps it depends on come last, as the most relevant. The bindings above are the values the flow passes explicitly.")));
+    return out;
+  }
+  function outputTab(s) {
+    const r = s.result;
+    if (!r) return h("div", { class: "empty small" }, s.status === "running" ? "The agent is working. Its output appears here when it finishes." : "This step has not run yet.");
+    const prov = r.provenance || {};
+    return h("div", { class: "stack" },
+      h("p", null, h("span", { class: "chip " + (lampOf(r.status) || "") }, label(r.status)), " ", r.summary || ""),
+      r.error ? h("div", { class: "notice bad" }, r.error) : null,
+      (prov.degraded_reasons || []).length ? h("div", { class: "notice warn small" }, h("strong", null, "Degraded: "), h("ul", { style: "margin:4px 0 0;padding-left:18px" }, prov.degraded_reasons.map(x => h("li", null, x)))) : null,
+      (r.warnings || []).length ? h("div", { class: "notice warn small" }, h("strong", null, "Warnings: "), h("ul", { style: "margin:4px 0 0;padding-left:18px" }, r.warnings.map(x => h("li", null, x)))) : null,
+      h("div", { class: "row" }, h("h4", null, "Output"), h("span", { class: "right row" },
+        h("button", { class: "btn sm", type: "button", onclick: () => copy(JSON.stringify(r.output, null, 2)) }, "Copy JSON"),
+        h("button", { class: "btn sm", type: "button", onclick: () => saveBlob(new Blob([JSON.stringify(r.output, null, 2)], { type: "application/json" }), s.id + "-output.json") }, "Download JSON"))),
+      r.output && Object.keys(r.output).length ? h("div", { class: "jt" }, jt(r.output, undefined, JSON.stringify(r.output).length < 30000 ? 3 : 1)) : h("p", { class: "muted small" }, "No output fields."));
+  }
+  function filesTab(s) {
+    const arts = (s.result && s.result.artifacts) || [];
+    if (!arts.length) return h("div", { class: "empty small" }, "This step produced no files.");
+    const box = h("div", { class: "stack" }, h("div", { class: "files" }, arts.map(a => {
+      const rel = String(a.path || "").replace(/^[^/]+\//, ""), name = rel.split("/").pop();
+      return h("div", { class: "f" }, h("div", null, h("div", { class: "strong small" }, name), h("div", { class: "xs muted" }, [a.description, a.mime, a.size ? Math.round(a.size / 102.4) / 10 + " KB" : ""].filter(Boolean).join(" · "))),
+        h("div", { class: "row" }, h("button", { class: "btn sm", type: "button", onclick: () => preview(rel, a.mime, name) }, "Preview"), h("button", { class: "btn sm", type: "button", onclick: () => download(rel, name) }, "Download")));
+    })), h("div", { class: "preview", id: "preview" }));
+    return box;
+  }
+  function checksTab(s) {
+    const cs = (s.result && s.result.checks) || [];
+    if (!cs.length) return h("div", { class: "empty small" }, "No checks recorded for this step.");
+    const order = { fail: 0, warn: 1, info: 2, pass: 3 };
+    return h("div", { class: "tw" }, h("table", null, h("thead", null, h("tr", null, h("th", null, "Result"), h("th", null, "Rule"), h("th", null, "Finding"), h("th", null, "Where"))),
+      h("tbody", null, cs.slice().sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9)).map(c => h("tr", null,
+        h("td", null, h("span", { class: "chip " + (c.status === "pass" ? "good" : c.status === "fail" ? "bad" : c.status === "warn" ? "warn" : "") }, c.status), c.severity && c.status !== "pass" ? h("div", { class: "xs muted" }, c.severity) : null),
+        h("td", null, h("code", null, c.rule), c.ref ? h("div", { class: "xs muted" }, c.ref) : null), h("td", { class: "small" }, c.message), h("td", { class: "xs muted" }, c.target || ""))))));
+  }
+  function modelTab(s) {
+    const r = s.result;
+    if (!r) return h("div", { class: "empty small" }, s.activity ? "Now: " + s.activity.call + " on " + s.activity.model + (s.activity.work ? " (" + s.activity.work + ")" : "") : "This step has not run yet.");
+    const m = r.metrics || {}, p = r.provenance || {}, routes = p.model_routes || [];
+    return h("div", { class: "stack" },
+      h("div", { class: "stats" }, h("div", { class: "stat" }, h("div", { class: "v" }, m.llm_calls || 0), h("div", { class: "l" }, "model calls")),
+        h("div", { class: "stat" }, h("div", { class: "v" }, (m.input_tokens || 0).toLocaleString()), h("div", { class: "l" }, "tokens in")),
+        h("div", { class: "stat" }, h("div", { class: "v" }, (m.output_tokens || 0).toLocaleString()), h("div", { class: "l" }, "tokens out")),
+        h("div", { class: "stat" }, h("div", { class: "v" }, dur(m.duration_ms)), h("div", { class: "l" }, "agent time"))),
+      routes.length ? h("div", { class: "tw" }, h("table", null, h("thead", null, h("tr", null, h("th", null, "Call"), h("th", null, "Kind of work"), h("th", null, "Model"), h("th", null, "Why"))),
+        h("tbody", null, routes.map(x => h("tr", null, h("td", null, h("code", null, x.step)), h("td", { class: "small" }, (x.work || "") + (x.effort ? " · effort " + x.effort : "")),
+          h("td", { class: "small" }, h("code", null, x.model || x.tier), h("div", { class: "xs muted" }, "tier " + x.tier)), h("td", { class: "xs muted" }, x.why || "")))))) :
+        h("p", { class: "muted small" }, p.runner ? "Served by the " + p.runner + " runner" + (p.pack ? " of the " + p.pack + " pack" : "") + "." : "No model calls: this agent's work is code."),
+      h("div", { class: "kv" }, h("dt", null, "Provider"), h("dd", null, (p.llm && p.llm.provider) || "—"),
+        h("dt", null, "Connectors used"), h("dd", null, (p.connectors || []).length ? h("span", { class: "row", style: "gap:4px" }, p.connectors.map(c => h("span", { class: "chip" }, c))) : "none"),
+        p.runner ? h("dt", null, "Runner") : null, p.runner ? h("dd", null, p.runner + (p.action ? " · action " + p.action : "")) : null));
+  }
+  function actionsTab(s) {
+    const acts = (s.result && s.result.pending_actions) || [], v = S.view, open = !["completed", "completed_with_errors", "failed"].includes(v.status);
+    if (!acts.length) return h("div", { class: "empty small" }, "This step proposed no actions.");
+    return h("div", { class: "tw" }, h("table", null, h("thead", null, h("tr", null, h("th", null, "Action"), h("th", null, "What it does"), h("th", null, "Status"), h("th", null, ""))),
+      h("tbody", null, acts.map(a => h("tr", null, h("td", null, h("code", null, a.kind), a.mandatory ? h("div", { class: "xs", style: "color:var(--shu)" }, "always needs a person") : null),
+        h("td", { class: "small" }, a.summary, a.result && Object.keys(a.result).length ? h("div", { class: "jt", style: "margin-top:4px" }, jt(a.result, "result", false)) : null),
+        h("td", null, h("span", { class: "chip " + (a.status === "done" ? "good" : a.status === "pending" ? "warn" : a.status === "failed" ? "bad" : "") }, a.status)),
+        h("td", null, a.status === "pending" && open ? h("div", { class: "row" }, h("button", { class: "btn sm primary", type: "button", onclick: () => decide({ [s.id + "/" + a.id]: "approve" }) }, "Approve"),
+          h("button", { class: "btn sm", type: "button", onclick: () => decide({ [s.id + "/" + a.id]: "reject" }) }, "Reject")) : null))))));
+  }
+  function activityTab(s) {
+    const t = (s.result || {}).timing || {}, a = ts(t.started_at || s.started_at), b = ts(t.finished_at) || Infinity;
+    if (!a) return h("div", { class: "empty small" }, "Nothing recorded yet.");
+    return log(S.trace, e => e.step === s.id || (e.agent === s.agent && ts(e.ts) >= a - 5 && ts(e.ts) <= b + 5));
+  }
+  function stepSig(s) { return JSON.stringify([s, S.trace.length && S.stab === "activity" ? S.trace.length : 0]); }
+  function renderStep() {
+    const p = $("#steppanel"); if (!p) return;
+    const s = S.view.steps.find(x => x.id === S.sel);
+    if (!s) { clear(p).append(h("div", { class: "empty small" }, "Select a step in the flow to see what it was given and what it produced.")); return; }
+    const sig = stepSig(s) + "|" + S.stab;
+    if (sig === S.stepSig) { $$("[data-since]", p).forEach(el => el.textContent = dur(Date.now() - ts(el.dataset.since))); return; }
+    S.stepSig = sig;
+    const r = s.result, a = agent(s.agent), t = (r || {}).timing || {};
+    const ms = r && t.started_at && t.finished_at ? ts(t.finished_at) - ts(t.started_at) : null;
+    const counts = { files: ((r && r.artifacts) || []).length, checks: ((r && r.checks) || []).length, model: ((r && r.provenance && r.provenance.model_routes) || []).length, actions: ((r && r.pending_actions) || []).length };
+    const tabs = [["inputs", "Inputs"], ["output", "Output"], ["files", "Files", counts.files], ["checks", "Checks", counts.checks], ["model", "Model calls", counts.model]]
+      .concat(counts.actions ? [["actions", "Actions", counts.actions]] : []).concat([["activity", "Activity"]]);
+    if (!S.stab) S.stab = r ? (s.status === "needs_approval" && counts.actions ? "actions" : "output") : "inputs";
+    const body = { inputs: inputsTab, output: outputTab, files: filesTab, checks: checksTab, model: modelTab, actions: actionsTab, activity: activityTab }[S.stab] || inputsTab;
+    put(clear(p), h("div", { class: "stephead" }, h("span", { class: "bar", style: "background:" + catColor(a.category) }),
+      h("div", null, h("div", { class: "row", style: "gap:8px" }, h("h2", null, a.name || s.agent), h("code", { class: "small" }, s.id), h("span", { class: "chip " + (runClass(s.status) || lampOf(s.status)) }, s.status === "running" ? h("span", { class: "lamp run" }) : null, label(s.status)),
+          ms !== null ? h("span", { class: "muted small" }, "took " + dur(ms)) : s.status === "running" ? h("span", { class: "muted small" }, "running for ", since(s.started_at)) : null,
+          S.agents[s.agent] ? h("a", { class: "small right", href: BASE + "/shop/agents/" + s.agent, target: "_blank", rel: "noopener" }, "Agent details") : null),
+        s.purpose ? h("p", { class: "small muted", style: "margin-top:4px" }, s.purpose) : null,
+        (s.needs || []).length ? h("p", { class: "xs muted", style: "margin-top:4px" }, "Runs after: ", s.needs.map((d, i) => [i ? ", " : "", h("a", { href: "#", onclick: (e) => { e.preventDefault(); select(d); } }, d)])) : null,
+        s.activity && s.status === "running" ? h("p", { class: "small", style: "margin-top:4px;color:var(--ai)" }, "Now: " + (s.activity.call || "") + " on " + (s.activity.model || "") + (s.activity.work ? " (" + s.activity.work + ")" : "")) : null)),
+      h("div", { class: "tabs", role: "tablist", style: "margin-top:12px" }, tabs.map(([id, text, n]) => h("button", { type: "button", role: "tab", "aria-selected": String(S.stab === id), onclick: () => { S.stab = id; S.stepSig = ""; renderStep(); } }, text, n ? h("span", { class: "n" }, n) : null))),
+      body(s));
+  }
+
+  // ---------------------------------------------------------------- files, decisions
+  function saveBlob(blob, name) { const u = URL.createObjectURL(blob); const a = h("a", { href: u, download: name }); document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); }
+  async function fetchFile(rel) {
+    const headers = {}; const t = tok(); if (t) headers.Authorization = "Bearer " + t;
+    const res = await fetch(BASE + "/runs/" + encodeURIComponent(S.id) + "/artifacts/" + rel.split("/").map(encodeURIComponent).join("/"), { headers });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.blob();
+  }
+  async function download(rel, name) { try { saveBlob(await fetchFile(rel), name || rel.split("/").pop()); } catch (e) { toast("Download failed: " + e.message, 5000); } }
+  async function preview(rel, mime, name) {
+    const box = $("#preview"); if (!box) return;
+    clear(box).append(h("p", { class: "muted small" }, "Loading " + name + "…"));
+    try {
+      const blob = await fetchFile(rel), type = mime || blob.type || "";
+      clear(box).append(h("div", { class: "row", style: "margin:6px 0" }, h("strong", { class: "small" }, name), h("button", { class: "btn sm ghost right", type: "button", onclick: () => clear(box) }, "Close preview")));
+      if (/html/.test(type) || /\.html?$/.test(name)) {   // shown without scripts
+        const f = h("iframe", { sandbox: "", title: name, referrerpolicy: "no-referrer" }); f.srcdoc = await blob.text(); box.append(f);
+      } else if (/^image\//.test(type)) { const u = URL.createObjectURL(blob); box.append(h("img", { src: u, alt: name })); }
+      else if (/json/.test(type) || /\.json$/.test(name)) { const txt = await blob.text(); try { box.append(h("div", { class: "jt" }, jt(JSON.parse(txt), undefined, true))); } catch (e) { box.append(h("pre", null, txt.slice(0, 200000))); } }
+      else if (/^text\/|xml|csv|markdown|mjml/.test(type) || /\.(md|txt|csv|tmx|xml|mjml|vtt|srt|sql|yaml|yml|js|css)$/.test(name)) box.append(h("pre", null, (await blob.text()).slice(0, 200000)));
+      else box.append(h("p", { class: "muted small" }, "No preview for this kind of file: download it instead."));
+    } catch (e) { clear(box).append(h("div", { class: "notice bad" }, "Could not open the file: " + e.message)); }
+  }
+  async function decide(decisions, confirmText) {
+    if (confirmText && !window.confirm(confirmText)) return;
+    try {
+      const v = await api("/runs/" + encodeURIComponent(S.id) + "/approvals", { method: "POST", body: { decisions, wait_s: 2 } });
+      toast(Object.values(decisions).every(d => d === "reject") ? "Rejected" : "Approved"); S.view = v; S.stepSig = ""; render(); refresh();
+    } catch (e) { toast("Could not decide: " + e.message, 6000); }
+  }
+  async function cont() {
+    try { const v = await api("/runs/" + encodeURIComponent(S.id) + "/continue", { method: "POST", body: { wait_s: 1 } }); toast("Continuing the run"); S.view = v; S.stepSig = ""; render(); refresh(); loadList(); }
+    catch (e) { toast("Could not continue: " + e.message, 6000); }
+  }
+
+  // ---------------------------------------------------------------- access
+  function gate(message) {
+    clearTimeout(S.timer); clearInterval(S.listTimer);
+    clear($("#app")).append(h("section", { class: "panel gate stack", style: "grid-column:1/-1" },
+      h("h1", { style: "font-size:20px" }, "Runs"),
+      h("p", { class: "muted small" }, "Paste the operator token (every run) or your customer key (your runs). It stays in this browser only."),
+      message ? h("div", { class: "notice warn" }, message) : null,
+      h("form", { class: "stack", onsubmit: (e) => { e.preventDefault(); const v = $("#key").value.trim(); if (!v) return; if (v.startsWith("cxn_")) Shop.setToken(v); else { try { localStorage.setItem(ADMIN_KEY, v); } catch (err) { /* private window */ } } location.reload(); } },
+        h("label", { class: "f" }, "Token or key", h("input", { type: "password", id: "key", autocomplete: "off", required: true })),
+        h("div", { class: "row" }, h("button", { class: "btn primary", type: "submit" }, "Show runs")))));
+  }
+  async function start() {
+    renderSeg();
+    $("#q").addEventListener("input", (e) => { S.q = e.target.value; renderList(); });
+    try { (await api("/agents")).forEach(a => { S.agents[a.id] = a; }); } catch (e) { if (e.status === 401 || e.status === 403) return gate(e.message); }
+    await loadList();
+    const m = /[#&]run=([^&]+)/.exec(location.hash), st = /[#&]step=([^&]+)/.exec(location.hash);
+    if (m) open(decodeURIComponent(m[1]), st ? decodeURIComponent(st[1]) : null);
+    else if (S.runs.length) open(S.runs[0].run_id);
+    else clear($("#detail")).append(h("div", { class: "panel empty" }, "No runs yet. Start one from the designer (Test run), the console, the API, MCP or A2A, and follow it here live."));
+    S.listTimer = setInterval(() => { if (!document.hidden) loadList(); }, 5000);
+    setInterval(() => { $$("[data-since]").forEach(el => { const t = ts(el.dataset.since); if (t) el.textContent = dur(Date.now() - t); }); }, 1000);
+    window.addEventListener("hashchange", () => { const r = /[#&]run=([^&]+)/.exec(location.hash); if (r && decodeURIComponent(r[1]) !== S.id) open(decodeURIComponent(r[1])); });
+  }
+  start();
+})();
+</script>
+</body>
+</html>

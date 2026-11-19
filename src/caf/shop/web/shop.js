@@ -79,7 +79,7 @@
   function topbar(current) {
     const product = document.body.dataset.product || "CX Nova Agent Orchestration Layer";
     const company = document.body.dataset.company || "Coforge";
-    const links = [["shop", "Agents", BASE + "/shop"], ["designer", "Designer", BASE + "/shop/designer"], ["console", "Console", BASE + "/console"],
+    const links = [["shop", "Agents", BASE + "/shop"], ["designer", "Designer", BASE + "/shop/designer"], ["runs", "Runs", BASE + "/shop/runs"], ["console", "Console", BASE + "/console"],
       ["account", "My account", BASE + "/shop/account"], ["admin", "Admin", BASE + "/shop/admin"], ["docs", "API", BASE + "/docs"]];
     return h("header", { class: "topbar" }, h("div", { class: "inner" },
       h("a", { class: "brand", href: BASE + "/shop" }, mark(), h("div", null, h("div", { class: "name" }, product), h("div", { class: "by" }, "by " + company))),

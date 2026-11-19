@@ -242,7 +242,12 @@ def run_model(pack: Pack, agent: PackAgent, action: PackAction, inputs: dict[str
     ctx.meter.route(decision.as_dict(model))
     ctx.tracer.event("model.route", agent=agent.id, step=action.id, work=decision.work, tier=decision.tier, model=model,
                      effort=decision.effort, why="; ".join(decision.reasons))
+    import time as _time
+
+    t0, tokens0 = _time.perf_counter(), (ctx.meter.input_tokens, ctx.meter.output_tokens)
     text = ctx.llm.complete(user, system=system, tier=decision.tier, meter=ctx.meter)
+    ctx.tracer.event("model.done", agent=agent.id, step=action.id, model=model, duration_ms=round((_time.perf_counter() - t0) * 1000, 1),
+                     input_tokens=ctx.meter.input_tokens - tokens0[0], output_tokens=ctx.meter.output_tokens - tokens0[1])
     try:
         data = _extract_json(text)
     except Exception:

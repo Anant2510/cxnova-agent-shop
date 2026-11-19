@@ -134,7 +134,9 @@ class Orchestrator:
                    "allowed_agents": ctx.options.get("allowed_agents")}
         state = {"goal": goal, "inputs": dict(inputs or {}), "request": request, "results": {}, "warnings": [], "events": [],
                  "started": time.time()}
-        self.store.record(ctx.run_id, "queued", customer_id=ctx.options.get("customer_id"), surface=ctx.options.get("surface"))
+        label = ctx.options.get("flow_id") or playbook or agent or ("custom plan" if plan else "planned from the goal")
+        self.store.record(ctx.run_id, "queued", customer_id=ctx.options.get("customer_id"), surface=ctx.options.get("surface"),
+                          goal=goal, label=label)
         ctx.tracer.event("orchestrator.start", goal=goal, request={k: v for k, v in request.items() if k not in ("plan", "allowed_agents")})
         return self._launch(ctx, state, wait, on_settled)
 
@@ -176,12 +178,20 @@ class Orchestrator:
             status = "stalled"
         decided = self.store.decisions(run_id)
         results = values.get("results") or {}
+        live = (entry or {}).get("live") or {}
+        live_steps, activity = dict(live.get("steps") or {}), dict(live.get("activity") or {})
         steps = []
         for step in values.get("plan", []):
             r = results.get(step["id"])
             if r and decided:
                 r = self._overlay(step["id"], r, decided)
-            steps.append({**step, "status": (r or {}).get("status", "pending"), "result": r})
+            item = {**step, "status": (r or {}).get("status", "pending"), "result": r}
+            if r is None and step["id"] in live_steps:  # executing right now, in this process
+                item["status"] = "running"
+                item["started_at"] = live_steps[step["id"]].get("started_at")
+                if activity.get(step["agent"]):
+                    item["activity"] = activity[step["agent"]]
+            steps.append(item)
         if interrupts:
             pending = [{**p, "early": False} for p in interrupts[0]["pending"] if p["key"] not in decided]
         elif status in ("running", "queued", "stalled"):
@@ -199,13 +209,22 @@ class Orchestrator:
 
     def resume(self, run_id: str, decisions: dict[str, str], *, ctx: RunContext | None = None, wait: float | None = None,
                on_settled: Callable[[dict[str, Any]], None] | None = None, actor: str = "") -> dict[str, Any]:
-        """Decide held actions. A run waiting at the approval gate resumes with the decisions; a run still going gets
-        them straight away (approved actions execute now, see ``decide``)."""
+        """Decide held actions. A run still going gets them straight away (approved actions execute now, see ``decide``).
+        At the approval gate, decisions that cover every held action (or '*') resume the run; decisions on some of them
+        are taken at once and the run keeps waiting for the rest. An action is never rejected because it was left out."""
         view = self.view(run_id)  # KeyError for unknown or malformed run ids (never creates a run folder)
         if view["status"] in ("queued", "running", "stalled"):
             return self.decide(run_id, decisions, ctx=ctx, actor=actor)
         if view["status"] != "awaiting_approval":
             raise RunStateError(f"Run is '{view['status']}', not awaiting approval")
+        held = view["pending_approvals"]
+        named = lambda p: p["key"] in decisions or (p.get("id") or p["key"].split("/", 1)[-1]) in decisions  # noqa: E731
+        if "*" not in decisions and not all(named(p) for p in held):
+            # some of the held actions decided: those are taken now, the others stay held (never rejected by omission)
+            view = self.decide(run_id, decisions, ctx=ctx, actor=actor)
+            if view["pending_approvals"]:
+                return view
+            decisions = {}  # all decided now: the gate finishes the run from the ledger
         ctx = self._ctx_for(run_id, ctx)
         self.store.record(run_id, "queued")
         return self._launch(ctx, Command(resume={"decisions": decisions, "by": actor}), wait, on_settled)
@@ -230,11 +249,12 @@ class Orchestrator:
                 key = p["key"]
                 if key in recorded:
                     continue
-                decision = decisions.get(key) or decisions.get(p.get("id", "")) or decisions.get("*")
+                aid = p.get("id") or key.split("/", 1)[-1]
+                decision = decisions.get(key) or decisions.get(aid) or decisions.get("*")
                 if not decision:
                     continue
                 action = next((a for a in ((by_key.get(p["step"]) or {}).get("result") or {}).get("pending_actions", [])
-                               if a.get("id") == p.get("id")), None)
+                               if a.get("id") == aid), None)
                 if action is None:
                     continue
                 approve = _is_approve(decision)
@@ -267,6 +287,33 @@ class Orchestrator:
         with self._lock:
             return list(self._active)
 
+    def list_runs(self, *, limit: int = 50, customer_id: str | None = None, status: str | None = None) -> list[dict[str, Any]]:
+        """The newest runs first, with the same status a view would give (without loading any run's state)."""
+        rows = self.store.list(limit=limit if not status else max(limit, 500), customer_id=customer_id)
+        with self._lock:
+            active = {rid: e["state"] for rid, e in self._active.items()}
+        out = []
+        for r in rows:
+            st = r.get("status") or ""
+            if r["run_id"] in active:
+                st = "running" if active[r["run_id"]] == "running" else "queued"
+            elif st in OPEN and age_s(r.get("updated_at")) >= self.stall_after_s:
+                st = "stalled"
+            if not r.get("goal"):  # runs indexed before goals were: read it once from the run itself
+                try:
+                    r["goal"] = self.view(r["run_id"]).get("goal") or ""
+                    self.store.set_meta(r["run_id"], goal=r["goal"])
+                except KeyError:
+                    pass
+            if status and st != status:
+                continue
+            out.append({"run_id": r["run_id"], "status": st, "goal": r.get("goal") or "", "label": r.get("label") or "",
+                        "created_at": r.get("created_at"), "updated_at": r.get("updated_at"), "customer_id": r.get("customer_id") or "",
+                        "surface": r.get("surface") or "", "error": r.get("error") or ""})
+            if len(out) >= limit:
+                break
+        return out
+
     def prune(self, keep_days: float | None = None) -> int:
         """Delete settled runs older than orchestrator.keep_runs_days from the store (their files under runs/ stay)."""
         days = float(keep_days if keep_days is not None else (self.settings.orchestrator or {}).get("keep_runs_days") or 30)
@@ -293,10 +340,23 @@ class Orchestrator:
         run_id = ctx.run_id
         ctx.approvals = RunApprovals(self.store, run_id)
         goal = payload.get("goal") if isinstance(payload, dict) else None
+        live: dict[str, dict[str, Any]] = {"steps": {}, "activity": {}}
+
+        def watch(evt: dict[str, Any]) -> None:  # which steps are executing, and which model call each is on
+            kind = evt.get("kind")
+            if kind == "orchestrator.step.start":
+                live["steps"][evt.get("step")] = {"started_at": evt.get("ts"), "agent": evt.get("agent")}
+            elif kind == "orchestrator.step.end":
+                live["steps"].pop(evt.get("step"), None)
+            elif kind == "model.route" and evt.get("agent"):
+                live["activity"][evt["agent"]] = {"call": evt.get("step"), "model": evt.get("model"), "work": evt.get("work"),
+                                                  "at": evt.get("ts")}
+
+        ctx.tracer.subscribe(watch)
         with self._lock:
             if run_id in self._active:
                 raise RunStateError(f"Run '{run_id}' is already in progress")
-            self._active[run_id] = {"ctx": ctx, "state": "queued", "goal": goal, "future": None}
+            self._active[run_id] = {"ctx": ctx, "state": "queued", "goal": goal, "future": None, "live": live}
         self._start_heartbeat()
         if wait is None:
             self._execute(run_id, payload, on_settled)

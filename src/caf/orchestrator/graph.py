@@ -22,6 +22,7 @@ import sys
 import threading
 import time
 from contextlib import nullcontext
+from datetime import datetime, timezone
 from typing import Annotated, Any, Literal, TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -58,6 +59,10 @@ class RunSynthesis(BaseModel):
     headline: str = Field(description="one-line outcome of the run")
     summary_markdown: str = Field(description="5-10 lines: what each agent produced and what needs attention")
     next_steps: list[str] = Field(default_factory=list, max_length=6)
+
+
+def _iso() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
 
 
 def _evt(kind: str, **data: Any) -> dict[str, Any]:
@@ -177,9 +182,13 @@ def run_step(payload: dict[str, Any], runtime: Runtime[RunContext]) -> dict[str,
     with _slots(ctx.run_id, max_parallel):
         ctx.tracer.event("orchestrator.step.start", step=step["id"], agent=agent.spec.id)
         t0 = time.perf_counter()
+        started_at = _iso()
         result = agent.run(step_inputs, ctx, upstream=upstream, options={"auto_approve": auto, "step_id": step["id"]})
     data = result.model_dump(mode="json")
     data["step_inputs"] = step_inputs
+    # what a run viewer shows: when the step ran, and which earlier steps' work it could read (its dependencies last)
+    data["timing"] = {"started_at": started_at, "finished_at": _iso()}
+    data["upstream"] = [{"step": sid, "agent_id": u.get("agent_id"), "direct": sid in deps} for sid, u in upstream.items()]
     ctx.tracer.event("orchestrator.step.end", step=step["id"], agent=agent.spec.id, status=result.status)
     _progress(f"  [{result.status}] step {step['id']} ({agent.spec.id}) finished in {time.perf_counter() - t0:.1f}s")
     return {"results": {step["id"]: data},
