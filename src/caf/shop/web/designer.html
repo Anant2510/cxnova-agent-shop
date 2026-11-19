@@ -40,6 +40,8 @@
   .pal-item .nm { font-size: 13px; line-height: 1.25; }
   .pal-item .sub { font-size: 11px; color: var(--ink-3); display: block; }
   .pal-item .plus { color: var(--ai); font-weight: 600; opacity: 0; }
+  .pal-item .tag { font: 600 9.5px/1 var(--mono); letter-spacing: .06em; color: var(--ai); border: 1px solid var(--ai-soft); background: var(--ai-soft); padding: 3px 5px; border-radius: 4px; }
+  .pack > summary .dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; flex: none; }
   .pal-item:hover .plus, .pal-item:focus-visible .plus { opacity: 1; }
 
   /* canvas */
@@ -253,20 +255,23 @@
   function renderPalette() {
     const q = S.q.toLowerCase();
     const match = (a) => !q || (a.name + " " + a.summary + " " + a.id + " " + (a.accelerator || "") + " " + a.category_label).toLowerCase().includes(q);
-    const packs = [{ id: "blueprint", name: "Marketing blueprint" }, ...S.packs];
+    // every agent under the kind of work it does (the blueprint's and the packs' side by side); pack agents carry the product's tag
+    const packOf = (a) => S.packs.find(p => p.id === a.pack);
+    const tagOf = (a) => { const p = packOf(a); return p ? (p.tag || p.name.split(/\s+/).map(w => w[0]).join("").toUpperCase().slice(0, 4)) : ""; };
     const root = clear($("#palette"));
     root.append(h("div", { class: "pal-search" }, h("input", { type: "text", placeholder: "Find an agent", value: S.q, "aria-label": "Find an agent", oninput: (e) => { S.q = e.target.value; renderPalette(); const i = $(".pal-search input"); i.focus(); i.setSelectionRange(i.value.length, i.value.length); } })));
-    packs.forEach((p, pi) => {
-      const mine = S.agents.filter(a => (a.pack || "blueprint") === p.id && match(a));
-      if (!mine.length) return;
-      const groups = new Map();
-      mine.forEach(a => { const g = p.id === "blueprint" ? a.category_label : (a.accelerator || a.category_label); if (!groups.has(g)) groups.set(g, []); groups.get(g).push(a); });
-      const det = h("details", { class: "pack", open: !!q || pi === 0 }, h("summary", null, p.name, h("span", { class: "n" }, mine.length + " agents")));
-      groups.forEach((rows, g) => { det.append(h("div", { class: "group-name" }, g));
-        rows.forEach(a => det.append(h("button", { class: "pal-item", type: "button", draggable: "true", title: a.summary, disabled: S.readOnly,
+    const cats = new Map();   // in catalog order: the blueprint's categories first, then the ones only packs add
+    S.agents.forEach(a => { if (!cats.has(a.category)) cats.set(a.category, { label: a.category_label, rows: [] }); if (match(a)) cats.get(a.category).rows.push(a); });
+    let i = 0;
+    cats.forEach((c, cid) => {
+      if (!c.rows.length) return;
+      const det = h("details", { class: "pack", open: !!q || i++ < 2 }, h("summary", null, h("span", { class: "dot", style: "background:" + catColor(cid) }), c.label, h("span", { class: "n" }, c.rows.length + " agents")));
+      c.rows.forEach(a => { const p = packOf(a);
+        det.append(h("button", { class: "pal-item", type: "button", draggable: "true", title: a.summary + (p ? " (" + p.name + (a.accelerator ? " · " + a.accelerator : "") + ")" : ""), disabled: S.readOnly,
           ondragstart: (e) => { e.dataTransfer.setData("text/agent", a.id); e.dataTransfer.effectAllowed = "copy"; },
           onclick: () => addStep(a.id) },
-          h("span", { class: "bar", style: "background:" + catColor(a.category) }), h("span", { class: "nm" }, a.name, p.id === "blueprint" ? null : h("span", { class: "sub" }, a.category_label)), h("span", { class: "plus", "aria-hidden": "true" }, "+")))); });
+          h("span", { class: "bar", style: "background:" + catColor(a.category) }), h("span", { class: "nm" }, a.name, p && a.accelerator && a.accelerator !== p.name ? h("span", { class: "sub" }, a.accelerator) : null),
+          p ? h("span", { class: "tag", title: p.name }, tagOf(a)) : h("span", { class: "plus", "aria-hidden": "true" }, "+"))); });
       root.append(det);
     });
     if (!root.querySelector(".pack")) root.append(h("p", { class: "pad muted small" }, "No agent matches “" + S.q + "”."));
@@ -373,7 +378,7 @@
         h("span", { class: "bar", style: "background:" + catColor(a.category) }),
         h("div", { class: "body" },
           h("div", { class: "nm" }, h("span", { class: "t" }, a.name), S.test ? h("span", { class: "lamp " + st, title: st || "not run", style: "margin-top:5px;flex:none" }) : null),
-          h("div", { class: "meta" }, h("code", null, s.id), " · ", a.pack && a.pack !== "blueprint" ? a.pack_name : a.category_label),
+          h("div", { class: "meta" }, h("code", null, s.id), " · ", a.category_label, a.pack && a.pack !== "blueprint" ? " · " + a.pack_name : null),
           s.inputs && s.inputs.action ? h("div", { class: "act" }, String(s.inputs.action).replace(/_/g, " ")) : null),
         h("span", { class: "port in", "aria-hidden": "true" }), h("span", { class: "port out", title: "Drag to the step that runs after this one" }));
       el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); S.sel = { type: "node", id: s.id }; markSelection(); drawWires(); renderInspector(); } });
@@ -451,7 +456,7 @@
     const t = S.test && S.test.steps && S.test.steps.find(x => x.id === s.id);
     put(pad,
       h("div", { class: "row", style: "align-items:flex-start;gap:8px" }, h("span", { style: "width:5px;align-self:stretch;border-radius:3px;background:" + catColor(a.category) }),
-        h("div", { style: "flex:1;min-width:0" }, h("h3", { style: "font-size:15px" }, a.name), h("p", { class: "xs muted" }, [a.pack_name || "Marketing blueprint", a.accelerator, a.category_label].filter(Boolean).join(" · ")))),
+        h("div", { style: "flex:1;min-width:0" }, h("h3", { style: "font-size:15px" }, a.name), h("p", { class: "xs muted" }, [a.category_label, a.pack_name || "Marketing blueprint", a.accelerator].filter(Boolean).join(" · ")))),
       h("p", { class: "small", style: "margin:8px 0 12px;color:var(--ink-2)" }, a.summary || ""),
       h("label", { class: "f" }, "Step name (used in bindings)", h("input", { type: "text", value: s.id, disabled: ro, onchange: (e) => renameStep(s, e.target.value) })),
       a.actions && a.actions.length ? h("label", { class: "f" }, "What it does in this step", h("select", { disabled: ro, onchange: (e) => { s.inputs.action = e.target.value; touch(); renderCanvas(); } },

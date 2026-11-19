@@ -306,3 +306,24 @@ def test_first_load_from_several_threads_at_once(packs):
     reload_agents()   # the command itself, from a cold registry
     report = liveness(offline=True, packs=True, only=["cs_xtender_variants", "arm_front_velocity"])
     assert report["live"] == 2 and report["total"] == 2, report["agents"]
+
+
+def test_every_agent_sits_in_a_category_that_names_its_work(packs):
+    """The catalog groups all 97 agents by what they do, blueprint and packs side by side, in CATEGORY_ORDER; no agent
+    hides under a product name or the catch-all 'platform'."""
+    from caf.core import all_agents
+    from caf.core.spec import CATEGORY_ORDER, Category
+
+    agents = all_agents()
+    assert len(agents) == 97
+    assert not [a.spec.id for a in agents if a.spec.category == Category.PLATFORM]
+    rank = [CATEGORY_ORDER.index(a.spec.category) for a in agents]
+    assert rank == sorted(rank)   # grouped, in the order the work happens
+    by_cat = {}
+    for a in agents:
+        by_cat.setdefault(a.spec.category, []).append(a.spec.pack)
+    assert by_cat[Category.STRATEGY][:4] == ["blueprint"] * 4   # within a category the blueprint's agents come first
+    assert {"arm_sdlc", "campaign_studio"} <= set(by_cat[Category.STRATEGY])
+    from caf.packs import list_packs
+
+    assert {p["id"]: p["tag"] for p in list_packs()} == {"arm_sdlc": "ARM", "campaign_studio": "CS"}

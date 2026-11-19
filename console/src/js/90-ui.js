@@ -85,34 +85,23 @@ const UI = (window.CAFUI = {
   renderRegistry() {
     const q = (U.$("#agent-search").value || "").toLowerCase().trim();
     const root = U.$("#cats"); root.innerHTML = "";
+    const title = U.$("#registry-title"); if (title) title.textContent = `Agent registry · ${CAF.categories.length} categories`;
+    U.$("#agent-search").placeholder = `Filter the ${CAF.order.length} agents`;
+    // every agent under the kind of work it does; a pack agent carries a tag naming the product it comes from
+    const local = new Set(CAF.localIds());
+    const packTag = (a) => { const p = CAF.packs.find((x) => x.id === a.pack); return p ? (p.tag || p.name.split(/\s+/).map((w) => w[0]).join("").toUpperCase().slice(0, 4)) : ""; };
     for (const cat of CAF.categories) {
-      const ids = CAF.localIds().filter((id) => CAF.catalog[id].category === cat.id);   // pack agents have their own groups below
-      const shown = ids.filter((id) => !q || `${CAF.catalog[id].name} ${CAF.catalog[id].summary} ${(CAF.catalog[id].keywords || []).join(" ")}`.toLowerCase().includes(q));
+      const ids = CAF.order.filter((id) => CAF.catalog[id].category === cat.id);
+      const shown = ids.filter((id) => { const a = CAF.catalog[id]; return !q || `${a.name} ${a.summary} ${(a.keywords || []).join(" ")} ${a.accelerator || ""} ${a.pack_name || ""}`.toLowerCase().includes(q); });
       if (!shown.length) continue;
-      const box = U.el("div", { class: "cat" }, U.el("div", { class: "cat-title" }, U.el("i", { class: `cat-${cat.id}` }), cat.label, U.el("span", { class: "count", text: `${ids.filter((id) => CAF.health[id] && CAF.health[id].live).length}/${ids.length}` })));
+      const probed = ids.filter((id) => local.has(id));   // the page probes the agents that run in it; pack agents are proven by the server
+      const count = probed.length === ids.length ? `${ids.filter((id) => CAF.health[id] && CAF.health[id].live).length}/${ids.length}` : `${ids.length}`;
+      const box = U.el("div", { class: "cat" }, U.el("div", { class: "cat-title" }, U.el("i", { class: `cat-${cat.id}` }), cat.label, U.el("span", { class: "count", text: count })));
       for (const id of shown) {
-        const a = CAF.catalog[id];
-        const row = U.el("button", { class: "agent-row", "aria-current": String(UI.selected === id), title: a.summary, onclick: () => { UI.selectAgent(id); UI.switchTab("agent"); } },
-          U.el("span", { class: `lamp ${UI.agentStatus(id)}` }), U.el("span", { class: "name", text: a.name }), U.el("span", { class: `kind ${a.kind}`, text: a.kind === "deterministic" ? "CODE" : a.kind.toUpperCase() }));
-        box.append(row);
-      }
-      root.append(box);
-    }
-    // the agent packs (other CX Nova products' agents): one folded group per pack, by accelerator
-    for (const pack of CAF.packs) {
-      const ids = CAF.order.filter((id) => CAF.catalog[id].pack === pack.id);
-      const shown = ids.filter((id) => !q || `${CAF.catalog[id].name} ${CAF.catalog[id].summary} ${CAF.catalog[id].accelerator || ""}`.toLowerCase().includes(q));
-      if (!shown.length) continue;
-      const open = !!q || shown.includes(UI.selected) || U.storage.get(`caf.pack.${pack.id}`, false);
-      const box = U.el("details", { class: "cat pack" }, U.el("summary", { class: "cat-title" }, U.el("i", { class: "cat-pack" }), pack.name, U.el("span", { class: "count", text: `${ids.length}` })));
-      if (open) box.setAttribute("open", "");
-      box.addEventListener("toggle", () => U.storage.set(`caf.pack.${pack.id}`, box.open));
-      let group = null;
-      for (const id of shown) {
-        const a = CAF.catalog[id];
-        if ((a.accelerator || "") !== group) { group = a.accelerator || ""; if (group) box.append(U.el("div", { class: "pack-group", text: group })); }
-        box.append(U.el("button", { class: "agent-row", "aria-current": String(UI.selected === id), title: a.summary, onclick: () => { UI.selectAgent(id); UI.switchTab("agent"); } },
-          U.el("span", { class: `lamp ${UI.agentStatus(id)}` }), U.el("span", { class: "name", text: a.name }), U.el("span", { class: "kind llm", text: "PACK" })));
+        const a = CAF.catalog[id], pack = a.pack && a.pack !== "blueprint";
+        box.append(U.el("button", { class: "agent-row", "aria-current": String(UI.selected === id), title: a.summary + (pack ? ` (${a.pack_name}${a.accelerator ? " · " + a.accelerator : ""})` : ""), onclick: () => { UI.selectAgent(id); UI.switchTab("agent"); } },
+          U.el("span", { class: `lamp ${UI.agentStatus(id)}` }), U.el("span", { class: "name", text: a.name }),
+          pack ? U.el("span", { class: "kind pack", text: packTag(a), title: a.pack_name }) : U.el("span", { class: `kind ${a.kind}`, text: a.kind === "deterministic" ? "CODE" : a.kind.toUpperCase() })));
       }
       root.append(box);
     }

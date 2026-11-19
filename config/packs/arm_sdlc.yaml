@@ -4,6 +4,7 @@ pack:
   id: arm_sdlc
   name: ARM SDLC Factory
   product: ARM SDLC Factory
+  tag: ARM
   description: 'The 51 agents of the ARM SDLC Factory, which runs Arm''s AI to Z web release process (8 teams, 50 steps): the CX Nova
     accelerators, the factory''s own agents, the SitecoreAI agents and platform APIs it drives, and the controlled DevOps runbook; with
     the release process as flows.'
@@ -931,7 +932,7 @@ agents:
   name: SitecoreAI Brief Generator
   accelerator: SitecoreAI agents and platform APIs
   family: sitecore
-  category: platform
+  category: strategy
   tier: balanced
   summary: Prebuilt agent turning a problem statement into a structured brief with goals, audience and timeline suggestions.
   description: 'Operate SitecoreAI (XM Cloud) capabilities for Arm''s web estate exactly as the platform provides them: prebuilt strategy/research/content
@@ -1009,7 +1010,7 @@ agents:
   name: SitecoreAI Researcher
   accelerator: SitecoreAI agents and platform APIs
   family: sitecore
-  category: platform
+  category: strategy
   tier: balanced
   summary: Prebuilt research agent for market, audience and competitor context.
   description: 'Operate SitecoreAI (XM Cloud) capabilities for Arm''s web estate exactly as the platform provides them: prebuilt strategy/research/content
@@ -1069,7 +1070,7 @@ agents:
   name: Sitecore Strategy (smart briefs & tasks)
   accelerator: SitecoreAI agents and platform APIs
   family: sitecore
-  category: platform
+  category: strategy
   tier: balanced
   summary: Briefs, campaigns, AI-suggested timelines, deliverables and tasks with assignees, dates and dependencies.
   description: 'Operate SitecoreAI (XM Cloud) capabilities for Arm''s web estate exactly as the platform provides them: prebuilt strategy/research/content
@@ -1137,7 +1138,7 @@ agents:
   name: SitecoreAI Competitor Analyzer
   accelerator: SitecoreAI agents and platform APIs
   family: sitecore
-  category: platform
+  category: strategy
   tier: balanced
   summary: Automated competitor and market research.
   description: 'Operate SitecoreAI (XM Cloud) capabilities for Arm''s web estate exactly as the platform provides them: prebuilt strategy/research/content
@@ -1199,7 +1200,7 @@ agents:
   name: SitecoreAI Audience Summary
   accelerator: SitecoreAI agents and platform APIs
   family: sitecore
-  category: platform
+  category: analytics
   tier: fast
   summary: Audience summaries from first-party Sitecore data.
   description: 'Operate SitecoreAI (XM Cloud) capabilities for Arm''s web estate exactly as the platform provides them: prebuilt strategy/research/content
@@ -1261,7 +1262,7 @@ agents:
   name: SitecoreAI Market Signals
   accelerator: SitecoreAI agents and platform APIs
   family: sitecore
-  category: platform
+  category: analytics
   tier: fast
   summary: Market signal monitoring.
   description: 'Operate SitecoreAI (XM Cloud) capabilities for Arm''s web estate exactly as the platform provides them: prebuilt strategy/research/content
@@ -1323,7 +1324,7 @@ agents:
   name: SitecoreAI Persona Content Auditor
   accelerator: SitecoreAI agents and platform APIs
   family: sitecore
-  category: platform
+  category: compliance
   tier: balanced
   summary: Audits content against personas.
   description: 'Operate SitecoreAI (XM Cloud) capabilities for Arm''s web estate exactly as the platform provides them: prebuilt strategy/research/content
@@ -1386,7 +1387,7 @@ agents:
   name: Sitecore Design Studio AI
   accelerator: SitecoreAI agents and platform APIs
   family: sitecore
-  category: platform
+  category: design
   tier: balanced
   summary: Component design variants, responsive alternatives, code extraction, real/mock data previews and side-by-side review.
   description: 'Operate SitecoreAI (XM Cloud) capabilities for Arm''s web estate exactly as the platform provides them: prebuilt strategy/research/content
@@ -1455,7 +1456,7 @@ agents:
   name: SitecoreAI Structured Content Extractor
   accelerator: SitecoreAI agents and platform APIs
   family: sitecore
-  category: platform
+  category: content
   tier: fast
   summary: Extracts structured content and process steps from briefs and files against a schema.
   description: 'Operate SitecoreAI (XM Cloud) capabilities for Arm''s web estate exactly as the platform provides them: prebuilt strategy/research/content
@@ -1518,7 +1519,7 @@ agents:
   name: Sitecore Marketer MCP / Agent API
   accelerator: SitecoreAI agents and platform APIs
   family: sitecore
-  category: platform
+  category: content
   tier: balanced
   summary: Creates pages and content items, selects templates, populates fields, configures component datasources, searches assets and
     edits items from natural language.
@@ -1607,7 +1608,7 @@ agents:
   name: Agentic Studio validate_accessibility
   accelerator: SitecoreAI agents and platform APIs
   family: sitecore
-  category: platform
+  category: quality
   tier: balanced
   summary: Quick automated accessibility check against rendered HTML (Sitecore positions it as a quick check, not a full audit).
   description: 'Operate SitecoreAI (XM Cloud) capabilities for Arm''s web estate exactly as the platform provides them: prebuilt strategy/research/content
@@ -1671,7 +1672,7 @@ agents:
   name: Agentic Studio validate_page
   accelerator: SitecoreAI agents and platform APIs
   family: sitecore
-  category: platform
+  category: quality
   tier: balanced
   summary: Retrieves rendered HTML and screenshots and validates a page.
   description: 'Operate SitecoreAI (XM Cloud) capabilities for Arm''s web estate exactly as the platform provides them: prebuilt strategy/research/content
@@ -1737,7 +1738,7 @@ agents:
   name: SitecoreAI Performance dashboards
   accelerator: SitecoreAI agents and platform APIs
   family: sitecore
-  category: platform
+  category: analytics
   tier: balanced
   summary: Real-time Sites, Forms, A/B tests, Search, Events and Traffic dashboards plus page insights.
   description: 'Operate SitecoreAI (XM Cloud) capabilities for Arm''s web estate exactly as the platform provides them: prebuilt strategy/research/content
@@ -1804,7 +1805,7 @@ agents:
   name: SitecoreAI Translator
   accelerator: SitecoreAI agents and platform APIs
   family: sitecore
-  category: platform
+  category: content
   tier: balanced
   summary: Page, full-site and content-item translation with brand-kit glossary and Do/Don't rules.
   description: 'Operate SitecoreAI (XM Cloud) capabilities for Arm''s web estate exactly as the platform provides them: prebuilt strategy/research/content
@@ -1869,7 +1870,7 @@ agents:
   name: SitecoreAI Content Generator
   accelerator: SitecoreAI agents and platform APIs
   family: sitecore
-  category: platform
+  category: content
   tier: balanced
   summary: Prepares final copy with brand kits.
   description: 'Operate SitecoreAI (XM Cloud) capabilities for Arm''s web estate exactly as the platform provides them: prebuilt strategy/research/content
@@ -1931,7 +1932,7 @@ agents:
   name: Sitecore Forms (webhooks)
   accelerator: SitecoreAI agents and platform APIs
   family: sitecore
-  category: platform
+  category: engineering
   tier: balanced
   summary: Authenticated webhooks and webhook testing for form submissions.
   description: 'Operate SitecoreAI (XM Cloud) capabilities for Arm''s web estate exactly as the platform provides them: prebuilt strategy/research/content
@@ -1994,7 +1995,7 @@ agents:
   name: Sitecore App Studio
   accelerator: SitecoreAI agents and platform APIs
   family: sitecore
-  category: platform
+  category: engineering
   tier: balanced
   summary: Extends SitecoreAI with custom APIs and apps.
   description: 'Operate SitecoreAI (XM Cloud) capabilities for Arm''s web estate exactly as the platform provides them: prebuilt strategy/research/content
@@ -2056,7 +2057,7 @@ agents:
   name: Sitecore Cloud SDK (event tracking)
   accelerator: SitecoreAI agents and platform APIs
   family: sitecore
-  category: platform
+  category: engineering
   tier: balanced
   summary: Native event tracking support in the application.
   description: 'Operate SitecoreAI (XM Cloud) capabilities for Arm''s web estate exactly as the platform provides them: prebuilt strategy/research/content
@@ -2120,7 +2121,7 @@ agents:
   name: Sitecore Deploy REST API / CLI
   accelerator: SitecoreAI agents and platform APIs
   family: sitecore
-  category: platform
+  category: operations
   tier: balanced
   summary: Creates and runs deployments for automated build and deployment processes.
   description: 'Operate SitecoreAI (XM Cloud) capabilities for Arm''s web estate exactly as the platform provides them: prebuilt strategy/research/content
@@ -2184,7 +2185,7 @@ agents:
   name: Sitecore Publishing API / CLI
   accelerator: SitecoreAI agents and platform APIs
   family: sitecore
-  category: platform
+  category: activation
   tier: balanced
   summary: Publishes approved pages and content items.
   description: 'Operate SitecoreAI (XM Cloud) capabilities for Arm''s web estate exactly as the platform provides them: prebuilt strategy/research/content

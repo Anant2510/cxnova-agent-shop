@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from .config import get_settings
-from .core import LLM, RunContext, all_agents, expected_agent_ids, get_agent, missing_agents, new_run_id
+from .core import LLM, RunContext, agents_in_registration_order, expected_agent_ids, get_agent, missing_agents, new_run_id
 
 LIVE = {"ok", "degraded", "needs_approval"}
 
@@ -52,7 +52,7 @@ def liveness(*, offline: bool | None = None, max_workers: int = 4, only: list[st
     use_offline = offline if offline is not None else os.environ.get("CAF_HEALTH_OFFLINE", "1") == "1"
     llm = LLM(settings.llm, provider="offline" if use_offline else None)
     ctx = RunContext.create(new_run_id("health"), settings, llm=llm, options={"tier_override": tier} if tier else None)
-    ids = only or ([a.spec.id for a in all_agents()] if packs else expected_agent_ids())
+    ids = only or ([a.spec.id for a in agents_in_registration_order()] if packs else expected_agent_ids())
     t0 = time.perf_counter()
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         rows = list(pool.map(lambda a: probe_agent(a, ctx), ids))
@@ -69,7 +69,7 @@ def summary() -> dict[str, Any]:
     settings = get_settings()
     from .packs import list_packs
 
-    everyone = all_agents()
+    everyone = agents_in_registration_order()
     expected = set(expected_agent_ids())
     registered = [a.spec.id for a in everyone if a.spec.id in expected]   # the blueprint's agents; packs are counted beside them
     cov = coverage()

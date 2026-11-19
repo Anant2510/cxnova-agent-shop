@@ -7,15 +7,17 @@ const CAF = (window.CAF = {
   boot: null, catalog: {}, order: [], skills: {}, playbooks: {}, planner: {}, schemas: {},
   impl: {}, health: {}, runs: [], listeners: new Set(),
   remote: {}, packs: [],   // hosted console: agents of the agent packs (Campaign Studio, ARM SDLC ...) run on the server
-  categories: [
-    { id: "strategy", label: "Strategy and planning" },
-    { id: "content", label: "Content creation" },
-    { id: "web", label: "Website optimization" },
-    { id: "experimentation", label: "End-to-end testing" },
-  ],
+  // the registry groups every agent (blueprint and packs alike) by the work it does; the list is filled from the catalog's
+  // order (caf.core.spec.CATEGORY_ORDER) at init, so one order holds across the console, the designer and the storefront
+  categories: [],
   DEMO_HOST: "www.meridian-mutual.example",
 
   agent(id, impl) { CAF.impl[id] = impl; },
+  syncCategories() {   // the categories present in the catalog, in catalog order, labelled as the catalog labels them
+    const seen = new Map();
+    for (const id of CAF.order) { const a = CAF.catalog[id]; if (!seen.has(a.category)) seen.set(a.category, { id: a.category, label: a.category_label || a.category }); }
+    CAF.categories = [...seen.values()];
+  },
   emit(evt) { for (const fn of CAF.listeners) { try { fn(evt); } catch (e) { console.error(e); } } },
   on(fn) { CAF.listeners.add(fn); return () => CAF.listeners.delete(fn); },
 
@@ -23,6 +25,7 @@ const CAF = (window.CAF = {
     const raw = document.getElementById("caf-boot");
     CAF.boot = JSON.parse(raw.textContent);
     for (const a of CAF.boot.catalog) { CAF.catalog[a.id] = a; CAF.order.push(a.id); }
+    CAF.syncCategories();
     CAF.skills = CAF.boot.skills || {};
     CAF.playbooks = CAF.boot.playbooks || {};
     // hosted by the shop: the server's current playbooks (the built-in ones plus published custom flows) replace the build's
@@ -31,7 +34,9 @@ const CAF = (window.CAF = {
     if (hosted) { try { const books = JSON.parse(hosted.textContent || "{}"); if (books && typeof books === "object" && Object.keys(books).length) CAF.playbooks = books; } catch (e) { /* keep the build's */ } }
     const packed = document.getElementById("caf-host-agents");   // the agent packs' agents, from the server that hosts this console
     if (packed) { try { const data = JSON.parse(packed.textContent || "{}"); CAF.packs = data.packs || [];
-      for (const a of data.agents || []) if (!CAF.catalog[a.id]) { CAF.catalog[a.id] = a; CAF.order.push(a.id); CAF.remote[a.id] = true; } } catch (e) { /* the blueprint's agents still work */ } }
+      for (const a of data.agents || []) if (!CAF.catalog[a.id]) { CAF.catalog[a.id] = a; CAF.order.push(a.id); CAF.remote[a.id] = true; }
+      if (data.order && data.order.length) CAF.order.sort((x, y) => data.order.indexOf(x) - data.order.indexOf(y));   // the server's catalog order
+      CAF.syncCategories(); } catch (e) { /* the blueprint's agents still work */ } }
     CAF.planner = CAF.boot.planner || {};
     CAF.schemas = CAF.boot.schemas || {};
     CAF.routing = CAF.boot.routing || {}; // {agent: {template: {tier, work, follow}}} from config/model_routing.yaml

@@ -310,6 +310,7 @@ details.json > summary { cursor: pointer; font-size: 12.5px; color: var(--muted)
 details.cat.pack > summary { cursor: pointer; list-style: none; }
 details.cat.pack > summary::-webkit-details-marker { display: none; }
 .cat-pack { background: var(--ai, #1f3d7a); }
+.kind.pack { color: var(--ai, #1f3d7a); border-color: color-mix(in srgb, var(--ai, #1f3d7a) 35%, transparent); }
 .pack-group { font-size: 11px; color: var(--ink-3, #778194); padding: 6px 10px 2px 26px; font-weight: 600; }
 .cat-design { background: #b0307a; } .cat-engineering { background: #1f5fbf; } .cat-quality { background: #2b6a4c; } .cat-operations { background: #5a6475; }
 .cat-compliance { background: #a3341c; } .cat-activation { background: #a86b0c; } .cat-analytics { background: #0e7490; } .cat-platform { background: #7a4b8f; }
@@ -338,8 +339,8 @@ details.cat.pack > summary::-webkit-details-marker { display: none; }
 <div class="shell">
   <aside class="rail" id="rail" aria-label="Agent registry">
     <div class="rail-head">
-      <div class="row"><span class="eyebrow grow">Agent registry · 4 categories</span><button type="button" class="btn sm ghost rail-toggle" id="rail-toggle">Show agents</button></div>
-      <input class="search" id="agent-search" type="text" placeholder="Filter the 28 agents" aria-label="Filter agents">
+      <div class="row"><span class="eyebrow grow" id="registry-title">Agent registry</span><button type="button" class="btn sm ghost rail-toggle" id="rail-toggle">Show agents</button></div>
+      <input class="search" id="agent-search" type="text" placeholder="Filter agents" aria-label="Filter agents">
     </div>
     <div class="cats" id="cats"></div>
   </aside>
@@ -3605,15 +3606,17 @@ const CAF = (window.CAF = {
   boot: null, catalog: {}, order: [], skills: {}, playbooks: {}, planner: {}, schemas: {},
   impl: {}, health: {}, runs: [], listeners: new Set(),
   remote: {}, packs: [],   // hosted console: agents of the agent packs (Campaign Studio, ARM SDLC ...) run on the server
-  categories: [
-    { id: "strategy", label: "Strategy and planning" },
-    { id: "content", label: "Content creation" },
-    { id: "web", label: "Website optimization" },
-    { id: "experimentation", label: "End-to-end testing" },
-  ],
+  // the registry groups every agent (blueprint and packs alike) by the work it does; the list is filled from the catalog's
+  // order (caf.core.spec.CATEGORY_ORDER) at init, so one order holds across the console, the designer and the storefront
+  categories: [],
   DEMO_HOST: "www.meridian-mutual.example",
 
   agent(id, impl) { CAF.impl[id] = impl; },
+  syncCategories() {   // the categories present in the catalog, in catalog order, labelled as the catalog labels them
+    const seen = new Map();
+    for (const id of CAF.order) { const a = CAF.catalog[id]; if (!seen.has(a.category)) seen.set(a.category, { id: a.category, label: a.category_label || a.category }); }
+    CAF.categories = [...seen.values()];
+  },
   emit(evt) { for (const fn of CAF.listeners) { try { fn(evt); } catch (e) { console.error(e); } } },
   on(fn) { CAF.listeners.add(fn); return () => CAF.listeners.delete(fn); },
 
@@ -3621,6 +3624,7 @@ const CAF = (window.CAF = {
     const raw = document.getElementById("caf-boot");
     CAF.boot = JSON.parse(raw.textContent);
     for (const a of CAF.boot.catalog) { CAF.catalog[a.id] = a; CAF.order.push(a.id); }
+    CAF.syncCategories();
     CAF.skills = CAF.boot.skills || {};
     CAF.playbooks = CAF.boot.playbooks || {};
     // hosted by the shop: the server's current playbooks (the built-in ones plus published custom flows) replace the build's
@@ -3629,7 +3633,9 @@ const CAF = (window.CAF = {
     if (hosted) { try { const books = JSON.parse(hosted.textContent || "{}"); if (books && typeof books === "object" && Object.keys(books).length) CAF.playbooks = books; } catch (e) { /* keep the build's */ } }
     const packed = document.getElementById("caf-host-agents");   // the agent packs' agents, from the server that hosts this console
     if (packed) { try { const data = JSON.parse(packed.textContent || "{}"); CAF.packs = data.packs || [];
-      for (const a of data.agents || []) if (!CAF.catalog[a.id]) { CAF.catalog[a.id] = a; CAF.order.push(a.id); CAF.remote[a.id] = true; } } catch (e) { /* the blueprint's agents still work */ } }
+      for (const a of data.agents || []) if (!CAF.catalog[a.id]) { CAF.catalog[a.id] = a; CAF.order.push(a.id); CAF.remote[a.id] = true; }
+      if (data.order && data.order.length) CAF.order.sort((x, y) => data.order.indexOf(x) - data.order.indexOf(y));   // the server's catalog order
+      CAF.syncCategories(); } catch (e) { /* the blueprint's agents still work */ } }
     CAF.planner = CAF.boot.planner || {};
     CAF.schemas = CAF.boot.schemas || {};
     CAF.routing = CAF.boot.routing || {}; // {agent: {template: {tier, work, follow}}} from config/model_routing.yaml
@@ -20065,34 +20071,23 @@ const UI = (window.CAFUI = {
   renderRegistry() {
     const q = (U.$("#agent-search").value || "").toLowerCase().trim();
     const root = U.$("#cats"); root.innerHTML = "";
+    const title = U.$("#registry-title"); if (title) title.textContent = `Agent registry · ${CAF.categories.length} categories`;
+    U.$("#agent-search").placeholder = `Filter the ${CAF.order.length} agents`;
+    // every agent under the kind of work it does; a pack agent carries a tag naming the product it comes from
+    const local = new Set(CAF.localIds());
+    const packTag = (a) => { const p = CAF.packs.find((x) => x.id === a.pack); return p ? (p.tag || p.name.split(/\s+/).map((w) => w[0]).join("").toUpperCase().slice(0, 4)) : ""; };
     for (const cat of CAF.categories) {
-      const ids = CAF.localIds().filter((id) => CAF.catalog[id].category === cat.id);   // pack agents have their own groups below
-      const shown = ids.filter((id) => !q || `${CAF.catalog[id].name} ${CAF.catalog[id].summary} ${(CAF.catalog[id].keywords || []).join(" ")}`.toLowerCase().includes(q));
+      const ids = CAF.order.filter((id) => CAF.catalog[id].category === cat.id);
+      const shown = ids.filter((id) => { const a = CAF.catalog[id]; return !q || `${a.name} ${a.summary} ${(a.keywords || []).join(" ")} ${a.accelerator || ""} ${a.pack_name || ""}`.toLowerCase().includes(q); });
       if (!shown.length) continue;
-      const box = U.el("div", { class: "cat" }, U.el("div", { class: "cat-title" }, U.el("i", { class: `cat-${cat.id}` }), cat.label, U.el("span", { class: "count", text: `${ids.filter((id) => CAF.health[id] && CAF.health[id].live).length}/${ids.length}` })));
+      const probed = ids.filter((id) => local.has(id));   // the page probes the agents that run in it; pack agents are proven by the server
+      const count = probed.length === ids.length ? `${ids.filter((id) => CAF.health[id] && CAF.health[id].live).length}/${ids.length}` : `${ids.length}`;
+      const box = U.el("div", { class: "cat" }, U.el("div", { class: "cat-title" }, U.el("i", { class: `cat-${cat.id}` }), cat.label, U.el("span", { class: "count", text: count })));
       for (const id of shown) {
-        const a = CAF.catalog[id];
-        const row = U.el("button", { class: "agent-row", "aria-current": String(UI.selected === id), title: a.summary, onclick: () => { UI.selectAgent(id); UI.switchTab("agent"); } },
-          U.el("span", { class: `lamp ${UI.agentStatus(id)}` }), U.el("span", { class: "name", text: a.name }), U.el("span", { class: `kind ${a.kind}`, text: a.kind === "deterministic" ? "CODE" : a.kind.toUpperCase() }));
-        box.append(row);
-      }
-      root.append(box);
-    }
-    // the agent packs (other CX Nova products' agents): one folded group per pack, by accelerator
-    for (const pack of CAF.packs) {
-      const ids = CAF.order.filter((id) => CAF.catalog[id].pack === pack.id);
-      const shown = ids.filter((id) => !q || `${CAF.catalog[id].name} ${CAF.catalog[id].summary} ${CAF.catalog[id].accelerator || ""}`.toLowerCase().includes(q));
-      if (!shown.length) continue;
-      const open = !!q || shown.includes(UI.selected) || U.storage.get(`caf.pack.${pack.id}`, false);
-      const box = U.el("details", { class: "cat pack" }, U.el("summary", { class: "cat-title" }, U.el("i", { class: "cat-pack" }), pack.name, U.el("span", { class: "count", text: `${ids.length}` })));
-      if (open) box.setAttribute("open", "");
-      box.addEventListener("toggle", () => U.storage.set(`caf.pack.${pack.id}`, box.open));
-      let group = null;
-      for (const id of shown) {
-        const a = CAF.catalog[id];
-        if ((a.accelerator || "") !== group) { group = a.accelerator || ""; if (group) box.append(U.el("div", { class: "pack-group", text: group })); }
-        box.append(U.el("button", { class: "agent-row", "aria-current": String(UI.selected === id), title: a.summary, onclick: () => { UI.selectAgent(id); UI.switchTab("agent"); } },
-          U.el("span", { class: `lamp ${UI.agentStatus(id)}` }), U.el("span", { class: "name", text: a.name }), U.el("span", { class: "kind llm", text: "PACK" })));
+        const a = CAF.catalog[id], pack = a.pack && a.pack !== "blueprint";
+        box.append(U.el("button", { class: "agent-row", "aria-current": String(UI.selected === id), title: a.summary + (pack ? ` (${a.pack_name}${a.accelerator ? " · " + a.accelerator : ""})` : ""), onclick: () => { UI.selectAgent(id); UI.switchTab("agent"); } },
+          U.el("span", { class: `lamp ${UI.agentStatus(id)}` }), U.el("span", { class: "name", text: a.name }),
+          pack ? U.el("span", { class: "kind pack", text: packTag(a), title: a.pack_name }) : U.el("span", { class: `kind ${a.kind}`, text: a.kind === "deterministic" ? "CODE" : a.kind.toUpperCase() })));
       }
       root.append(box);
     }

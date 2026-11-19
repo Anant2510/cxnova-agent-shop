@@ -138,6 +138,7 @@ class Pack(BaseModel):
     id: str
     name: str
     product: str = ""
+    tag: str = Field(default="", description="two to four letters shown next to the pack's agents in the catalog (CS, ARM ...)")
     description: str = ""
     color: str = ""
     source: str = Field(default="", description="where the pack was generated from")
@@ -148,7 +149,8 @@ class Pack(BaseModel):
 
     def summary(self) -> dict[str, Any]:
         home = self.home
-        return {"id": self.id, "name": self.name, "product": self.product, "description": self.description, "color": self.color,
+        return {"id": self.id, "name": self.name, "product": self.product, "tag": self.tag or "".join(w[0] for w in self.name.split()).upper()[:4],
+                "description": self.description, "color": self.color,
                 "agents": len(self.agents), "flows": len(self.flows), "accelerators": sorted({a.accelerator for a in self.agents if a.accelerator}),
                 "home": ({"name": home.name, "kind": home.kind, "connected": home.connected, "needs": home.needs, "note": home.note,
                           "url_env": home.url_env} if home else None)}

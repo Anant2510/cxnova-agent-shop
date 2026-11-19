@@ -176,7 +176,7 @@ def _host_agents_tag() -> str:
     """The agent packs' agents with their contracts, for the console's registry and runner (built once per process)."""
     if "tag" not in _PACK_TAG:
         try:
-            from ..core import catalog
+            from ..core import all_agents, catalog
             from ..packs import list_packs
 
             agents = [a for a in catalog(full=True) if a.get("pack", "blueprint") != "blueprint"]
@@ -184,7 +184,8 @@ def _host_agents_tag() -> str:
                 a.pop("graph", None)
                 a.pop("output_schema", None)
                 a["output_schema"] = {"type": "object"}
-            data = json.dumps({"packs": list_packs(), "agents": agents}, separators=(",", ":"), default=str).replace("</", "<\\/")
+            data = json.dumps({"packs": list_packs(), "agents": agents, "order": [a.spec.id for a in all_agents()]},
+                              separators=(",", ":"), default=str).replace("</", "<\\/")
             _PACK_TAG["tag"] = f'<script type="application/json" id="caf-host-agents">{data}</script>' if agents else ""
         except Exception:
             _PACK_TAG["tag"] = ""

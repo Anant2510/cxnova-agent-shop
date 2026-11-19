@@ -17,6 +17,7 @@ pack:
   id: campaign_studio
   name: Campaign Studio
   product: CX Nova Campaign Studio
+  tag: CS
   description: >-
     The agents that take a campaign from the data to a measured send in CX Nova Campaign Studio: market insight and
     brief intake, Foresight Studio (history, personas, evaluation, research), Xtender variants, the compliance engine

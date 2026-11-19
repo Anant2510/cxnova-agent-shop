@@ -232,7 +232,7 @@ and the API, MCP and A2A surfaces underneath.
 
 | Piece | What it does |
 | --- | --- |
-| Orchestration designer (`/shop/designer`, operator token) | A canvas: pick agents from the palette (grouped by pack), click to chain them or drag them in, drag from one node's port to another to say "runs after", and set each step's action, purpose and input bindings in the inspector (suggestions for `$goal`, `${input.x}`, `${steps.s.output...}`). Check validates the flow, Test run executes it and lights each node, Save and Publish put it on sale. Built-in flows open read-only; Clone makes an editable copy. The console's "Save plan as flow" opens the plan here |
+| Orchestration designer (`/shop/designer`, operator token) | A canvas: pick agents from the palette (grouped by the work they do; a pack agent carries its product's tag), click to chain them or drag them in, drag from one node's port to another to say "runs after", and set each step's action, purpose and input bindings in the inspector (suggestions for `$goal`, `${input.x}`, `${steps.s.output...}`). Check validates the flow, Test run executes it and lights each node, Save and Publish put it on sale. Built-in flows open read-only; Clone makes an editable copy. The console's "Save plan as flow" opens the plan here |
 | Runs (`/shop/runs`, operator token or a customer key) | Every run, live: the flow as a graph with each step's status and timing (running steps show the model call they are on), a timeline of what ran in parallel, and a live log. Select a step to see what it was given (each field as set in the flow, the value the agent received, and where it came from: the goal, a run input or an earlier step's output), which earlier steps' work it could read, its output, files (previewed and downloadable), checks, model calls and its own activity. Held actions are approved or rejected from the page, one at a time; a stalled run is continued from it. A customer key sees its own runs only. The designer's Test run links here |
 | Storefront (`/shop`, `/shop/agents/{id}`, `/shop/flows/{id}`) | Every agent and published flow with its contract, steps and stages, model steps, connectors and indicative price (`config/shop_catalog.yaml`); an access-request form |
 | Orchestration flows | A published flow is a storefront item, a playbook for the router, the planner and the console, the MCP tool `run_flow_<id>`, `POST /flows/{id}/run` and the A2A skill `flow:<id>`; unpublishing removes all of that. Admin → Flows lists your flows, the built-in playbooks and each pack's flows. CLI: `caf shop flows list / show / save / publish / clone / test` |
@@ -261,7 +261,10 @@ routing tier of each step (fast/balanced on Sonnet, pro/complex on Opus) and the
 reaches the browser. Files the agents produce are downloaded by the browser; the status chip reads
 "Claude on Microsoft Foundry connected" (or the provider in use).
 
-The hosted console lists the pack agents in a group per pack below the 28 blueprint agents. Blueprint agents run in
+The hosted console, the designer and the storefront group all 97 agents by the work they do (strategy, analytics, design,
+content, website optimization, engineering, quality, experimentation, compliance, activation, release), the blueprint's
+agents first in each group and a pack's agents beside them with the pack's tag (`CS`, `ARM`); the order is
+`caf.core.spec.CATEGORY_ORDER`. A pack names its tag and each agent's category in its YAML. Blueprint agents run in
 the browser with their model steps on the server; pack agents and pack flows run on the server (`POST
 /agents/{id}/run`) and report `runtime: server` with the runner that served them.
 

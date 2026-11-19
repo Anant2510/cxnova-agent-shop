@@ -39,6 +39,11 @@ CATEGORY_LABELS = {
     Category.PLATFORM: "Platform agents",
 }
 
+# the order the catalog, the console, the designer and the storefront show the categories in: the work from plan to release
+CATEGORY_ORDER = [Category.STRATEGY, Category.ANALYTICS, Category.DESIGN, Category.CONTENT, Category.WEB, Category.ENGINEERING,
+                  Category.QUALITY, Category.EXPERIMENTATION, Category.COMPLIANCE, Category.ACTIVATION, Category.OPERATIONS,
+                  Category.PLATFORM]
+
 BLUEPRINT_PACK = "blueprint"   # the 28 agents of the Coforge Independent Blueprint (python classes under caf.agents)
 
 

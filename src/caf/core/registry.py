@@ -14,7 +14,7 @@ import yaml
 
 from ..config import get_settings
 from .agent import BaseAgent
-from .spec import AgentSpec
+from .spec import CATEGORY_ORDER, AgentSpec
 
 _CLASSES: dict[str, type[BaseAgent]] = {}
 _INSTANCES: dict[str, BaseAgent] = {}
@@ -108,6 +108,17 @@ def get_agent(agent_id: str) -> BaseAgent:
 
 
 def all_agents() -> list[BaseAgent]:
+    """Every agent, grouped by the work it does (CATEGORY_ORDER); within a category the blueprint's agents come first, in
+    the blueprint's order, then each pack's in its own order."""
+    load_agents()
+    order = {aid: i for i, aid in enumerate(expected_agent_ids())}
+    rank = {c: i for i, c in enumerate(CATEGORY_ORDER)}
+    ids = sorted(_CLASSES, key=lambda a: (rank.get(_CLASSES[a].spec.category, len(rank)), order.get(a, 999 + _PACK_ORDER.get(a, 0)), a))
+    return [get_agent(a) for a in ids]
+
+
+def agents_in_registration_order() -> list[BaseAgent]:
+    """The blueprint's 28 in the blueprint's order, then the packs' agents as their packs list them (health reports, docs)."""
     load_agents()
     order = {aid: i for i, aid in enumerate(expected_agent_ids())}
     ids = sorted(_CLASSES, key=lambda a: (order.get(a, 999 + _PACK_ORDER.get(a, 0)), a))

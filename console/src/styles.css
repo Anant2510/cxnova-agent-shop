@@ -304,6 +304,7 @@ details.json > summary { cursor: pointer; font-size: 12.5px; color: var(--muted)
 details.cat.pack > summary { cursor: pointer; list-style: none; }
 details.cat.pack > summary::-webkit-details-marker { display: none; }
 .cat-pack { background: var(--ai, #1f3d7a); }
+.kind.pack { color: var(--ai, #1f3d7a); border-color: color-mix(in srgb, var(--ai, #1f3d7a) 35%, transparent); }
 .pack-group { font-size: 11px; color: var(--ink-3, #778194); padding: 6px 10px 2px 26px; font-weight: 600; }
 .cat-design { background: #b0307a; } .cat-engineering { background: #1f5fbf; } .cat-quality { background: #2b6a4c; } .cat-operations { background: #5a6475; }
 .cat-compliance { background: #a3341c; } .cat-activation { background: #a86b0c; } .cat-analytics { background: #0e7490; } .cat-platform { background: #7a4b8f; }

@@ -29,6 +29,14 @@ CATEGORY = {
     "factory_automation_scripter": "quality", "factory_perf_test": "quality", "factory_vuln_scan": "quality",
     "factory_defect_logger": "quality", "factory_code_reviewer": "engineering", "factory_tracking_implementer": "analytics",
     "factory_onetrust_classifier": "compliance", "factory_evaluator": "quality", "factory_tool_smith": "engineering",
+    # the SitecoreAI agents and platform APIs, by what they do (not "platform": the catalog groups agents by their work)
+    "sitecore_brief_generator": "strategy", "sitecore_researcher": "strategy", "sitecore_strategy": "strategy",
+    "sitecore_competitor_analyzer": "strategy", "sitecore_audience_summary": "analytics", "sitecore_market_signals": "analytics",
+    "sitecore_performance": "analytics", "sitecore_persona_auditor": "compliance", "sitecore_design_studio": "design",
+    "sitecore_structured_extractor": "content", "sitecore_marketer_mcp": "content", "sitecore_translator": "content",
+    "sitecore_content_generator": "content", "sitecore_validate_accessibility": "quality", "sitecore_validate_page": "quality",
+    "sitecore_forms": "engineering", "sitecore_app_studio": "engineering", "sitecore_cloud_sdk": "engineering",
+    "sitecore_deploy_api": "operations", "sitecore_publishing_api": "activation",
 }
 FAMILY = {"coforge": "CX Nova accelerators", "sitecore": "SitecoreAI agents and platform APIs", "factory": "Factory agents",
           "controlled": "Controlled runbooks"}
@@ -89,7 +97,7 @@ def main() -> None:
             actions.append(entry)
         agents.append({
             "id": PREFIX + a["id"], "home_id": a["id"], "name": a["name"], "accelerator": FAMILY.get(a["family"], a["family"]), "family": a["family"],
-            "category": CATEGORY.get(a["id"], "platform" if a["family"] == "sitecore" else "engineering"), "tier": TIER.get(a.get("model", "smart"), "balanced"),
+            "category": CATEGORY.get(a["id"], "engineering"), "tier": TIER.get(a.get("model", "smart"), "balanced"),
             "summary": a["summary"], "description": " ".join(str(skill.get("purpose") or a["summary"]).split()),
             "keywords": [k for k in re.split(r"[^a-z0-9]+", a["name"].lower()) if len(k) > 3][:6], "guardrails": a.get("guardrails") or [],
             "use_cases": [SAMPLE_REQUEST], "actions": actions,
@@ -163,7 +171,7 @@ def main() -> None:
 
     pack = {
         "pack": {
-            "id": "arm_sdlc", "name": "ARM SDLC Factory", "product": "ARM SDLC Factory",
+            "id": "arm_sdlc", "name": "ARM SDLC Factory", "product": "ARM SDLC Factory", "tag": "ARM",
             "description": f"The {len(agents)} agents of the ARM SDLC Factory, which runs Arm's AI to Z web release process (8 teams, 50 steps): the "
                            "CX Nova accelerators, the factory's own agents, the SitecoreAI agents and platform APIs it drives, and the controlled "
                            "DevOps runbook; with the release process as flows.",
