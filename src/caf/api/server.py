@@ -41,6 +41,7 @@ from ..core.security import PolicyError, service_settings, validate_run_id
 from ..branding import PRODUCT
 from ..health import liveness, summary
 from ..orchestrator import Orchestrator, RunStateError, follow_hint, load_playbooks, run_wait_s
+from .. import workshop
 from ..shop import ShopError, get_shop
 from ..shop import api as shop_api
 from ..shop import context as shop_context
@@ -65,6 +66,7 @@ class OrchestrateRequest(BaseModel):
     plan: dict[str, Any] | None = Field(default=None, description="Explicit plan {mode, steps:[{id, agent, inputs, needs}]}")
     auto_approve: bool | None = None
     use_planner: bool = True
+    feasibility: dict[str, Any] | None = Field(default=None, description="The assessment POST /plan returned for this goal, kept with the run")
     wait_s: float | None = Field(default=None, ge=0, le=3600, description=WAIT_HELP)
 
 
@@ -82,6 +84,14 @@ class PlanRequest(BaseModel):
     playbook: str | None = Field(default=None, description="A flow id: the plan is that flow's steps")
     agent: str | None = Field(default=None, description="A single agent: the plan is that one step")
     use_planner: bool = Field(default=True, description="Let the model plan from the goal (one model call); False uses the deterministic router")
+    assess: bool = Field(default=True, description="Hold the plan against the goal (one more model call): what it covers, what it cannot do, "
+                                                   "and the agents that would fill the gaps")
+
+
+class DraftRequest(BaseModel):
+    purpose: str = Field(description="What the agent should do, in plain words (a gap from an assessment, or any purpose)")
+    goal: str = Field(default="", description="The goal it was found missing from, for context")
+    name: str = Field(default="", description="A suggested name")
 
 
 class ApprovalRequest(BaseModel):
@@ -221,8 +231,9 @@ def create_app() -> FastAPI:
         hosts = [h.strip() for h in os.environ.get("CAF_MCP_ALLOWED_HOSTS", "localhost:*,127.0.0.1:*,localhost,127.0.0.1,testserver").split(",") if h.strip()]
         security = TransportSecuritySettings(enable_dns_rebinding_protection=os.environ.get("CAF_MCP_DNS_PROTECTION", "1") == "1",
                                              allowed_hosts=hosts, allowed_origins=[f"http://{h}" for h in hosts] + [f"https://{h}" for h in hosts])
-        mcp_app = build_mcp(orch).streamable_http_app(streamable_http_path="/", stateless_http=True, json_response=True,
-                                                      transport_security=security)
+        mcp_server = build_mcp(orch)
+        mcp_app = mcp_server.streamable_http_app(streamable_http_path="/", stateless_http=True, json_response=True,
+                                                 transport_security=security)
     except Exception as exc:  # MCP SDK missing or incompatible: the REST API still works
         mcp_error = repr(exc)
 
@@ -248,6 +259,7 @@ def create_app() -> FastAPI:
                            allow_headers=["Authorization", "Content-Type", "X-API-Key", "Mcp-Session-Id", "Mcp-Protocol-Version"])
     app.add_middleware(RootPathStrip)  # outermost: the proxy prefix is handled before anything looks at the path
     app.state.orchestrator = orch
+    app.state.mcp_server = mcp_server if mcp_app is not None else None
     app.state.health_cache = None
     # a run this process does not hold (after a restart) is approved / continued on its owner's model and policy
     orch.context_factory = shop.context_for_run
@@ -331,6 +343,54 @@ def create_app() -> FastAPI:
         from ..packs import list_packs
 
         return list_packs()
+
+    # ---- the workshop: agents made to fill the gaps an assessment names (operator only)
+    @app.post("/agents/draft")
+    def draft_agent(req: DraftRequest, request: Request) -> dict[str, Any]:
+        """Draft an agent for a purpose: its contract (inputs, result keys), its skill (system prompt, checklist) and its catalog
+        entry, for review. One model call; nothing is registered until POST /agents/made."""
+        from ..core import new_run_id
+
+        shop_api.require_admin(request)
+        ctx = shop.customer_context(None, new_run_id("draft"), surface="plan")
+        ctx.tracer.sink = None
+        try:
+            draft = workshop.draft_agent(req.purpose, ctx, goal=req.goal, name=req.name)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        return {"draft": draft.model_dump(), "metrics": ctx.llm.usage()}
+
+    @app.get("/agents/made")
+    def made_agents(request: Request) -> list[dict[str, Any]]:
+        """The agents made in the workshop (the `made` pack), as kept on disk."""
+        shop_api.require_admin(request)
+        return workshop.list_made()
+
+    @app.post("/agents/made", status_code=201)
+    def register_made_agent(request: Request, draft: dict[str, Any] = Body(...)) -> dict[str, Any]:
+        """Register a drafted agent: it joins the catalog at once (REST, MCP, A2A, flows, the planner) and is kept across restarts."""
+        shop_api.require_admin(request)
+        try:
+            described = workshop.register_made(draft)
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(400, str(exc)) from exc
+        _agents_changed()
+        return described
+
+    @app.delete("/agents/made/{agent_id}")
+    def remove_made_agent(agent_id: str, request: Request) -> dict[str, Any]:
+        """Remove a made agent from the catalog (its earlier runs keep their records)."""
+        shop_api.require_admin(request)
+        if not workshop.remove_made(agent_id):
+            raise HTTPException(404, f"No made agent called '{agent_id}'")
+        _agents_changed()
+        return {"removed": agent_id}
+
+    def _agents_changed() -> None:
+        sync = getattr(getattr(app.state, "mcp_server", None), "sync_agent_tools", None)
+        if callable(sync):
+            sync()
+        app.state.health_cache = None
 
     @app.get("/agents/{agent_id}")
     def describe_agent(request: Request, agent_id: str) -> dict[str, Any]:
@@ -423,7 +483,7 @@ def create_app() -> FastAPI:
             provider = ctx.llm.provider if ctx else ""
             view = orch.start(req.goal, inputs=req.inputs, agent=req.agent, playbook=req.playbook, plan=req.plan,
                               auto_approve=req.auto_approve, use_planner=req.use_planner, ctx=ctx, wait=wait,
-                              on_settled=shop.meter(cust, surface="api", provider=provider))
+                              feasibility=req.feasibility, on_settled=shop.meter(cust, surface="api", provider=provider))
         except ShopError as exc:
             raise HTTPException(exc.status, str(exc)) from exc
         except (KeyError, ValueError) as exc:  # unknown agent or playbook, a plan with no valid step
@@ -460,9 +520,13 @@ def create_app() -> FastAPI:
             d = s.model_dump()
             d["entitled"] = allowed is None or s.agent in allowed
             steps.append(d)
-        return {"route": decision.model_dump(), "plan": {"mode": p.mode, "playbook": p.playbook, "reason": p.reason, "steps": steps},
-                "warnings": warnings, "planner": "model" if (req.use_planner and not ctx.llm.offline) else "router",
-                "estimate": orch.estimate(steps)}   # likely cost, from what these agents cost in earlier runs
+        out = {"route": decision.model_dump(), "plan": {"mode": p.mode, "playbook": p.playbook, "reason": p.reason, "steps": steps},
+               "warnings": warnings, "planner": "model" if (req.use_planner and not ctx.llm.offline) else "router",
+               "estimate": orch.estimate(steps)}   # likely cost, from what these agents cost in earlier runs
+        if req.assess:   # what these steps will and will not do for the goal, and the agents that would fill the gaps
+            out["feasibility"] = workshop.assess(req.goal, steps, ctx, inputs=req.inputs).model_dump()
+        return out
+
 
     @app.get("/runs")
     def list_runs(request: Request, limit: int = Query(50, ge=1, le=2000),

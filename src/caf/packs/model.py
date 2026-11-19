@@ -143,6 +143,8 @@ class Pack(BaseModel):
     color: str = ""
     source: str = Field(default="", description="where the pack was generated from")
     context: str = Field(default="", description="added to every agent's system prompt: what the product is, its ground rules")
+    auto_route: bool = Field(default=False, description="True: the routers and the planner may pick the pack's agents by themselves "
+                                                        "(the made pack); product packs run when a caller or a flow names them")
     home: PackHome | None = None
     agents: list[PackAgent] = Field(default_factory=list)
     flows: list[PackFlow] = Field(default_factory=list)
@@ -158,6 +160,13 @@ class Pack(BaseModel):
 
 def packs_dir(settings: Any = None) -> Path:
     return Path((settings or get_settings()).home) / "config" / "packs"
+
+
+def made_packs_dir(settings: Any = None) -> Path:
+    """Packs written at run time (the workshop's made agents): in the data folder, so they outlive updates."""
+    from ..config import data_dir
+
+    return data_dir(settings or get_settings()) / "packs"
 
 
 def _load_pack(path: Path) -> Pack:
@@ -185,18 +194,18 @@ def _load_pack(path: Path) -> Pack:
 def load_packs() -> dict[str, Pack]:
     """Every pack under config/packs, by id, in file-name order. A pack that does not parse stops the start-up:
     a catalog that silently lost a product's agents would be worse."""
-    folder = packs_dir()
     packs: dict[str, Pack] = {}
-    if not folder.is_dir():
-        return packs
     disabled = {p.strip() for p in (os.environ.get("CAF_PACKS_DISABLED") or "").split(",") if p.strip()}
-    for path in sorted(folder.glob("*.yaml")):
-        pack = _load_pack(path)
-        if pack.id in disabled or "*" in disabled:
+    for folder, products in ((packs_dir(), True), (made_packs_dir(), False)):   # the products' packs, then the ones made here
+        if not folder.is_dir():
             continue
-        if pack.id in packs:
-            raise ValueError(f"pack id '{pack.id}' is defined twice ({path.name})")
-        packs[pack.id] = pack
+        for path in sorted(folder.glob("*.yaml")):
+            pack = _load_pack(path)
+            if pack.id in disabled or ("*" in disabled and products):   # '*' switches the product packs off; made agents stay
+                continue
+            if pack.id in packs:
+                raise ValueError(f"pack id '{pack.id}' is defined twice ({path.name})")
+            packs[pack.id] = pack
     return packs
 
 

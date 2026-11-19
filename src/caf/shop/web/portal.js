@@ -381,7 +381,7 @@
         put(clear(inputsBox), schemaFields(props, (a.input_schema && a.input_schema.required) || [], L.inputs, changed)); }).catch((e) => clear(inputsBox).append(h("div", { class: "notice bad small" }, "Could not load the agent: " + e.message)));
     }
     const nInputs = () => Object.keys(L.inputs).filter((k) => L.inputs[k] !== undefined && L.inputs[k] !== "").length;
-    const planBtn = h("button", { class: "btn", type: "button", onclick: preview }, L.planning ? "Planning…" : "Preview the plan");
+    const planBtn = h("button", { class: "btn", type: "button", onclick: preview, title: "The steps the orchestrator would run, what they cover of the goal, what they cannot do, and the likely cost. Nothing runs." }, L.planning ? "Assessing…" : "Assess and plan");
     const runBtn = h("button", { class: "btn primary", type: "button", onclick: run }, L.launching ? "Starting…" : "Run");
     const redraw = () => { const parent = box.parentElement; if (parent) parent.replaceChild(launchBox(opts), box); };
     put(box, ta,
@@ -395,14 +395,18 @@
     async function preview() {
       if (L.planning) return;
       if (!L.goal.trim() && L.mode === "auto") { ta.focus(); toast("Describe the outcome first"); return; }
-      L.planning = true; planBtn.textContent = "Planning…"; planBtn.disabled = true;
+      L.planning = true; planBtn.textContent = "Assessing…"; planBtn.disabled = true;
       try {
-        const body = { goal: L.goal, inputs: L.inputs };
-        if (L.mode.startsWith("flow:")) body.playbook = L.mode.slice(5); else if (L.mode.startsWith("agent:")) body.agent = L.mode.slice(6);
-        L.plan = await api("/plan", { body }); L.plan.goal = L.goal; L.plan.mode = L.mode;
+        await assess();
         if (S.name !== "launch") navigate("#/launch"); else showPlan();
       } catch (e) { toast("Could not plan: " + e.message, 6000); }
-      finally { L.planning = false; planBtn.textContent = "Preview the plan"; planBtn.disabled = false; }
+      finally { L.planning = false; planBtn.textContent = "Assess and plan"; planBtn.disabled = false; }
+    }
+    async function assess() {   // one call: the plan, its cost estimate and the feasibility of the goal
+      const body = { goal: L.goal, inputs: L.inputs };
+      if (L.mode.startsWith("flow:")) body.playbook = L.mode.slice(5); else if (L.mode.startsWith("agent:")) body.agent = L.mode.slice(6);
+      L.plan = await api("/plan", { body }); L.plan.goal = L.goal; L.plan.mode = L.mode; L.plan.ran = false;
+      return L.plan;
     }
     async function run() {
       if (L.launching) return;
@@ -410,13 +414,23 @@
       L.launching = true; runBtn.textContent = "Starting…"; runBtn.disabled = true;
       try {
         let view;
+        // a goal is assessed before it runs: when something in it has no agent, the assessment is shown and the person decides
+        const fresh = L.plan && L.plan.plan && L.plan.goal === L.goal && L.plan.mode === L.mode;
+        if (L.mode === "auto" && !fresh) { runBtn.textContent = "Assessing…"; await assess(); }
+        const feas = L.mode === "auto" && L.plan ? L.plan.feasibility : null;
+        if (feas && !fresh && (feas.verdict === "partial" || feas.verdict === "not_feasible")) {
+          if (S.name !== "launch") navigate("#/launch"); else showPlan();
+          toast(feas.verdict === "not_feasible" ? "No agent here does what the goal asks: see the assessment" : "Part of the goal has no agent: see the assessment, then run what is covered or make the missing agent", 8000);
+          const el = $("#feasibility"); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+          return;
+        }
         const inputs = Object.assign({}, L.inputs);
         if (inputs.competitors && typeof inputs.competitors === "string") inputs.competitors = inputs.competitors.split(",").map((x) => x.trim()).filter(Boolean);
         if (L.mode.startsWith("flow:")) view = await api("/flows/" + encodeURIComponent(L.mode.slice(5)) + "/run", { body: { inputs, goal: L.goal || undefined, wait_s: 0, auto_approve: L.autoApprove || undefined } });
         else {
           const body = { goal: L.goal || (L.mode.startsWith("agent:") ? agent(L.mode.slice(6)).name : ""), inputs, wait_s: 0, auto_approve: L.autoApprove || undefined };
           if (L.mode.startsWith("agent:")) body.agent = L.mode.slice(6);
-          else if (L.plan && L.plan.plan && L.plan.plan.steps.length && L.plan.goal === L.goal && L.plan.mode === L.mode) body.plan = { mode: L.plan.plan.mode, playbook: L.plan.plan.playbook, steps: L.plan.plan.steps.map((s) => ({ id: s.id, agent: s.agent, purpose: s.purpose, inputs: s.inputs, needs: s.needs })) };
+          else if (L.plan && L.plan.plan && L.plan.plan.steps.length && L.plan.goal === L.goal && L.plan.mode === L.mode) { body.plan = { mode: L.plan.plan.mode, playbook: L.plan.plan.playbook, steps: L.plan.plan.steps.map((s) => ({ id: s.id, agent: s.agent, purpose: s.purpose, inputs: s.inputs, needs: s.needs })) }; if (L.plan.feasibility) body.feasibility = L.plan.feasibility; }
           view = await api("/orchestrate", { body });
         }
         if (view.run_id) { toast("Run started"); navigate("#/runs/" + encodeURIComponent(view.run_id)); refreshLive(); }
@@ -424,6 +438,26 @@
       } catch (e) { toast("Could not start the run: " + e.message, 7000); }
       finally { L.launching = false; runBtn.textContent = "Run"; runBtn.disabled = false; }
     }
+  }
+  const VERDICT = { feasible: ["good", "Feasible: every part of the goal has an agent"], partial: ["warn", "Partly feasible: some of the goal has no agent here"],
+                    not_feasible: ["bad", "Not feasible with the agents here"], unassessed: ["", "Not assessed: no model is connected"] };
+  function feasibilityView(f, steps, p, readonly) {
+    const [cls, title] = VERDICT[f.verdict] || VERDICT.unassessed;
+    const stepName = (id) => { const st = steps.find((x) => x.id === id); return st ? agent(st.agent).name : id; };
+    const req = (r) => h("div", { class: "req " + r.status }, h("span", { class: "lamp " + (r.status === "covered" ? "good" : r.status === "partial" ? "warn" : "bad") }),
+      h("div", null, h("div", null, r.text), r.steps.length ? h("div", { class: "xs muted" }, "by " + r.steps.map(stepName).join(", ")) : null, r.note ? h("div", { class: "xs muted" }, r.note) : null));
+    const covered = f.requirements.filter((r) => r.status === "covered"), rest = f.requirements.filter((r) => r.status !== "covered");
+    return h("section", { class: "feas " + cls, id: "feasibility" },
+      h("div", { class: "row", style: "gap:10px;align-items:flex-start" }, h("span", { class: "chip " + cls, style: "font-size:13px" }, title),
+        f.method === "model" ? h("span", { class: "xs muted" }, "assessed by the model" + (f.metrics && f.metrics.cost_usd ? ", " + money(f.metrics.cost_usd) : "")) : null,
+        !readonly && f.verdict !== "feasible" && f.verdict !== "unassessed" && steps.length ? h("button", { class: "btn sm right", type: "button", onclick: () => { L.plan.feasibility = f; const b = $(".goal .btn.primary"); if (b) b.click(); }, title: "Start the planned steps now: what they cover gets done, the rest does not" }, "Run what is covered") : null),
+      h("div", { class: "cols", style: "margin-top:12px;gap:18px" },
+        h("div", null, h("h3", null, "What this run will do"), f.can_do ? h("p", { class: "small" }, f.can_do) : null, covered.length ? h("div", { class: "reqs" }, covered.map(req)) : h("p", { class: "small muted" }, "Nothing in the goal is fully covered.")),
+        h("div", null, h("h3", null, rest.length ? "What it cannot do" : "Nothing is missing"), f.cannot_do ? h("p", { class: "small" }, f.cannot_do) : null, rest.length ? h("div", { class: "reqs" }, rest.map(req)) : null,
+          f.gaps.length ? h("div", { class: "gaps" }, h("h4", null, f.gaps.length === 1 ? "An agent that would fill the gap" : "Agents that would fill the gaps"),
+            f.gaps.map((g) => h("div", { class: "gapcard" }, h("div", null, h("strong", null, g.agent_name), h("span", { class: "muted small" }, " · " + (g.category || "")), h("div", { class: "small" }, g.purpose),
+                g.inputs.length || g.outputs.length ? h("div", { class: "xs muted" }, (g.inputs.length ? "takes " + g.inputs.join(", ") : "") + (g.inputs.length && g.outputs.length ? "; " : "") + (g.outputs.length ? "produces " + g.outputs.join(", ") : "")) : null),
+              readonly ? null : D.operator || !D.me ? h("button", { class: "btn sm primary", type: "button", onclick: () => openWorkshop({ purpose: g.purpose + (g.inputs.length ? " It is given: " + g.inputs.join(", ") + "." : "") + (g.outputs.length ? " It produces: " + g.outputs.join(", ") + "." : ""), goal: p.goal || L.goal, name: g.agent_name, id: g.agent_id, category: g.category, onMade: () => { toast("Re-assessing the goal with the new agent"); const b = $(".goal .btn:not(.primary):not(.ghost)"); if (b) b.click(); } }) }, "Make this agent") : h("span", { class: "xs muted" }, "ask the operator to make it")))) : null)));
   }
   function estimateChip(e) {
     if (!e) return null;
@@ -439,6 +473,7 @@
     const r = p.route || {};
     const how = { explicit: "the steps you chose", planner: "planned by the model from the goal", router: "picked by the router from the goal" }[r.method] || r.method;
     return h("div", null,
+      p.feasibility ? feasibilityView(p.feasibility, steps, p) : null,
       h("div", { class: "plan-head" }, h("span", { class: "chip ai" }, steps.length + (steps.length === 1 ? " step" : " steps")), h("span", { class: "chip" }, how), r.playbook ? h("a", { class: "chip", href: "#/flows/" + encodeURIComponent(r.playbook) }, "flow: " + r.playbook) : null,
         r.reason ? h("span", { class: "muted small" }, r.reason) : null, estimateChip(p.estimate), h("span", { class: "muted small right" }, "Run starts exactly these steps")),
       (p.warnings || []).length ? h("div", { class: "notice warn small", style: "margin-bottom:10px" }, h("ul", { style: "margin:0;padding-left:18px" }, p.warnings.map((w) => h("li", null, w)))) : null,
@@ -646,6 +681,8 @@
     if (f && (f.headline || f.summary_markdown)) put(p, h("details", { style: "margin-top:14px", open: isOpen("outcome", true), dataset: { k: "outcome" } }, h("summary", { class: "strong", style: "cursor:pointer" }, "Outcome: " + (f.headline || "")),
       h("div", { style: "margin-top:8px" }, f.method === "model" ? md(f.summary_markdown) : null,
         (f.next_steps || []).length ? h("div", null, h("h4", { style: "margin:8px 0 4px" }, "Next steps"), h("ul", { class: "small", style: "margin:0;padding-left:18px" }, f.next_steps.map((x) => h("li", null, x)))) : null)));
+    if (v.route && v.route.feasibility) put(p, h("details", { style: "margin-top:10px", open: isOpen("scope", v.route.feasibility.verdict !== "feasible"), dataset: { k: "scope" } }, h("summary", { class: "small muted", style: "cursor:pointer" }, "Scope: what this run was set to do, and what it could not"),
+      h("div", { style: "margin-top:8px" }, feasibilityView(v.route.feasibility, v.steps, { goal: v.goal }, true))));
     put(p, h("details", { style: "margin-top:10px", open: isOpen("inputs", false), dataset: { k: "inputs" } }, h("summary", { class: "small muted", style: "cursor:pointer" }, "Run inputs" + (v.warnings && v.warnings.length ? " and " + v.warnings.length + " warning(s)" : "")),
       h("div", { class: "kv", style: "margin-top:8px" }, h("dt", null, "Goal"), h("dd", null, v.goal || "—"), h("dt", null, "Shared inputs"), h("dd", null, v.inputs && Object.keys(v.inputs).length ? h("div", { class: "jt" }, jt(v.inputs, undefined, true)) : "none")),
       v.warnings && v.warnings.length ? h("ul", { class: "small", style: "margin:8px 0 0;padding-left:18px" }, v.warnings.map((w) => h("li", null, w))) : null));
@@ -937,7 +974,8 @@
     const cats = new Map(); D.agents.forEach((a) => { if (!cats.has(a.category)) cats.set(a.category, { label: a.category_label, n: 0 }); cats.get(a.category).n++; });
     put(c, h("h1", { class: "page" }, "Agents"), h("p", { class: "page-lead" }, D.agents.length + " agents, grouped by the work they do. Each has a typed contract, a self-test, and runs from the API, MCP, A2A, a flow, or right here."),
       h("div", { class: "row", style: "gap:10px;margin-bottom:14px" }, h("input", { type: "text", placeholder: "Find an agent", "aria-label": "Find an agent", style: "max-width:320px", oninput: (e) => { F.q = e.target.value; draw(); } }),
-        h("div", { class: "seg", id: "packseg" })),
+        h("div", { class: "seg", id: "packseg" }),
+        D.operator || !D.me ? h("button", { class: "btn primary right", type: "button", onclick: () => openWorkshop({}), title: "Draft a new agent from a purpose, review it, register it" }, "Make an agent") : null),
       h("div", { class: "seg", id: "catseg", style: "margin-bottom:18px" }), h("div", { id: "agentlist" }));
     const draw = () => {
       put(clear($("#catseg")), h("button", { type: "button", "aria-pressed": String(F.cat === "all"), onclick: () => { F.cat = "all"; draw(); } }, "All", h("span", { class: "n" }, D.agents.length)),
@@ -988,13 +1026,15 @@
       put(c, h("p", { class: "small" }, h("a", { href: "#/agents" }, "Agents"), h("span", { class: "muted" }, " › " + a.category_label)),
         h("div", { class: "detail-head" }, h("span", { class: "bar", style: "background:" + catColor(a.category) }),
           h("div", null, h("div", { class: "row", style: "gap:8px" }, h("h1", { class: "page", style: "margin:0" }, a.name), packTag(a) ? h("span", { class: "tag" }, packTag(a)) : null, h("span", { class: "chip" }, a.kind === "deterministic" ? "code only" : a.kind === "llm" ? "model with guardrails" : "code and model"), h("span", { class: "chip" }, "v" + (a.version || "1"))),
-            h("p", { class: "page-lead", style: "margin:6px 0 0" }, a.description || a.summary))),
+            h("p", { class: "page-lead", style: "margin:6px 0 0" }, a.description || a.summary),
+            a.pack === "made" ? h("p", { class: "small muted" }, "Made in this layer's workshop: it runs on the model with the skill below, and the planner picks it like any other agent.") : null)),
         h("div", { class: "cols", style: "margin-top:20px" },
           h("div", { class: "stack-lg" },
             h("section", { class: "panel" }, h("h2", { style: "font-size:16px;margin-bottom:10px" }, "Run it here"),
               h("p", { class: "small muted", style: "margin-bottom:10px" }, "The fields are the agent's contract, filled with its self-test values. Anything that publishes or sends is held for approval."),
               h("div", { class: "form-grid" }, fields),
-              h("div", { class: "row", style: "margin-top:12px" }, runBtn, h("a", { class: "btn", href: "#/launch?agent=" + encodeURIComponent(id) }, "Open in Launch"), h("a", { class: "btn ghost", href: BASE + "/shop/designer", target: "_blank", rel: "noopener" }, "Add to a flow")), out),
+              h("div", { class: "row", style: "margin-top:12px" }, runBtn, h("a", { class: "btn", href: "#/launch?agent=" + encodeURIComponent(id) }, "Open in Launch"), h("a", { class: "btn ghost", href: BASE + "/shop/designer", target: "_blank", rel: "noopener" }, "Add to a flow"),
+                a.pack === "made" && (D.operator || !D.me) ? h("button", { class: "btn ghost right", type: "button", style: "color:var(--shu)", onclick: async () => { if (!window.confirm("Remove " + a.name + " from the catalog? Its earlier runs keep their records.")) return; try { await api("/agents/made/" + encodeURIComponent(id), { method: "DELETE" }); await loadCatalog(); toast(a.name + " removed"); navigate("#/agents"); } catch (e) { toast("Could not remove: " + e.message, 6000); } } }, "Remove this agent") : null), out),
             h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "History", h("span", { class: "muted", style: "font-size:13px;font-weight:400;margin-left:8px" }, history.length ? "runs that used this agent" : "")),
               history.length ? recentRuns(history) : h("p", { class: "muted small" }, "No run has used this agent yet."), history.length >= 12 ? h("p", { class: "small", style: "margin-top:8px" }, h("a", { href: "#/runs?agent=" + encodeURIComponent(id) }, "All runs with this agent")) : null)),
           h("div", { class: "stack-lg" },
@@ -1127,6 +1167,94 @@
           h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "Connect your tools"), h("pre", { class: "xs" }, "REST  " + (me.connection.rest && me.connection.rest.base_url) + "\nMCP   " + (me.connection.mcp && me.connection.mcp.url) + "\nA2A   " + (me.connection.a2a && (me.connection.a2a.card || me.connection.a2a.url))), h("p", { class: "small" }, h("a", { href: BASE + "/shop/account", target: "_blank", rel: "noopener" }, "Keys, policy and the full connection details"))),
           h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "Your policy"), h("div", { class: "jt" }, jt(me.policy || {}, undefined, 1))))));
   };
+
+  // ------------------------------------------------------------------------------------------------ the workshop: make an agent
+  const TIERS = [["fast", "fast: short, mechanical work"], ["balanced", "balanced: writing and reporting"], ["pro", "pro: analysis and design"], ["complex", "complex: code and experiment design"]];
+  function openWorkshop(opts) {
+    opts = opts || {};
+    const old = $("#workshop"); if (old) old.remove();
+    const d = h("dialog", { class: "pal workshop", id: "workshop", "aria-label": "Make an agent" });
+    document.body.append(d);
+    const body = h("div", { class: "wbody" });
+    const purpose = h("textarea", { placeholder: "What should the agent do? Say what it is given and what it must produce.", style: "min-height:84px;font-family:var(--font);font-size:14px" });
+    purpose.value = opts.purpose || "";
+    const nameIn = h("input", { type: "text", placeholder: "A name, if you have one" }); nameIn.value = opts.name || "";
+    const draftBtn = h("button", { class: "btn primary", type: "button", onclick: draft }, "Draft the agent");
+    const stepOne = h("div", { class: "stack" },
+      h("p", { class: "small muted" }, "The model drafts the agent's contract (what it takes, what it returns) and its skill (how it works, what it checks). You review every field before it is registered. Once registered it is an agent of this layer: in the catalog, callable from REST, MCP, A2A and flows, metered, and picked by the planner for later goals."),
+      h("label", { class: "f" }, "Purpose", purpose), h("label", { class: "f" }, "Name", nameIn),
+      h("div", { class: "row" }, draftBtn, h("button", { class: "btn ghost", type: "button", onclick: () => d.close() }, "Cancel")));
+    put(d, h("div", { class: "whead" }, h("h2", null, "Make an agent"), opts.goal ? h("p", { class: "small muted" }, "For the goal: " + opts.goal) : null), put(body, stepOne));
+    d.addEventListener("click", (e) => { if (e.target === d) d.close(); });
+    d.showModal(); purpose.focus();
+    async function draft() {
+      if (!purpose.value.trim()) { purpose.focus(); return; }
+      draftBtn.disabled = true; draftBtn.textContent = "Drafting…";
+      try {
+        const r = await api("/agents/draft", { body: { purpose: purpose.value.trim(), goal: opts.goal || "", name: nameIn.value.trim() } });
+        const dr = r.draft;
+        if (opts.id && !D.byId[opts.id]) dr.id = opts.id;
+        if (opts.category) dr.category = opts.category;
+        clear(body).append(form(dr, r.metrics));
+      } catch (e) { toast("Could not draft: " + e.message, 7000); }
+      finally { draftBtn.disabled = false; draftBtn.textContent = "Draft the agent"; }
+    }
+    function lines(arr) { return (arr || []).join("\n"); }
+    function unlines(text) { return String(text || "").split("\n").map((x) => x.trim()).filter(Boolean); }
+    function csv(text) { return String(text || "").split(",").map((x) => x.trim()).filter(Boolean); }
+    function form(dr, metrics) {
+      const cats = [...new Map(D.agents.map((a) => [a.category, a.category_label])).entries()];
+      const F = {};
+      const field = (key, label, el, hint) => { F[key] = el; return h("label", { class: "f" }, h("span", null, label), hint ? h("span", { class: "xs muted", style: "font-weight:400" }, hint) : null, el); };
+      const text = (v) => { const i = h("input", { type: "text" }); i.value = v === undefined || v === null ? "" : v; return i; };
+      const area = (v, min) => { const t = h("textarea", { style: "min-height:" + (min || 60) + "px;font-family:var(--font);font-size:13px" }); t.value = v || ""; return t; };
+      const inputsText = (dr.inputs || []).map((i) => [i.name, i.type || "text", i.required ? "required" : "optional", i.description || "", i.example === undefined || i.example === null ? "" : (typeof i.example === "string" ? i.example : JSON.stringify(i.example))].join(" | ")).join("\n");
+      const catSel = h("select", null, cats.map(([id, label]) => h("option", { value: id }, label))); catSel.value = dr.category;
+      const tierSel = h("select", null, TIERS.map(([id, label]) => h("option", { value: id }, label))); tierSel.value = dr.tier || "balanced";
+      const regBtn = h("button", { class: "btn primary", type: "button", onclick: register }, "Register the agent");
+      const out = h("div");
+      const wrap = h("div", { class: "stack" },
+        h("div", { class: "row", style: "gap:8px" }, h("span", { class: "chip good" }, "Drafted"), metrics && metrics.cost_usd ? h("span", { class: "xs muted" }, "one model call, " + money(metrics.cost_usd)) : h("span", { class: "xs muted" }, "a plain draft: no model is connected"), h("span", { class: "xs muted right" }, "Edit anything before registering")),
+        h("div", { class: "form-grid" },
+          field("name", "Name", text(dr.name)), field("id", "Id", text(dr.id), "snake_case, unique"),
+          field("category", "Category", catSel), field("tier", "Model tier", tierSel)),
+        field("summary", "Summary", text(dr.summary), "one sentence: what it does and what it produces"),
+        field("description", "Description", area(dr.description, 50)),
+        field("system_prompt", "Skill: how it works", area(dr.system_prompt, 150), "the system prompt it runs with"),
+        h("div", { class: "form-grid" },
+          field("inputs", "Inputs", area(inputsText, 70), "one per line: name | type | required/optional | description | example"),
+          field("checklist", "Checklist", area(lines(dr.checklist), 70), "one check per line")),
+        h("div", { class: "form-grid" },
+          field("output_keys", "Result keys", text((dr.output_keys || []).join(", ")), "comma-separated"), field("produces", "Produces", text((dr.produces || []).join(", ")), "kinds of deliverable, comma-separated"),
+          field("keywords", "Keywords", text((dr.keywords || []).join(", ")), "words a goal would use"), field("use_cases", "Typical asks", area(lines(dr.use_cases), 50), "one per line"),
+          field("standards", "Standards", area(lines(dr.standards), 50), "one per line"), field("example_request", "Self-test request", text(dr.example_request))),
+        h("div", { class: "row" }, regBtn, h("button", { class: "btn", type: "button", onclick: () => clear(body).append(stepOne) }, "Back"), h("button", { class: "btn ghost", type: "button", onclick: () => d.close() }, "Cancel")), out);
+      return wrap;
+      function read() {
+        const inputs = unlines(F.inputs.value).map((line) => { const [name, type, req, description, example] = line.split("|").map((x) => (x || "").trim()); let ex = example; try { if (example && /^[\[{"0-9tfn-]/.test(example)) ex = JSON.parse(example); } catch (e) { ex = example; } return { name, type: type || "text", required: /^req/i.test(req || ""), description: description || "", example: ex === "" ? null : ex }; }).filter((i) => i.name);
+        return { id: F.id.value.trim(), name: F.name.value.trim(), category: F.category.value, tier: F.tier.value, summary: F.summary.value.trim(), description: F.description.value.trim(),
+                 keywords: csv(F.keywords.value), inputs, output_keys: csv(F.output_keys.value), produces: csv(F.produces.value), system_prompt: F.system_prompt.value.trim(),
+                 checklist: unlines(F.checklist.value), standards: unlines(F.standards.value), use_cases: unlines(F.use_cases.value), example_request: F.example_request.value.trim() };
+      }
+      async function register() {
+        const spec = read();
+        if (!spec.name || !spec.summary || !spec.system_prompt) { toast("A name, a summary and the skill are needed"); return; }
+        regBtn.disabled = true; regBtn.textContent = "Registering…";
+        try {
+          const a = await api("/agents/made", { body: spec });
+          await loadCatalog();
+          renderSpine();
+          toast(a.name + " is now in the catalog");
+          clear(body).append(h("div", { class: "stack" },
+            h("div", { class: "notice good" }, h("strong", null, a.name), " is registered: it is in the catalog, callable from REST (", h("code", null, "POST /agents/" + a.id + "/run"), "), MCP (", h("code", null, "run_" + a.id), ") and A2A, can be put in a flow, and the planner will pick it for goals that need it. It runs on the model with the skill you reviewed; its first self-test is one click away."),
+            h("div", { class: "row" }, h("a", { class: "btn primary", href: "#/agents/" + encodeURIComponent(a.id), onclick: () => d.close() }, "Open the agent"),
+              opts.onMade ? h("button", { class: "btn", type: "button", onclick: () => { d.close(); opts.onMade(a); } }, "Re-assess the goal with it") : null,
+              h("button", { class: "btn ghost", type: "button", onclick: () => d.close() }, "Done"))));
+        } catch (e) { clear(out).append(h("div", { class: "notice bad small" }, "Not registered: " + e.message)); }
+        finally { regBtn.disabled = false; regBtn.textContent = "Register the agent"; }
+      }
+    }
+  }
 
   // ------------------------------------------------------------------------------------------------ command palette
   const P = { open: false, q: "", sel: 0, items: [] };

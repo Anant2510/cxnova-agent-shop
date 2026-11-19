@@ -116,7 +116,7 @@ class Orchestrator:
     # ---------------------------------------------------------------------------------- runs
     def start(self, goal: str, *, inputs: dict[str, Any] | None = None, agent: str | None = None,
               playbook: str | None = None, plan: dict[str, Any] | None = None, auto_approve: bool | None = None,
-              use_planner: bool = True, run_id: str | None = None, ctx: RunContext | None = None,
+              use_planner: bool = True, run_id: str | None = None, ctx: RunContext | None = None, feasibility: dict[str, Any] | None = None,
               wait: float | None = None, on_settled: Callable[[dict[str, Any]], None] | None = None) -> dict[str, Any]:
         """Start a run. ``wait=None`` runs it on this thread and returns the settled run; a number runs it on the
         worker pool and returns after at most that many seconds (status queued/running when it is not done yet).
@@ -129,7 +129,7 @@ class Orchestrator:
             if decision.confidence < floor:
                 return self._clarify(goal, inputs, decision, floor)
         self._prevalidate(agent, playbook, plan)  # a bad request fails here, not later on a worker thread
-        request = {"agent": agent, "playbook": playbook, "plan": plan, "use_planner": use_planner,
+        request = {"agent": agent, "playbook": playbook, "plan": plan, "use_planner": use_planner, "feasibility": feasibility,
                    "auto_approve": bool(auto_approve if auto_approve is not None else self.settings.auto_approve),
                    "max_parallel": int(self.settings.orchestrator.get("max_parallel", 4)),
                    # the run's entitlement is part of its durable state, so a run continued after a restart keeps it

@@ -42,6 +42,8 @@ steps:
   # ---- orchestrator
   orchestrator.plan:                              {work: plan_document}
   orchestrator.synthesize:                        {work: synthesis}
+  orchestrator.assess:                            {work: analyze}      # what the plan covers of the goal, and what no agent here can do
+  orchestrator.draft_agent:                       {work: design}       # an agent's contract and skill, drafted to fill a gap
   # ---- strategy and planning
   campaign_brief_generation.brief:                {work: plan_document}
   keyword_research.expand:                        {work: label}

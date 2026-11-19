@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from .agent import HomeError, PackOutput, build_agent_class, build_prompt
-from .model import Pack, PackAgent, load_packs, pack_of_agent, packs_dir
+from .model import Pack, PackAgent, load_packs, made_packs_dir, pack_of_agent, packs_dir
 
 __all__ = ["HomeError", "Pack", "PackAgent", "PackOutput", "build_agent_class", "build_prompt", "list_packs", "load_packs",
-           "pack_agent_classes", "pack_of_agent", "pack_playbooks", "packs_dir", "reset_packs"]
+           "made_packs_dir", "pack_agent_classes", "pack_of_agent", "pack_playbooks", "packs_dir", "reset_packs"]
 
 
 def pack_agent_classes() -> list[type]:

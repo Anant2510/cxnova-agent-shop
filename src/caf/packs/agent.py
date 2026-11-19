@@ -83,8 +83,9 @@ def build_agent_class(pack: Pack, agent: PackAgent) -> type[BaseAgent]:
         pack=pack.id, pack_name=pack.name, accelerator=agent.accelerator or agent.family,
         actions=[{"id": a.id, "title": a.title, "produces": a.produces, "output_keys": a.output_keys, "needs_home": a.needs_home or agent.needs_home}
                  for a in agent.actions],
-        runners=runners, auto_route=False, independence=f"Declared in the {pack.name} pack; modelled on this layer's model, or served by {home.name}"
-        if home and home.name else f"Declared in the {pack.name} pack; modelled on this layer's model")
+        runners=runners, auto_route=pack.auto_route, independence=f"Declared in the {pack.name} pack; modelled on this layer's model, or served by {home.name}"
+        if home and home.name else f"Made in this layer's workshop; modelled on this layer's model" if pack.auto_route
+        else f"Declared in the {pack.name} pack; modelled on this layer's model")
 
     def run_stage(state: dict[str, Any], ctx: Any) -> dict[str, Any]:
         return serve(pack, agent, state["inputs"], ctx)

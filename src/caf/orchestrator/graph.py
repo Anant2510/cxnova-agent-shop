@@ -101,6 +101,8 @@ def route_node(state: OrchestratorState, runtime: Runtime[RunContext]) -> dict[s
     decision, plan, warnings = route_and_plan(
         state.get("goal", ""), ctx, agent=req.get("agent"), playbook=req.get("playbook"), plan=req.get("plan"),
         inputs=state.get("inputs"), use_planner=req.get("use_planner", True))
+    if isinstance(req.get("feasibility"), dict):   # the assessment shown before the run was started: kept with the run
+        decision.feasibility = req["feasibility"]
     ctx.tracer.event("orchestrator.plan", mode=decision.mode, method=decision.method, steps=[s.agent for s in plan.steps])
     return {"route": decision.model_dump(), "plan": [s.model_dump() for s in plan.steps], "warnings": warnings,
             "status": "running", "events": [_evt("plan", route=decision.model_dump(), steps=[s.id for s in plan.steps])]}

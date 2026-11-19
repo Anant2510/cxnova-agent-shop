@@ -243,9 +243,27 @@ def build_mcp(orchestrator: Any = None) -> Any:
     server.add_tool(get_run, name="get_run", description="Follow a run: its status (queued, running, awaiting_approval, completed, "
                                                          "failed, stalled), each step's result so far and the actions waiting for approval")
 
-    for agent in all_agents():
-        server.add_tool(_make_runner(agent.spec.id, agent.Input, orch.settings), name=f"run_{agent.spec.id}",
-                        description=f"{agent.spec.name}: {agent.spec.summary}"[:1000])
+    agent_tools: set[str] = set()
+
+    def sync_agent_tools() -> None:
+        """One run_<agent_id> tool per agent of the catalog; kept in step when the workshop makes or removes an agent."""
+        wanted = {a.spec.id: a for a in all_agents()}
+        for aid in list(agent_tools):
+            if aid not in wanted:
+                try:
+                    server.remove_tool(f"run_{aid}")
+                except Exception:
+                    pass
+                agent_tools.discard(aid)
+        for aid, agent in wanted.items():
+            if aid in agent_tools:
+                continue
+            server.add_tool(_make_runner(aid, agent.Input, orch.settings), name=f"run_{aid}",
+                            description=f"{agent.spec.name}: {agent.spec.summary}"[:1000])
+            agent_tools.add(aid)
+
+    sync_agent_tools()
+    server.sync_agent_tools = sync_agent_tools  # type: ignore[attr-defined]
 
     # ---- flow tools follow the shop: one run_flow_<id> per published flow, kept in step with publish/unpublish/delete
     lock = threading.Lock()

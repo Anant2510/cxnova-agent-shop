@@ -46,6 +46,7 @@ class RouteDecision(BaseModel):
     method: Literal["explicit", "planner", "router"] = "router"
     alternatives: list[dict[str, Any]] = Field(default_factory=list)
     planner_metrics: dict[str, Any] | None = None   # the planning call's own usage and cost, when the model planned
+    feasibility: dict[str, Any] | None = None       # the assessment the caller previewed (what the plan covers of the goal, and what not)
 
 
 def _agent_doc(a: Any) -> str:
