@@ -172,9 +172,12 @@
     if (mode === MODE2) { pendingModel = true; tab = "policy"; toast("Set the customer's model in the policy: the account becomes mode 2 when it is saved.", 6000); return select(c.id); }
     try {
       if (mode === MODE1) {
-        const body = Object.assign({}, c.policy, { models: { provider: "coforge" } });
-        const r = await api("/shop/admin/api/customers/" + c.id + "/policy", { method: "PUT", body });
-        toast("Policy now uses the layer's model · run mode " + r.run_mode);
+        if (ownModel(c.policy)) {   // the policy names their model: point it at the layer's model first (from mode 2 that alone lands on 1)
+          const body = Object.assign({}, c.policy, { models: { provider: "coforge" } });
+          await api("/shop/admin/api/customers/" + c.id + "/policy", { method: "PUT", body });
+        }
+        await api("/shop/admin/api/customers/" + c.id, { method: "PATCH", body: { run_mode: MODE1 } });   // from mode 3 the label is a fact of its own
+        toast("Run mode 1: the layer's model answers");
       } else {
         await api("/shop/admin/api/customers/" + c.id, { method: "PATCH", body: { run_mode: mode } }); toast("Run mode updated");
       }
@@ -182,6 +185,7 @@
     } catch (err) { toast(err.message, 7000); }
     select(c.id);
   }
+  const ownModel = (policy) => { const p = ((policy || {}).models || {}).provider || "coforge"; return p !== "coforge" && p !== ""; };
   function policyTab(c) {
     const ta = h("textarea", { style: "min-height:320px" }, JSON.stringify(c.policy, null, 2));
     const needs = h("p", { class: "xs muted" });
@@ -197,7 +201,9 @@
       ta,
       h("p", { class: "xs muted" }, "api_key_env names an environment variable on this server (preferred). An inline api_key is encrypted with CAF_SECRET_KEY. The run mode follows the policy: a customer model makes the account mode 2, the layer's model mode 1. Run Agent check after saving: it tries the rented agents on that model."),
       h("div", { class: "row" }, h("button", { class: "btn primary", type: "button", onclick: async () => { let body; try { body = JSON.parse(ta.value); } catch (e) { return toast("Not valid JSON: " + e.message, 4000); }
-        try { const r = await api("/shop/admin/api/customers/" + c.id + "/policy", { method: "PUT", body }); pendingModel = false; toast("Policy saved · run mode " + r.run_mode + (r.run_mode === MODE2 ? " · run Agent check to try their model" : ""), 5000); select(c.id); } catch (err) { toast(err.message, 6000); } } }, "Save policy")));
+        try { let r = await api("/shop/admin/api/customers/" + c.id + "/policy", { method: "PUT", body });
+          if (pendingModel && ownModel(body) && r.run_mode !== MODE2) { await api("/shop/admin/api/customers/" + c.id, { method: "PATCH", body: { run_mode: MODE2 } }); r = { run_mode: MODE2 }; }   // asked for from mode 3
+          pendingModel = false; toast("Policy saved · run mode " + r.run_mode + (r.run_mode === MODE2 ? " · run Agent check to try their model" : ""), 5000); select(c.id); } catch (err) { toast(err.message, 6000); } } }, "Save policy")));
   }
   function checkTab(c) {
     const out = h("div", { class: "stack" });

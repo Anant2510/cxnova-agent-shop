@@ -35,6 +35,12 @@ def test_mode_two_follows_from_the_policy_and_cannot_be_set_without_it(shop_clie
     # the other fields still patch, with or without a run mode
     c = shop_client.patch("/shop/admin/api/customers/mm", json={"contact": "ops@mm.example"}, headers=ADMIN).json()
     assert c["contact"] == "ops@mm.example" and c["run_mode"] == MODE3
+    # leaving mode 3: mode 1 is allowed while the policy uses the layer's model; mode 2 once the policy names theirs
+    assert shop_client.patch("/shop/admin/api/customers/mm", json={"run_mode": MODE1}, headers=ADMIN).json()["run_mode"] == MODE1
+    shop_client.patch("/shop/admin/api/customers/mm", json={"run_mode": MODE3}, headers=ADMIN)
+    shop_client.put("/shop/admin/api/customers/mm/policy", json=OWN_MODEL, headers=ADMIN)   # a mode-3 account keeps its label ...
+    assert shop_client.get("/shop/admin/api/customers/mm", headers=ADMIN).json()["run_mode"] == MODE3
+    assert shop_client.patch("/shop/admin/api/customers/mm", json={"run_mode": MODE2}, headers=ADMIN).json()["run_mode"] == MODE2   # ... until asked
 
 
 def test_an_account_that_already_disagrees_is_flagged_until_fixed(shop_client):
