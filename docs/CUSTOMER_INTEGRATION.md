@@ -1,0 +1,118 @@
+# Using your agents: the four doors
+
+You rent agents and flows from the CX Nova Agent Orchestration Layer. Your key (`cxn_…`, issued once by the operator) is
+the only credential: whichever door you come through, it signs you in as your account, shows you what you rent and nothing
+else, and meters what you run. Nothing below needs a different key or a different account.
+
+| Door | For | When it is the right one |
+|---|---|---|
+| **Portal** | A person runs and watches | Someone on your side launches runs by hand, follows them live, approves held actions and reads the results. Nothing to integrate: the key signs them in at `/portal`. |
+| **REST API** | Your systems trigger runs | A scheduler, a data pipeline or an application starts runs and collects results. The simplest integration when there is no assistant and no orchestrator in between. |
+| **MCP** | Your assistant gets the agents as tools | Claude Desktop, Microsoft Copilot or your own agent should be able to pick an agent and fill its inputs from the conversation, with a person reading the answers. |
+| **A2A** | Your orchestrator delegates tasks | Your own orchestrator (Copilot Studio, Agentforce, Google ADK, LangGraph) owns the end-to-end process and hands whole tasks to this layer, polling them to completion. |
+
+The portal's **My account** page shows the same four doors with *your* addresses, the tool and skill names your key unlocks,
+and copy-ready samples for your first rented flow, with your key already in them. What follows is the general form; `<host>`
+is the layer's address (for example `https://cxnova2.centralindia.cloudapp.azure.com/agentshop`).
+
+## Portal
+
+Open `<host>/portal` and sign in with the key. **Launch** runs a goal in plain language (the planner chooses among what you
+rent), or a flow or an agent by name with its declared inputs; where a flow reads a data file (IntelliSight's Adobe Analytics
+export), **Data file** attaches it from your computer. **Runs** follows every run live, step by step, with its cost; **Approvals**
+decides actions a run holds (publishing, sending); **My account** shows what you rent, what you ran this month, your policy
+and how to connect.
+
+## REST API
+
+Every surface in one HTTP API, documented interactively at `<host>/docs`. Send the key as `Authorization: Bearer <key>`.
+
+```bash
+# run a rented flow with its inputs; a run that takes longer than wait_s answers 202 with the run so far
+curl -H 'Authorization: Bearer <key>' -H 'Content-Type: application/json' \
+  <host>/flows/is_executive_review/run -d '{"inputs": {"dataset_name": "westjet"}, "wait_s": 60}'
+
+# follow it
+curl -H 'Authorization: Bearer <key>' <host>/runs/<run_id>
+
+# or let the planner choose among what you rent
+curl -H 'Authorization: Bearer <key>' -H 'Content-Type: application/json' \
+  <host>/orchestrate -d '{"goal": "Read this Adobe Analytics export and tell me what to fix first", "inputs": {"dataset": "<csv text>"}}'
+```
+
+`GET /agents`, `GET /flows` and `GET /playbooks` list what the key rents. A planned step outside the rental is skipped and
+reported in the run, never silently run. Held actions are decided with `POST /runs/<run_id>/approvals` (`{"decisions": {"<step>/<action>": "approve"}}`).
+
+## MCP: your assistant gets the agents as tools
+
+The layer is a remote MCP server (streamable HTTP) at `<host>/mcp`. Add it to Claude Desktop, Copilot Studio or any MCP
+client:
+
+```json
+{ "mcpServers": { "cxnova-orchestration": {
+    "type": "http", "url": "<host>/mcp",
+    "headers": { "Authorization": "Bearer <key>" } } } }
+```
+
+What the assistant then sees (`tools/list`) is exactly your subscription:
+
+- `run_<agent_id>` for each rented agent. The tool's argument schema **is** the agent's contract, so the assistant knows that
+  `run_is_analytics_chat` takes `dataset` and `question`, or `run_vai_predictive_propensity` takes `profiles` and `objective`.
+- `run_flow_<flow_id>` for each rented flow, with a field per declared input plus `goal`.
+- `list_agents`, `list_flows`, `run_flow`, `orchestrate` (a goal; the planner chooses), `get_run`, `approve_actions`.
+
+A run that takes longer than a tool call can wait answers with its `run_id` and says to follow it with `get_run`. A held
+action appears in `pending_approvals`; the assistant asks its user and decides it with `approve_actions`. So an analyst can
+attach an export, ask "what should we fix first?", and the assistant calls `run_flow_is_executive_review` with the file as
+`dataset`, then answers follow-up questions with `run_is_analytics_chat`.
+
+## A2A: your orchestrator delegates tasks
+
+Discovery is the agent card; execution is JSON-RPC 2.0.
+
+```bash
+curl -H 'Authorization: Bearer <key>' <host>/.well-known/agent-card.json
+```
+
+The card describes this layer as one agent whose **skills** are your rented agents and flows (a flow as `flow:<id>`). To
+delegate, send `message/send` to `<host>/a2a`; a data part names the flow (or agent) and carries the inputs, a text part
+carries the goal:
+
+```json
+{ "jsonrpc": "2.0", "id": 1, "method": "message/send",
+  "params": { "message": { "role": "user", "messageId": "m-1", "parts": [
+    { "kind": "text", "text": "Retain this Platinum passenger after three disruptions" },
+    { "kind": "data", "data": { "flow": "vai_churn_prevention",
+        "inputs": { "passenger": { "name": "Elena Chen", "tier": "Platinum Elite", "hub": "SIN" },
+                    "signals": [ { "source": "PSS", "event": "3 disruptions in 28 days", "severity": "high" } ] } } } ] } } }
+```
+
+The answer is a **task**: `id` (the run), `status.state` (`submitted`, `working`, `input-required` when an action is held,
+`completed`, `failed`), a status message with the run's summary, and one **artifact per step** with that step's output. Poll
+it with `tasks/get` until it settles. Without a data part the text is a goal and the planner chooses among what you rent.
+`input-required` is decided on the portal, over REST or with the MCP `approve_actions` tool (A2A 0.3 has no approval verb).
+
+## Two customers, two doors
+
+The operator can create two demo accounts (`caf shop demo`, or *Create the demo customers* on the portal's Customers page)
+that show the choice made:
+
+**Harbor Bank** rents IntelliSight (the *Export to decisions* and *Ask the data* flows; the Conversational Analytics, Custom
+Report Builder and Decision Layer agents). Its analysts already work in Claude Desktop and Copilot, and they read every
+answer, so the bank comes through **MCP**: the assistant gets five typed tools, fills them from the export the analyst
+attached, and a held action is a question back to the analyst.
+
+**Xperion Airways** rents the four VoyagerAI journeys, the propensity agent and the IntelliSight executive review. Its
+customer-experience orchestrator watches the PSS and the loyalty platform and decides when to act, so the airline comes
+through **A2A**: on an event it sends a task, polls it, and takes the artifacts (the offer, the creatives, the activation
+plan, a dry run until an airline channel is connected to this layer) into its own channels.
+
+Both are metered identically: every step, with the agent, tokens, cost and outcome, visible on My account and on the
+operator's usage view. The door changes how your software talks to the layer, not what it pays or what it may run.
+
+## Where your data goes
+
+A run's inputs and outputs (an attached export becomes `dataset.csv` kept with the run) stay on the layer's server for the
+retention your policy sets. Your policy also sets masking before any model call (e-mail, phone, card and account numbers),
+the model your runs use (the layer's, or your own deployment in run mode 2), the sites agents may fetch, and your limits.
+Run mode 3 puts this same image in your own cloud when raw data must not leave your estate.

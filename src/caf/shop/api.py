@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import Body, FastAPI, HTTPException, Query, Request, Response
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
 from ..branding import PRODUCT
@@ -135,6 +135,11 @@ def register(app: FastAPI, settings: Any, shop: ShopService, orchestrator: Any =
     def admin_page(request: Request) -> HTMLResponse:
         return page(request, "admin.html")
 
+    @app.get("/admin", include_in_schema=False)
+    def admin_redirect(request: Request) -> RedirectResponse:
+        """The address people guess for the admin console lands on it."""
+        return RedirectResponse(f"{(request.scope.get('root_path') or '').rstrip('/')}/shop/admin")
+
     @app.get("/shop/designer", response_class=HTMLResponse, include_in_schema=False)
     def designer_page(request: Request) -> HTMLResponse:
         """The orchestration designer: agents on a canvas, connections between them, check, test, publish (operator)."""
@@ -222,13 +227,37 @@ def register(app: FastAPI, settings: Any, shop: ShopService, orchestrator: Any =
         for c in shop.store.list_customers():
             out.append({**c, "policy": shop.policy_of(c).redacted(), "subscriptions": shop.store.list_subscriptions(c["id"]),
                         "entitled_agents": sorted(shop.entitled_agents(c)), "entitled_flows": shop.entitled_flows(c),
-                        "keys": shop.store.list_keys(c["id"])})
+                        "keys": shop.store.list_keys(c["id"]), "warning": shop.model_warning(c)})
         return out
+
+    @app.post("/shop/admin/api/demo")
+    def admin_demo_customers(request: Request, rotate_keys: bool = Query(False)) -> dict[str, Any]:
+        """Create (or reset to their demo state) the two demo customers: Harbor Bank, whose analysts use the IntelliSight agents as MCP
+        tools from their assistant, and Xperion Airways, whose own orchestrator delegates VoyagerAI journeys over A2A. The answer carries
+        each one's story, what it rents, how it connects and, when a key was issued by this call, the key: it is shown once."""
+        from .demo import seed_demo
+
+        require_admin(request)
+        try:
+            return seed_demo(shop, base_url=str(request.base_url).rstrip("/"), rotate_keys=rotate_keys)
+        except ShopError as exc:
+            raise _err(exc) from exc
+
+    @app.get("/shop/admin/api/demo")
+    def admin_demo_state(request: Request) -> dict[str, Any]:
+        """Which demo customers exist (no change)."""
+        from .demo import DEMO_CUSTOMERS, DOORS
+
+        require_admin(request)
+        have = {c["id"] for c in shop.store.list_customers()}
+        return {"customers": [{"id": d["id"], "name": d["name"], "door": d["door"], "exists": d["id"] in have} for d in DEMO_CUSTOMERS], "doors": DOORS}
 
     @app.post("/shop/admin/api/customers", status_code=201)
     def admin_add_customer(request: Request, body: CustomerIn) -> dict[str, Any]:
+        """Create a customer. Run mode 2 is not chosen here: it follows from a policy that names the customer's model (PUT .../policy)."""
         require_admin(request)
         try:
+            shop.check_run_mode(body.run_mode, None)
             return shop.store.add_customer(body.id, body.name, run_mode=body.run_mode, contact=body.contact, notes=body.notes)
         except ShopError as exc:
             raise _err(exc) from exc
@@ -242,15 +271,21 @@ def register(app: FastAPI, settings: Any, shop: ShopService, orchestrator: Any =
             raise _err(exc) from exc
         return {**c, "policy": shop.policy_of(c).redacted(), "subscriptions": shop.store.list_subscriptions(customer_id),
                 "entitled_agents": sorted(shop.entitled_agents(c)), "entitled_playbooks": shop.entitled_flows(c),
-                "entitled_flows": shop.entitled_flows(c),
+                "entitled_flows": shop.entitled_flows(c), "warning": shop.model_warning(c),
                 "keys": shop.store.list_keys(customer_id), "usage": shop.store.usage_summary(customer_id),
                 "recent": shop.store.recent_usage(customer_id, 30), "connection": shop.connection_info(c, str(request.base_url).rstrip("/"))}
 
     @app.patch("/shop/admin/api/customers/{customer_id}")
     def admin_patch_customer(request: Request, customer_id: str, body: CustomerPatch) -> dict[str, Any]:
+        """Change name, status, contact, notes; a run mode the policy contradicts is refused (409) with what to do instead."""
         require_admin(request)
+        fields = {k: v for k, v in body.model_dump().items() if v is not None}
         try:
-            return shop.store.update_customer(customer_id, **{k: v for k, v in body.model_dump().items() if v is not None})
+            run_mode = fields.pop("run_mode", None)
+            c = shop.store.update_customer(customer_id, **fields) if fields else shop.store.get_customer(customer_id)
+            if run_mode is not None:
+                c = shop.set_run_mode(customer_id, run_mode)
+            return {**c, "warning": shop.model_warning(c)}
         except ShopError as exc:
             raise _err(exc) from exc
 

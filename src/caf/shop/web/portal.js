@@ -61,6 +61,11 @@
     ext: "<path d='M14 4h6v6M20 4l-9 9M19 14v6H5V6h6'/>",
     search: "<circle cx='11' cy='11' r='7'/><path d='M20 20l-4-4'/>",
     arrow: "<path d='M5 12h14M13 6l6 6-6 6'/>",
+    // the four doors a customer's software comes through
+    portal: "<rect x='3' y='4' width='18' height='16' rx='2'/><path d='M3 9h18M8 4v16'/>",
+    rest: "<path d='M8 8l-4 4 4 4M16 8l4 4-4 4M14 5l-4 14'/>",
+    mcp: "<path d='M9 3v4M15 3v4M7 7h10v5a5 5 0 0 1-10 0zM12 17v4'/>",
+    a2a: "<circle cx='5' cy='12' r='2.5'/><circle cx='19' cy='6' r='2.5'/><circle cx='19' cy='18' r='2.5'/><path d='M7.3 11l9.4-4M7.3 13l9.4 4'/>",
   };
   const icon = (name) => h("span", { html: `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[name] || ""}</svg>` }).firstChild;
 
@@ -1160,16 +1165,96 @@
   };
 
   // ------------------------------------------------------------------------------------------------ customers (operator) and account (customer)
+  // ------------------------------------------------------------------------------------------------ how a customer connects: the four doors
+  // conn = connection_info (addresses, the tool and skill names the key unlocks, samples for the first rented flow, the door guide).
+  // opts.key substitutes the customer's key into the samples (their own key on My account; a key just issued in the demo dialog).
+  function connectPanel(conn, opts) {
+    opts = opts || {};
+    const key = opts.key || "<your key>", sub = (t) => String(t).split("<your key>").join(key);
+    const code = (text) => { const t = typeof text === "string" ? sub(text) : sub(JSON.stringify(text, null, 2)); return h("div", { class: "codebox" }, h("pre", { class: "xs" }, t), h("button", { class: "btn sm ghost copy", type: "button", onclick: () => copy(t) }, "Copy")); };
+    const sm = conn.samples || {}, doors = conn.doors || [], state = { door: opts.door || "mcp" };
+    const guide = (id) => (doors.find((d) => d.id === id) || {});
+    const bodies = {
+      portal: () => h("div", { class: "stack" }, h("p", { class: "small" }, guide("portal").when),
+        h("p", { class: "small" }, "Sign in at ", h("a", { href: conn.portal || (BASE + "/portal"), target: "_blank", rel: "noopener" }, conn.portal || (BASE + "/portal")), " with the key. Launch runs the rented flows and agents (a goal, or a flow or agent by name, with a data file where one is needed), Runs follows them live with their cost, Approvals decides held actions, My account shows what is rented and what it used.")),
+      rest: () => h("div", { class: "stack" }, h("p", { class: "small" }, guide("rest").when),
+        h("div", { class: "xs muted" }, "Run " + (sm.flow ? "the flow " + sm.flow : sm.agent ? "the agent " + sm.agent : "a goal") + " (the flow's own example inputs):"), code(sm.rest_curl || ""),
+        h("div", { class: "xs muted" }, "A long run answers 202 with the run so far; follow it:"), code(sm.rest_follow || ""),
+        h("p", { class: "xs muted" }, "Interactive reference: ", h("a", { href: conn.rest.docs, target: "_blank", rel: "noopener" }, conn.rest.docs), ". A customer key sees and runs only what it rents; a planned step outside the rental is skipped and reported.")),
+      mcp: () => h("div", { class: "stack" }, h("p", { class: "small" }, guide("mcp").when),
+        h("div", { class: "xs muted" }, "Claude Desktop, Copilot Studio or any MCP client: add this remote server (streamable HTTP)."), code(conn.mcp.client_config),
+        h("div", { class: "xs muted" }, "The tools the key unlocks (tools/list is the subscription):"), h("div", { class: "row", style: "gap:6px" }, (conn.mcp.tools || []).map((t) => h("code", { class: "chip" }, t))),
+        h("div", { class: "xs muted" }, "What the assistant sends to run " + (sm.flow || sm.agent || "a goal") + ":"), code(sm.mcp_tool_call || {}),
+        h("p", { class: "xs muted" }, "A run that takes longer than a tool call answers with its run_id and says to follow it with get_run; a held action appears in pending_approvals and is decided with approve_actions, so the assistant can ask its user.")),
+      a2a: () => h("div", { class: "stack" }, h("p", { class: "small" }, guide("a2a").when),
+        h("div", { class: "xs muted" }, "Discovery: the agent card (its skills are the rented agents and flows)."), code("curl -H 'Authorization: Bearer <your key>' " + conn.a2a.agent_card),
+        h("div", { class: "row", style: "gap:6px" }, (conn.a2a.skills || []).map((t) => h("code", { class: "chip" }, t))),
+        h("div", { class: "xs muted" }, "Delegate a task: POST " + conn.a2a.endpoint), code(sm.a2a_message || {}),
+        h("div", { class: "xs muted" }, "The answer is a task (submitted, working, input-required, completed, failed) with one artifact per step; poll it:"), code(sm.a2a_follow || {}),
+        h("p", { class: "xs muted" }, "input-required means an action is held for approval: decide it on the portal, over REST (POST /runs/<id>/approvals) or with the MCP approve_actions tool.")),
+    };
+    const body = h("div");
+    const buttons = doors.map((d) => h("button", { class: "door", type: "button", role: "tab", onclick: () => { state.door = d.id; draw(); } }, icon(d.id), h("div", null, h("div", { class: "nm" }, d.name), h("div", { class: "xs muted" }, d.for))));
+    const draw = () => { buttons.forEach((b, i) => { const on = doors[i].id === state.door; b.classList.toggle("on", on); b.setAttribute("aria-selected", String(on)); }); put(clear(body), (bodies[state.door] || bodies.mcp)()); };
+    draw();
+    return h("div", { class: "connect" }, h("div", { class: "doors", role: "tablist" }, buttons), body);
+  }
+  function openConnect(title, conn, opts) {
+    const old = $("#connect"); if (old) old.remove();
+    const d = h("dialog", { class: "pal workshop", id: "connect", "aria-label": title });
+    document.body.append(d);
+    put(d, h("div", { class: "whead" }, h("h2", null, title), opts && opts.lead ? h("p", { class: "small muted" }, opts.lead) : null), h("div", { class: "wbody" }, connectPanel(conn, opts), h("div", { class: "row", style: "margin-top:14px" }, h("button", { class: "btn ghost", type: "button", onclick: () => d.close() }, "Close"))));
+    d.addEventListener("click", (e) => { if (e.target === d) d.close(); });
+    d.showModal();
+  }
+  // The demo customers: Harbor Bank (its analysts use the IntelliSight agents as MCP tools) and Xperion Airways (its orchestrator delegates
+  // VoyagerAI journeys over A2A). Created or reset by the operator from the Customers page; keys are shown once, in this dialog.
+  function openDemoDialog(result) {
+    const old = $("#demo"); if (old) old.remove();
+    const d = h("dialog", { class: "pal workshop", id: "demo", "aria-label": "Demo customers" });
+    document.body.append(d);
+    const cards = result.customers.map((cu) => h("section", { class: "democust" },
+      h("div", { class: "row", style: "gap:10px;align-items:baseline" }, h("h3", null, cu.name), h("span", { class: "chip" }, cu.door.toUpperCase()), h("code", { class: "xs muted" }, cu.id), h("span", { class: "xs muted" }, cu.created ? "created" : "reset to the demo state")),
+      h("p", { class: "small" }, cu.who),
+      h("p", { class: "small" }, h("strong", null, "Rents: "), cu.rents.flows.map((f) => h("a", { class: "chip", href: "#/flows/" + encodeURIComponent(f), onclick: () => d.close() }, flowName(f))), cu.rents.agents.map((a) => h("a", { class: "chip", href: "#/agents/" + a, onclick: () => d.close() }, agentName(a)))),
+      cu.not_available && cu.not_available.length ? h("div", { class: "notice warn small" }, "Not available on this server (pack switched off?): " + cu.not_available.join(", ")) : null,
+      h("p", { class: "small" }, h("strong", null, "Why " + cu.door.toUpperCase() + ": "), cu.why),
+      h("ol", { class: "small walk" }, cu.walkthrough.map((w) => h("li", null, w))),
+      cu.key ? h("div", { class: "notice good" }, h("div", { class: "small" }, h("strong", null, "Key, shown once: "), h("code", null, cu.key), " ", h("button", { class: "btn sm ghost", type: "button", onclick: () => copy(cu.key) }, "Copy")), h("div", { class: "xs muted" }, "Keys are stored as hashes; if it is lost, New keys issues another."))
+        : h("p", { class: "xs muted" }, "Key unchanged (prefix " + cu.key_prefix + "). New keys issues fresh ones."),
+      h("button", { class: "btn", type: "button", onclick: () => openConnect(cu.name + ": how they connect", cu.connection, { key: cu.key || undefined, door: cu.door, lead: cu.why }) }, "How " + cu.name + " connects")));
+    put(d, h("div", { class: "whead" }, h("h2", null, "Demo customers"), h("p", { class: "small muted" }, "Two ways a customer's own software consumes the layer: an assistant that gets the agents as tools (MCP) and an orchestrator that delegates whole tasks (A2A). Each account rents what its story needs.")),
+      h("div", { class: "wbody stack-lg" }, cards,
+        h("section", null, h("h3", null, "Which door a customer opts for"), h("table", { class: "small" }, h("tbody", null, (result.doors || []).map((dr) => h("tr", null, h("td", { style: "white-space:nowrap" }, h("strong", null, dr.name)), h("td", null, h("strong", null, dr.for + ". "), dr.when)))))),
+        h("div", { class: "row" }, h("button", { class: "btn ghost", type: "button", onclick: () => d.close() }, "Close"))));
+    d.addEventListener("click", (e) => { if (e.target === d) d.close(); });
+    d.showModal();
+  }
+  function flowName(id) { const f = (D.flows || []).find((x) => x.id === id); return f ? f.name : id; }
+  function demoDoor(id) { return { "harbor-bank": "mcp", "xperion-airways": "a2a" }[id]; }
+  function agentName(id) { return D.byId && D.byId[id] ? D.byId[id].name : id; }
   VIEWS.customers = function (c) {
     if (!D.operator) { put(c, h("div", { class: "empty" }, "Customers are managed by the operator.")); return; }
-    put(c, h("h1", { class: "page" }, "Customers"), h("p", { class: "page-lead" }, "Who rents what, and what they used. Keys, subscriptions and policies are edited in the admin console."), h("div", { id: "cust" }, h("div", { class: "empty small" }, "Loading…")));
+    put(c, h("h1", { class: "page" }, "Customers"), h("p", { class: "page-lead" }, "Who rents what, and what they used. Keys, subscriptions and policies are edited in the admin console."), h("div", { id: "demo-ctl" }), h("div", { id: "cust" }, h("div", { class: "empty small" }, "Loading…")));
+    const seed = async (btn, rotate) => {
+      btn.disabled = true; const was = btn.textContent; btn.textContent = "Working…";
+      try { const r = await api("/shop/admin/api/demo" + (rotate ? "?rotate_keys=true" : ""), { method: "POST", body: {} }); openDemoDialog(r); VIEWS.customers(clear(c)); }
+      catch (e) { toast("Could not create the demo customers: " + e.message); btn.disabled = false; btn.textContent = was; }
+    };
+    api("/shop/admin/api/demo").then((st) => {
+      const have = st.customers.filter((x) => x.exists), none = !have.length;
+      put(clear($("#demo-ctl")), h("div", { class: "notice", style: "margin-bottom:14px" }, h("div", { class: "row", style: "gap:10px;justify-content:space-between" },
+        h("div", { class: "small" }, h("strong", null, "Demo customers. "), none ? "Two accounts that show the ways a customer's own software uses the layer: Harbor Bank, whose analysts get the IntelliSight agents as tools in Claude Desktop or Copilot (MCP), and Xperion Airways, whose orchestrator delegates VoyagerAI journeys (A2A)."
+          : st.customers.map((x) => h("span", null, h("strong", null, x.name), " (" + x.door.toUpperCase() + (x.exists ? ")" : ", missing)"), " ")).concat([h("span", { class: "muted" }, "Reset puts them back into the demo state; New keys also issues fresh keys, shown once.")])),
+        h("div", { class: "row", style: "gap:6px;flex-shrink:0" }, h("button", { class: "btn" + (none ? " primary" : ""), type: "button", onclick: (e) => seed(e.currentTarget, false) }, none ? "Create the demo customers" : "Reset"), none ? null : h("button", { class: "btn ghost", type: "button", onclick: (e) => seed(e.currentTarget, true) }, "New keys")))));
+    }).catch(() => {});
     Promise.all([api("/shop/admin/api/overview"), api("/shop/admin/api/customers"), api("/shop/admin/api/requests").catch(() => [])]).then(([ov, customers, reqs]) => {
       const box = clear($("#cust"));
       const usageBy = {}; (ov.usage.lines || []).forEach((l) => { usageBy[l.customer_id] = usageBy[l.customer_id] || { runs: 0, tokens: 0, cost: 0 }; usageBy[l.customer_id].runs += l.runs; usageBy[l.customer_id].tokens += (l.input_tokens || 0) + (l.output_tokens || 0); usageBy[l.customer_id].cost += l.cost_usd || 0; });
       put(box, h("div", { class: "figures", style: "margin-bottom:18px" }, h("div", { class: "figure" }, h("div", { class: "v" }, ov.customers), h("div", { class: "l" }, "customers, " + ov.active + " active")), h("div", { class: "figure" }, h("div", { class: "v" }, num(ov.usage.totals.runs)), h("div", { class: "l" }, "metered agent runs in " + ov.usage.month)), h("div", { class: "figure" }, h("div", { class: "v" }, num((ov.usage.totals.input_tokens || 0) + (ov.usage.totals.output_tokens || 0))), h("div", { class: "l" }, "tokens metered")), h("div", { class: "figure" }, h("div", { class: "v" }, money(ov.usage.totals.cost_usd || 0)), h("div", { class: "l" }, "model spend metered in " + ov.usage.month)), h("div", { class: "figure" }, h("div", { class: "v" }, ov.requests_new), h("div", { class: "l" }, "new access requests"))),
         h("div", { class: "tw" }, h("table", null, h("thead", null, h("tr", null, h("th", null, "Customer"), h("th", null, "Run mode"), h("th", null, "Status"), h("th", { class: "num" }, "Runs this month"), h("th", { class: "num" }, "Tokens"), h("th", { class: "num" }, "Spend"), h("th", null, ""))),
-          h("tbody", null, customers.map((cu) => h("tr", null, h("td", null, h("strong", null, cu.name), h("div", { class: "xs muted mono" }, cu.id)), h("td", { class: "small" }, cu.run_mode_number + ". " + cu.run_mode.replace(/_/g, " ")), h("td", null, h("span", { class: "chip " + (cu.status === "active" ? "good" : "bad") }, cu.status)),
-            h("td", { class: "num" }, num((usageBy[cu.id] || {}).runs)), h("td", { class: "num" }, num((usageBy[cu.id] || {}).tokens)), h("td", { class: "num" }, money((usageBy[cu.id] || {}).cost || 0)), h("td", null, h("a", { class: "small", href: "#/runs?q=" + encodeURIComponent(cu.id) }, "Runs"), " ", h("a", { class: "small", href: BASE + "/shop/admin", target: "_blank", rel: "noopener" }, "Manage"))))))),
+          h("tbody", null, customers.map((cu) => h("tr", null, h("td", null, h("strong", null, cu.name), h("div", { class: "xs muted mono" }, cu.id)), h("td", { class: "small" }, cu.run_mode_number + ". " + cu.run_mode.replace(/_/g, " "), cu.warning ? [" ", h("span", { class: "chip warn", title: cu.warning }, "model not set")] : null), h("td", null, h("span", { class: "chip " + (cu.status === "active" ? "good" : "bad") }, cu.status)),
+            h("td", { class: "num" }, num((usageBy[cu.id] || {}).runs)), h("td", { class: "num" }, num((usageBy[cu.id] || {}).tokens)), h("td", { class: "num" }, money((usageBy[cu.id] || {}).cost || 0)), h("td", null, h("a", { class: "small", href: "#/runs?q=" + encodeURIComponent(cu.id) }, "Runs"), " ", h("a", { class: "small", href: "#", onclick: (e) => { e.preventDefault(); api("/shop/admin/api/customers/" + encodeURIComponent(cu.id)).then((full) => openConnect(cu.name + ": how they connect", full.connection, { door: (demoDoor(cu.id) || "mcp") })).catch((err) => toast(err.message)); } }, "Connect"), " ", h("a", { class: "small", href: BASE + "/shop/admin", target: "_blank", rel: "noopener" }, "Manage"))))))),
         reqs.length ? h("section", { class: "section" }, h("h2", null, "Access requests", h("span", { class: "muted" }, reqs.length)), h("div", { class: "tw" }, h("table", null, h("thead", null, h("tr", null, h("th", null, "When"), h("th", null, "Who"), h("th", null, "Wants"), h("th", null, "Status"))), h("tbody", null, reqs.slice(0, 20).map((r) => h("tr", null, h("td", { class: "small" }, when(r.created_at)), h("td", { class: "small" }, r.name, h("div", { class: "xs muted" }, r.email + (r.company ? ", " + r.company : ""))), h("td", { class: "small" }, (r.items || []).join(", ") || r.message || ""), h("td", null, h("span", { class: "chip" }, r.status)))))))) : null);
     }).catch((e) => { clear($("#cust")).append(h("div", { class: "notice bad" }, "Could not load: " + e.message)); });
   };
@@ -1183,7 +1268,7 @@
           h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "Your agents"), me.entitled_agents.length ? h("div", { class: "row", style: "gap:6px" }, me.entitled_agents.map((a) => h("a", { class: "chip", href: "#/agents/" + a }, agent(a).name))) : h("p", { class: "muted small" }, "No agents yet.")),
           h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "Your flows"), me.flows.length ? me.flows.map((f) => h("a", { class: "flowrow", href: "#/flows/" + encodeURIComponent(f.id) }, h("div", null, h("div", { class: "nm" }, f.name), stagesOf(f.stages || [])), h("div", { class: "small muted" }, f.agents.length + " agents"))) : h("p", { class: "muted small" }, "No flows yet."))),
         h("div", { class: "stack-lg" },
-          h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "Connect your tools"), h("pre", { class: "xs" }, "REST  " + (me.connection.rest && me.connection.rest.base_url) + "\nMCP   " + (me.connection.mcp && me.connection.mcp.url) + "\nA2A   " + (me.connection.a2a && (me.connection.a2a.card || me.connection.a2a.url))), h("p", { class: "small" }, h("a", { href: BASE + "/shop/account", target: "_blank", rel: "noopener" }, "Keys, policy and the full connection details"))),
+          h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "Connect your tools"), h("p", { class: "small muted" }, "Four ways to use what you rent. The samples carry your key and your first rented flow; copy them as they are."), connectPanel(me.connection, { key: Shop.token() || undefined, door: demoDoor(me.customer.id) || "mcp" }), h("p", { class: "small", style: "margin-top:10px" }, h("a", { href: BASE + "/shop/account", target: "_blank", rel: "noopener" }, "Keys and the signed policy"))),
           h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "Your policy"), h("div", { class: "jt" }, jt(me.policy || {}, undefined, 1))))));
   };
 

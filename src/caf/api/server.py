@@ -105,7 +105,7 @@ class ContinueRequest(BaseModel):
 
 
 PUBLIC_PATHS = {"/", "/console", "/portal", "/health", "/docs", "/docs/oauth2-redirect", "/redoc", "/openapi.json", "/.well-known/agent-card.json",
-                "/shop", "/shop/account", "/shop/admin", "/shop/designer", "/shop/runs", "/shop/catalog", "/shop/requests", "/favicon.svg", "/favicon.ico"}
+                "/shop", "/shop/account", "/shop/admin", "/admin", "/shop/designer", "/shop/runs", "/shop/catalog", "/shop/requests", "/favicon.svg", "/favicon.ico"}
 PUBLIC_PREFIXES = ("/shop/static/", "/shop/catalog/", "/shop/agents/", "/shop/flows/")
 LOOPBACK = {"127.0.0.1", "::1", "localhost", "testclient"}
 

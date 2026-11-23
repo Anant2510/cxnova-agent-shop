@@ -160,6 +160,13 @@
   .feas h3 { font-size: 14px; margin: 0 0 6px; } .feas h4 { font-size: 13px; margin: 10px 0 6px; }
   .reqs { display: grid; gap: 6px; } .req { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 8px; font-size: 13px; align-items: start; } .req .lamp { margin-top: 5px; }
   .gaps { margin-top: 8px; } .gapcard { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; border: 1px dashed var(--rule-2); border-radius: var(--r-ctl); margin-bottom: 6px; }
+  /* how a customer connects: the four doors, then the chosen door's samples */
+  .connect .doors { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .connect .door { display: flex; gap: 10px; align-items: center; text-align: left; padding: 10px 12px; border: 1px solid var(--rule-2); border-radius: var(--r-ctl); background: transparent; color: var(--ink); cursor: pointer; font: inherit; }
+  .connect .door svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; color: var(--ink-3); flex-shrink: 0; }
+  .connect .door .nm { font-weight: 600; font-size: 13.5px; } .connect .door.on { border-color: var(--ai); background: var(--ai-soft); } .connect .door.on svg { color: var(--ai); }
+  .codebox { position: relative; } .codebox pre { padding-right: 64px; max-height: 320px; } .codebox .copy { position: absolute; top: 6px; right: 6px; }
+  .democust { padding: 14px 0; border-top: 1px solid var(--rule); } .democust:first-child { border-top: 0; padding-top: 0; } .democust h3 { font-size: 16px; } .democust .walk { padding-left: 20px; margin: 6px 0 10px; } .democust .walk li { margin: 4px 0; }
   .pal.workshop { width: min(920px, calc(100% - 32px)); max-width: 920px; } .workshop .whead { padding: 16px 18px 10px; border-bottom: 1px solid var(--rule); } .workshop .whead h2 { font-size: 18px; }
   .workshop .wbody { padding: 14px 18px 18px; max-height: 74vh; overflow: auto; } .workshop .form-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
   .workshop input[type=text], .workshop select, .workshop textarea { width: 100%; padding: 7px 10px; border: 1px solid var(--rule-2); border-radius: var(--r-ctl); background: var(--paper); font-size: 13px; outline: none; }

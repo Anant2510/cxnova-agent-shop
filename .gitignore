@@ -22,5 +22,8 @@ console/node_modules/
 # packages and snapshots
 *.zip
 *.tgz
+# patches handed over for review live here until applied; never committed
+patches/
+*.patch
 # keep console/dist: the built console is committed so the VM needs no Node.js
 !console/dist/

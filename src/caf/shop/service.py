@@ -13,6 +13,7 @@ ShopService sits between the surfaces (REST, MCP, A2A, console, CLI) and the fra
 
 from __future__ import annotations
 
+import json
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -30,6 +31,23 @@ from .policy import CustomerPolicy, PolicyConfigError, load_policy
 from .store import RUN_MODES, ShopError, ShopStore
 
 SURFACES = ("api", "mcp", "a2a", "console", "cli", "check")
+
+
+def _example_value(example: str) -> Any:
+    """A flow input's example as a value: JSON or a Python literal (a pack's structured example is stored as text), else the text."""
+    import ast
+
+    text = (example or "").strip()
+    if not text:
+        return ""
+    for parse in (json.loads, ast.literal_eval):
+        try:
+            v = parse(text)
+            if isinstance(v, (dict, list, int, float, bool)):
+                return v
+        except Exception:  # noqa: BLE001 - not that notation; try the next
+            continue
+    return text
 
 
 class ShopService:
@@ -51,12 +69,44 @@ class ShopService:
         return load_policy(customer.get("policy"))
 
     def set_policy(self, customer_id: str, policy: dict[str, Any] | CustomerPolicy) -> dict[str, Any]:
+        """Save the policy. The run mode follows it: a customer model makes the account mode 2, the layer's model makes it mode 1
+        (mode 3, the customer's own cloud, is a deployment fact and is left alone)."""
         pol = policy if isinstance(policy, CustomerPolicy) else load_policy(policy)
         stored = pol.for_storage()
         customer = self.store.update_customer(customer_id, policy=stored)
         if pol.models.uses_customer_model and customer["run_mode"] == "coforge_cloud":
             customer = self.store.update_customer(customer_id, run_mode="coforge_cloud_customer_model")
+        elif not pol.models.uses_customer_model and customer["run_mode"] == "coforge_cloud_customer_model":
+            customer = self.store.update_customer(customer_id, run_mode="coforge_cloud")
         return customer
+
+    def set_run_mode(self, customer_id: str, run_mode: str) -> dict[str, Any]:
+        """Change the run mode where it is a fact of its own. Modes 1 and 2 are decided by the policy's model, so asking for one the
+        policy contradicts is refused with what to do instead; mode 3 (this image in the customer's cloud) is set directly."""
+        customer = self.store.get_customer(customer_id)
+        self.check_run_mode(run_mode, self.policy_of(customer))
+        return self.store.update_customer(customer_id, run_mode=run_mode)
+
+    @staticmethod
+    def check_run_mode(run_mode: str, policy: CustomerPolicy | None) -> None:
+        if run_mode not in RUN_MODES:
+            raise ShopError(f"run_mode must be one of {sorted(RUN_MODES)}")
+        uses_own = bool(policy and policy.models.uses_customer_model)
+        if run_mode == "coforge_cloud_customer_model" and not uses_own:
+            raise ShopError("Run mode 2 means the customer's own model answers, and the policy names none. Set models.provider, "
+                            "the endpoint, api_key_env and the tiers in the policy: saving it switches the account to mode 2.", 409)
+        if run_mode == "coforge_cloud" and uses_own:
+            raise ShopError("The policy names the customer's own model, so the account is mode 2. To use the layer's model, save the "
+                            "policy with models.provider 'coforge': the account becomes mode 1.", 409)
+
+    def model_warning(self, customer: dict[str, Any]) -> str | None:
+        """A sentence when the run mode and the policy's model disagree (an account configured before the two were tied), else None."""
+        uses_own = self.policy_of(customer).models.uses_customer_model
+        if customer["run_mode"] == "coforge_cloud_customer_model" and not uses_own:
+            return "Run mode 2 but the policy names no customer model: runs use the layer's model. Set the model in the policy, or choose run mode 1."
+        if customer["run_mode"] == "coforge_cloud" and uses_own:
+            return "Run mode 1 but the policy names the customer's own model: runs use that model. Save the policy with provider 'coforge', or choose run mode 2."
+        return None
 
     # ------------------------------------------------------------------------------- entitlements
     def entitled_agents(self, customer: dict[str, Any] | None) -> set[str]:
@@ -480,10 +530,19 @@ class ShopService:
         return {**desc, "model_steps": steps, "price": self.price_of("agent", agent_id)}
 
     # ------------------------------------------------------------------------------- connection details
-    def connection_info(self, customer: dict[str, Any], base_url: str) -> dict[str, Any]:
+    def connection_info(self, customer: dict[str, Any], base_url: str, prefer_flow: str | None = None) -> dict[str, Any]:
+        """How this customer connects: the REST, MCP and A2A addresses, the tool and skill names its key unlocks, ready-to-send
+        samples for its first rented flow (`prefer_flow` picks another rented one) and the guide to choosing a door."""
+        from .demo import DOORS, demo_customer
+
         base = base_url.rstrip("/")
         allowed = sorted(self.entitled_agents(customer))
         flows = self.entitled_flows(customer)
+        if prefer_flow is None:   # a demo customer's samples show the flow its story is about
+            demo = demo_customer(customer["id"])
+            prefer_flow = demo["rents"]["flows"][0] if demo else None
+        if prefer_flow in flows:
+            flows = [prefer_flow] + [f for f in flows if f != prefer_flow]
         first = allowed[0] if allowed else "campaign_brief_generation"
         rest: dict[str, Any] = {"base_url": base, "docs": f"{base}/docs", "run_agent": f"{base}/agents/{first}/run",
                                 "orchestrate": f"{base}/orchestrate", "header": "Authorization: Bearer <your key>"}
@@ -493,14 +552,59 @@ class ShopService:
             "rest": rest,
             "mcp": {"url": f"{base}/mcp",
                     "tools": [f"run_{a}" for a in allowed] + [f"run_flow_{f}" for f in flows] + ["list_agents", "list_flows", "run_flow",
-                                                                                                 "orchestrate", "approve_actions"],
+                                                                                                 "orchestrate", "approve_actions", "get_run"],
                     "client_config": {"mcpServers": {"cxnova-orchestration": {"type": "http", "url": f"{base}/mcp",
                                                                          "headers": {"Authorization": "Bearer <your key>"}}}}},
             "a2a": {"agent_card": f"{base}/.well-known/agent-card.json", "endpoint": f"{base}/a2a",
                     "skills": [f"agent:{a}" for a in allowed] + [f"flow:{f}" for f in flows]},
+            "portal": f"{base}/portal",
             "console": f"{base}/console",
+            "samples": self.connection_samples(base, allowed, flows),
+            "doors": DOORS,
             "run_mode": customer["run_mode"], "run_mode_number": RUN_MODES.get(customer["run_mode"], 1),
         }
+
+    def connection_samples(self, base: str, allowed: list[str], flows: list[str]) -> dict[str, Any]:
+        """Ready-to-send examples for the customer's first rented flow (or first agent): the REST call, the MCP tool call and the
+        A2A message that run it, with the flow's own example inputs. `<your key>` stands for the customer's key."""
+        fid = flows[0] if flows else None
+        flow = self.flow(fid) if fid else None
+        inputs: dict[str, Any] = {i.name: _example_value(i.example) for i in (flow.inputs if flow else []) if i.example}
+        if flow:   # a declared input without an example takes the value the flow's own test run would use
+            declared = [i.name for i in flow.inputs]
+            for k, v in self.sample_inputs(flow).items():
+                if k in declared and k not in inputs:
+                    inputs[k] = v
+        aid = allowed[0] if allowed else None
+        agent_inputs: dict[str, Any] = {}
+        if aid:
+            try:
+                agent_inputs = get_agent(aid).selftest_input()
+            except Exception:  # noqa: BLE001 - an agent without a self-test input still gets a sample
+                agent_inputs = {}
+        auth = "-H 'Authorization: Bearer <your key>' -H 'Content-Type: application/json'"
+        goal = (flow.name if flow else f"Run {aid}") if (flow or aid) else "What you want done"
+        out: dict[str, Any] = {"flow": fid, "agent": aid, "inputs": inputs}
+        if flow:
+            out["rest_curl"] = f"curl {auth} {base}/flows/{fid}/run -d '{json.dumps({'inputs': inputs, 'wait_s': 60})}'"
+            out["mcp_tool_call"] = {"name": f"run_flow_{fid}", "arguments": {"args": {**inputs, "goal": goal}}}
+            data_part: dict[str, Any] = {"flow": fid, "inputs": inputs}
+        elif aid:
+            out["rest_curl"] = f"curl {auth} {base}/agents/{aid}/run -d '{json.dumps({'inputs': agent_inputs})}'"
+            out["mcp_tool_call"] = {"name": f"run_{aid}", "arguments": {"inputs": agent_inputs}}
+            data_part = {"agent": aid, "inputs": agent_inputs}
+        else:
+            out["rest_curl"] = f"curl {auth} {base}/orchestrate -d '{json.dumps({'goal': goal})}'"
+            out["mcp_tool_call"] = {"name": "orchestrate", "arguments": {"args": {"goal": goal}}}
+            data_part = {}
+        parts: list[dict[str, Any]] = [{"kind": "text", "text": goal}]
+        if data_part:
+            parts.append({"kind": "data", "data": data_part})
+        out["a2a_message"] = {"jsonrpc": "2.0", "id": 1, "method": "message/send",
+                              "params": {"message": {"role": "user", "messageId": "m-1", "parts": parts}}}
+        out["a2a_follow"] = {"jsonrpc": "2.0", "id": 2, "method": "tasks/get", "params": {"id": "<the task id the answer carried>"}}
+        out["rest_follow"] = f"curl -H 'Authorization: Bearer <your key>' {base}/runs/<run_id>"
+        return out
 
     def account_view(self, customer: dict[str, Any], base_url: str) -> dict[str, Any]:
         pol = self.policy_of(customer)

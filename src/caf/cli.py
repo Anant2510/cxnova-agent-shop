@@ -337,8 +337,11 @@ def cmd_shop(args: argparse.Namespace) -> int:
                 n, nf = len(shop.entitled_agents(c)), len(shop.entitled_flows(c))
                 print(f"  {c['id']:<24} {c['name']:<28} mode {c['run_mode_number']}  {c['status']:<9} {n:>2} agents {nf:>2} flows  "
                       f"keys {len([k for k in store.list_keys(c['id']) if not k['revoked_at']])}")
+                if shop.model_warning(c):
+                    print(f"  {'':<24} ! {shop.model_warning(c)}")
             return 0
         if what == "add":
+            shop.check_run_mode(args.mode, None)   # mode 2 follows from a policy naming the customer's model (caf shop policy --file)
             c = store.add_customer(args.customer_id, args.name, run_mode=args.mode, contact=args.contact or "")
             print(f"created {c['id']} ({c['name']}), run mode {c['run_mode']}")
             return 0
@@ -363,6 +366,13 @@ def cmd_shop(args: argparse.Namespace) -> int:
             c = store.get_customer(args.customer_id)
             ef = shop.entitled_flows(c)
             print(f"{args.customer_id}: {len(shop.entitled_agents(c))} agents, {len(ef)} flow{'s' if len(ef) != 1 else ''} ({', '.join(ef) or '-'})")
+            return 0
+        if what == "demo":
+            from .shop.demo import render_text, seed_demo
+
+            base = args.base_url or os.environ.get("CAF_PUBLIC_URL") or "http://localhost:8080"
+            result = seed_demo(shop, base_url=base, rotate_keys=args.rotate_keys)
+            print(json.dumps(result, indent=2, default=str) if args.json else render_text(result))
             return 0
         if what == "flows":
             return _cmd_shop_flows(shop, args)
@@ -446,6 +456,9 @@ def main(argv: list[str] | None = None) -> int:
     q.add_argument("--all", action="store_true", help="every agent and flow")
     q.add_argument("--until", help="YYYY-MM-DD"); q.add_argument("--add", action="store_true", help="add to the existing subscriptions instead of replacing them"); q.set_defaults(fn=cmd_shop)
     q = ss.add_parser("policy", help="show or set a customer's policy"); q.add_argument("customer_id"); q.add_argument("--file", help="YAML or JSON policy to apply"); q.set_defaults(fn=cmd_shop)
+    q = ss.add_parser("demo", help="create (or reset) the two demo customers, Harbor Bank over MCP and Xperion Airways over A2A, and print how each connects")
+    q.add_argument("--base-url", help="the address customers use (default: CAF_PUBLIC_URL)"); q.add_argument("--rotate-keys", action="store_true", help="revoke their keys and issue new ones")
+    q.add_argument("--json", action="store_true"); q.set_defaults(fn=cmd_shop)
     q = ss.add_parser("check", help="run the subscribed agents' self-tests on the customer's model"); q.add_argument("customer_id")
     q.add_argument("--only", help="comma-separated agent ids"); q.add_argument("--fast", action="store_true"); q.set_defaults(fn=cmd_shop)
     q = ss.add_parser("usage", help="metered usage per customer and agent"); q.add_argument("customer_id", nargs="?"); q.add_argument("--month", help="YYYY-MM")

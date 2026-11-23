@@ -28,6 +28,15 @@
   const api = (path, opts) => Shop.api(path, Object.assign({ token: getTok() }, opts || {}));
   let catalog = null, customers = [], flows = [], selected = null, tab = "subscriptions", overview = null;
   let section = (location.hash || "").startsWith("#flows") ? "flows" : "customers";
+  let pendingModel = false;   // run mode 2 was asked for: the Policy tab is open until a policy naming the customer's model is saved
+  const MODE2 = "coforge_cloud_customer_model", MODE1 = "coforge_cloud";
+  // what each customer-model template needs filled in before it can answer
+  const NEEDS = {
+    "Customer's Azure OpenAI (mode 2)": "endpoint (their Azure OpenAI resource), api_version, api_key_env (an environment variable set on this server, then restart) and tiers: their deployment names for fast / balanced / pro / complex.",
+    "Customer's Claude on Foundry (mode 2)": "base_url (their Foundry resource's Anthropic endpoint), api_key_env (an environment variable set on this server, then restart) and tiers: their deployment names.",
+    "Customer's Bedrock (mode 2)": "region and tiers: the Bedrock model ids they have enabled; the server's AWS credentials, or api_key_env, must reach that account.",
+  };
+  const warnChip = (text, onclick) => text ? h(onclick ? "button" : "span", { class: "chip warn", title: text + (onclick ? " Click to open the policy." : ""), type: onclick ? "button" : null, onclick, style: onclick ? "cursor:pointer;font:inherit" : null }, "model not set") : null;
 
   const POLICIES = {
     "Coforge model (mode 1)": { version: 1, models: { provider: "coforge" }, data: { mask_before_model: [] }, reach: { websites: [] }, actions: { need_approval: ["*"] }, limits: { runs_per_day: 200 } },
@@ -84,14 +93,17 @@
   function customersPanel() {
     return h("section", { class: "panel" }, h("div", { class: "panel-head" }, h("h2", null, "Customers")),
       customers.length ? h("table", null, h("thead", null, h("tr", null, h("th", null, "Customer"), h("th", null, "Mode"), h("th", null, "Agents"), h("th", null, "Flows"), h("th", null, "Keys"), h("th", null, "Status"), h("th", null, ""))),
-        h("tbody", null, customers.map(c => h("tr", null, h("td", null, h("strong", null, c.name), h("div", { class: "xs muted mono" }, c.id)), h("td", null, c.run_mode_number + " · " + c.run_mode.replace(/_/g, " ")),
+        h("tbody", null, customers.map(c => h("tr", null, h("td", null, h("strong", null, c.name), h("div", { class: "xs muted mono" }, c.id)), h("td", null, c.run_mode_number + " · " + c.run_mode.replace(/_/g, " "), c.warning ? [" ", warnChip(c.warning)] : null),
           h("td", null, String(c.entitled_agents.length)), h("td", null, String((c.entitled_flows || []).length)), h("td", null, String(c.keys.filter(k => !k.revoked_at).length)), h("td", null, statusChip(c.status)),
           h("td", null, h("button", { class: "btn sm", type: "button", onclick: () => select(c.id) }, selected && selected.id === c.id ? "Selected" : "Manage")))))) : h("p", { class: "muted" }, "No customers yet. Add the first one on the right."));
   }
   function newCustomerPanel() {
     return h("section", { class: "panel" }, h("div", { class: "panel-head" }, h("h2", null, "New customer")),
       h("form", { class: "stack", onsubmit: async (e) => { e.preventDefault(); const f = new FormData(e.target);
-        try { await api("/shop/admin/api/customers", { body: { id: f.get("id"), name: f.get("name"), run_mode: f.get("run_mode"), contact: f.get("contact") } }); toast("Customer created"); e.target.reset(); await load(); select(f.get("id")); }
+        const wantsOwnModel = f.get("run_mode") === MODE2;
+        try { await api("/shop/admin/api/customers", { body: { id: f.get("id"), name: f.get("name"), run_mode: wantsOwnModel ? MODE1 : f.get("run_mode"), contact: f.get("contact") } });
+          toast(wantsOwnModel ? "Customer created. Now set their model in the policy: the account becomes mode 2 when it is saved." : "Customer created", wantsOwnModel ? 6000 : undefined);
+          e.target.reset(); await load(); if (wantsOwnModel) { pendingModel = true; tab = "policy"; } select(f.get("id")); }
         catch (err) { toast(err.message, 4000); } } },
         h("label", { class: "f" }, "Name", h("input", { type: "text", name: "name", required: true, placeholder: "Meridian Mutual" })),
         h("label", { class: "f" }, "Id (lowercase, dashes)", h("input", { type: "text", name: "id", required: true, pattern: "[a-z0-9][a-z0-9\\-]{1,62}", placeholder: "meridian-mutual" })),
@@ -106,6 +118,7 @@
         h("tbody", null, lines.map(l => h("tr", null, h("td", { class: "xs" }, l.customer_id), h("td", { class: "xs" }, l.agent_id), h("td", { class: "num" }, num(l.runs)), h("td", { class: "num" }, num((l.input_tokens || 0) + (l.output_tokens || 0))))))) : h("p", { class: "muted small" }, "No runs this month."));
   }
   async function select(id) {
+    if (selected && selected.id !== id) pendingModel = false;
     try {
       const [detail, ov, cs] = await Promise.all([api("/shop/admin/api/customers/" + id), api("/shop/admin/api/overview"), api("/shop/admin/api/customers")]);
       selected = detail; customers = cs; overview = ov; section = "customers"; render();
@@ -115,9 +128,9 @@
     const c = selected;
     const tabs = [["subscriptions", "Subscriptions"], ["keys", "Keys"], ["policy", "Policy"], ["check", "Agent check"], ["usage", "Usage"], ["connect", "Connection"]];
     return h("section", { class: "panel" },
-      h("div", { class: "panel-head" }, h("h2", null, c.name), h("span", { class: "muted small mono" }, c.id), statusChip(c.status),
+      h("div", { class: "panel-head" }, h("h2", null, c.name), h("span", { class: "muted small mono" }, c.id), statusChip(c.status), warnChip(c.warning, () => { tab = "policy"; select(c.id); }),
         h("span", { class: "right row" },
-          h("select", { class: "sm", onchange: async (e) => { await api("/shop/admin/api/customers/" + c.id, { method: "PATCH", body: { run_mode: e.target.value } }); toast("Run mode updated"); select(c.id); } },
+          h("select", { class: "sm", title: "Modes 1 and 2 follow the policy's model; mode 3 is this image in the customer's own cloud", onchange: (e) => changeMode(c, e.target.value) },
             Object.entries(catalog.run_modes).map(([k, m]) => h("option", { value: k, selected: k === c.run_mode }, m.name))),
           h("button", { class: "btn sm " + (c.status === "active" ? "danger" : ""), type: "button", onclick: async () => { await api("/shop/admin/api/customers/" + c.id, { method: "PATCH", body: { status: c.status === "active" ? "suspended" : "active" } }); select(c.id); } }, c.status === "active" ? "Suspend" : "Activate"))),
       h("div", { class: "tabs", role: "tablist" }, tabs.map(([id, label]) => h("button", { role: "tab", "aria-selected": id === tab, type: "button", onclick: () => { tab = id; select(c.id); } }, label))),
@@ -151,14 +164,40 @@
         h("tbody", null, c.keys.map(k => h("tr", null, h("td", null, h("code", null, k.prefix + "…")), h("td", null, k.label), h("td", { class: "xs" }, when(k.created_at)), h("td", { class: "xs" }, k.revoked_at ? "revoked " + when(k.revoked_at) : (when(k.last_used_at) || "never")),
           h("td", null, k.revoked_at ? null : h("button", { class: "btn sm danger", type: "button", onclick: async () => { if (!confirm("Revoke this key?")) return; await api("/shop/admin/api/customers/" + c.id + "/keys/" + k.id, { method: "DELETE" }); select(c.id); } }, "Revoke")))))));
   }
+  // The run mode is not a free choice: 1 and 2 are decided by the model the policy names. Asking for 2 opens the policy with the
+  // provider templates (the account turns to 2 when a policy naming the model is saved); asking for 1 saves the policy with the
+  // layer's model (the account turns to 1); 3 (the customer's own cloud) is a deployment fact and is set directly.
+  async function changeMode(c, mode) {
+    if (mode === c.run_mode) return;
+    if (mode === MODE2) { pendingModel = true; tab = "policy"; toast("Set the customer's model in the policy: the account becomes mode 2 when it is saved.", 6000); return select(c.id); }
+    try {
+      if (mode === MODE1) {
+        const body = Object.assign({}, c.policy, { models: { provider: "coforge" } });
+        const r = await api("/shop/admin/api/customers/" + c.id + "/policy", { method: "PUT", body });
+        toast("Policy now uses the layer's model · run mode " + r.run_mode);
+      } else {
+        await api("/shop/admin/api/customers/" + c.id, { method: "PATCH", body: { run_mode: mode } }); toast("Run mode updated");
+      }
+      pendingModel = false;
+    } catch (err) { toast(err.message, 7000); }
+    select(c.id);
+  }
   function policyTab(c) {
     const ta = h("textarea", { style: "min-height:320px" }, JSON.stringify(c.policy, null, 2));
+    const needs = h("p", { class: "xs muted" });
+    const templates = Object.keys(POLICIES).map(name => h("button", { class: "btn sm" + (pendingModel && NEEDS[name] ? " primary" : ""), type: "button", onclick: () => {
+      const t = JSON.parse(JSON.stringify(POLICIES[name]));
+      if (!NEEDS[name]) { t.data = c.policy.data || t.data; t.reach = c.policy.reach || t.reach; t.actions = c.policy.actions || t.actions; t.limits = c.policy.limits || t.limits; }   // back to the layer's model, the rest kept
+      ta.value = JSON.stringify(t, null, 2); needs.textContent = NEEDS[name] ? "Fill in: " + NEEDS[name] : "The layer's own deployment answers; nothing to fill in. Saving makes the account mode 1."; } }, name));
     return h("div", { class: "stack" },
-      h("div", { class: "row" }, h("span", { class: "small muted" }, "Templates:"), Object.keys(POLICIES).map(name => h("button", { class: "btn sm", type: "button", onclick: () => { ta.value = JSON.stringify(POLICIES[name], null, 2); } }, name))),
+      pendingModel || c.warning ? h("div", { class: "notice " + (c.warning ? "warn" : "") },
+        c.warning ? c.warning + " " : "This account should use the customer's own model (run mode 2). ",
+        "Pick the customer's provider below, fill in what the template asks for, then Save policy: the run mode follows the policy, so it becomes 2 once a policy naming their model is saved, and 1 if the policy uses the layer's model.") : null,
+      h("div", { class: "row" }, h("span", { class: "small muted" }, pendingModel ? "Customer's model provider:" : "Templates:"), templates), needs,
       ta,
-      h("p", { class: "xs muted" }, "api_key_env names an environment variable on this server (preferred). An inline api_key is encrypted with CAF_SECRET_KEY. Saving a policy with a customer model switches the run mode to 2."),
+      h("p", { class: "xs muted" }, "api_key_env names an environment variable on this server (preferred). An inline api_key is encrypted with CAF_SECRET_KEY. The run mode follows the policy: a customer model makes the account mode 2, the layer's model mode 1. Run Agent check after saving: it tries the rented agents on that model."),
       h("div", { class: "row" }, h("button", { class: "btn primary", type: "button", onclick: async () => { let body; try { body = JSON.parse(ta.value); } catch (e) { return toast("Not valid JSON: " + e.message, 4000); }
-        try { const r = await api("/shop/admin/api/customers/" + c.id + "/policy", { method: "PUT", body }); toast("Policy saved · run mode " + r.run_mode); select(c.id); } catch (err) { toast(err.message, 6000); } } }, "Save policy")));
+        try { const r = await api("/shop/admin/api/customers/" + c.id + "/policy", { method: "PUT", body }); pendingModel = false; toast("Policy saved · run mode " + r.run_mode + (r.run_mode === MODE2 ? " · run Agent check to try their model" : ""), 5000); select(c.id); } catch (err) { toast(err.message, 6000); } } }, "Save policy")));
   }
   function checkTab(c) {
     const out = h("div", { class: "stack" });
