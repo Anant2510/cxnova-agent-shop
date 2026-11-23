@@ -91,4 +91,6 @@ def test_xperion_airways_delegates_a_journey_over_a2a_with_the_sample_message(pa
     bank = _seed(shop_client, rotate_keys="true")["customers"][0]
     peek = shop_client.post("/a2a", json={"jsonrpc": "2.0", "id": 3, "method": "tasks/get", "params": {"id": task["id"]}}, headers={"Authorization": "Bearer " + bank["key"]}).json()
     assert "error" in peek
-    assert shop_client.get("/.well-known/agent-card.json", headers=hdr).status_code in (401, 403)
+    # the revoked key no longer identifies the airline: a customer page refuses it, and the public card no longer shows its subscription
+    assert shop_client.get("/shop/me", headers=hdr).status_code in (401, 403)
+    assert len(shop_client.get("/.well-known/agent-card.json", headers=hdr).json()["skills"]) > 6   # the public card, as for anyone
