@@ -1,0 +1,298 @@
+# Documentary credit examination: a presentation of trade documents checked against the terms of the credit.
+#
+# The same engine as every other profile: only this file differs. It declares the documents of a presentation, the
+# evidence a credit calls for, the date and amount rules, and the facts that must agree across documents. It has no
+# reference source, so the reference agent has nothing to retrieve and says so.
+#
+# The rules and tolerances are ILLUSTRATIVE. A bank's own examination policy and the credit's own terms replace them.
+id: trade_finance
+name: Trade document examination
+order: 50
+sector: Trade finance
+plain: "Check the documents presented under a documentary credit against the terms of the credit."
+version: "1.0"
+description: A presentation under a documentary credit checked for completeness, timing, amount and consistency with the credit's terms.
+
+brand:
+  workspace: Trade Document Examination Workbench
+  client_label: ""
+  case_noun: presentation
+
+case:
+  reference_label: Presentation reference
+  reference_example: PRES-2026-00731
+  fields:
+    - {id: claim_type, name: Presentation type, type: text, default: Documents presented under a documentary credit}
+    - {id: presentation_date, name: Date of presentation, type: date}
+    - {id: received_date, name: Received, type: date}
+    - {id: insurance_required, name: Insurance document required, type: text, default: "yes"}
+
+document_types:
+  - id: letter_of_credit
+    name: Documentary credit
+    group: credit
+    signals: [documentary credit, letter of credit, credit number, applicant, beneficiary, latest shipment date, expiry date, presentation period, documents required]
+    fields:
+      - {id: lc_number, name: Credit number, type: ref, labels: [Documentary Credit Number, Credit Number, LC Number], required: true}
+      - {id: issue_date, name: Date of issue, type: date, labels: [Date of Issue]}
+      - {id: applicant, name: Applicant, type: party, labels: [Applicant], required: true}
+      - {id: beneficiary, name: Beneficiary, type: party, labels: [Beneficiary], required: true}
+      - {id: credit_amount, name: Credit amount, type: money, labels: [Credit Amount, Amount], required: true}
+      - {id: latest_shipment_date, name: Latest shipment date, type: date, labels: [Latest Shipment Date, Latest Date of Shipment], required: true}
+      - {id: expiry_date, name: Expiry date, type: date, labels: [Expiry Date, Date of Expiry], required: true}
+      - {id: port_of_loading, name: Port of loading, type: text, labels: [Port of Loading]}
+      - {id: port_of_discharge, name: Port of discharge, type: text, labels: [Port of Discharge]}
+      - {id: goods_description, name: Description of goods, type: text, labels: [Description of Goods], required: true}
+  - id: commercial_invoice
+    name: Commercial invoice
+    group: commercial
+    signals: [commercial invoice, invoice no, invoice number, unit price, terms of sale, incoterms, seller, buyer]
+    fields:
+      - {id: invoice_number, name: Invoice number, type: ref, labels: [Invoice No, Invoice Number], required: true}
+      - {id: invoice_date, name: Invoice date, type: date, labels: [Invoice Date]}
+      - {id: seller, name: Seller, type: party, labels: [Seller, Exporter], required: true}
+      - {id: buyer, name: Buyer, type: party, labels: [Buyer], required: true}
+      - {id: lc_number, name: Credit number quoted, type: ref, labels: [Documentary Credit Number, Credit Number, LC Number]}
+      - {id: goods_description, name: Description of goods, type: text, labels: [Description of Goods], required: true}
+      - {id: quantity, name: Quantity, type: number, labels: [Quantity]}
+      - {id: unit_price, name: Unit price, type: money, labels: [Unit Price]}
+      - {id: total, name: Invoice total, type: money, labels: [Invoice Total, Total Amount], required: true}
+  - id: bill_of_lading
+    name: Bill of lading
+    group: transport
+    signals: [bill of lading, b/l no, port of loading, port of discharge, vessel, voyage, container no, shipped on board, notify party]
+    fields:
+      - {id: bl_number, name: Bill of lading number, type: ref, labels: [B/L No, Bill of Lading No], required: true}
+      - {id: carrier, name: Carrier, type: party, labels: [Carrier]}
+      - {id: shipper, name: Shipper, type: party, labels: [Shipper], required: true}
+      - {id: consignee, name: Consignee, type: text, labels: [Consignee]}
+      - {id: notify_party, name: Notify party, type: party, labels: [Notify Party]}
+      - {id: vessel, name: Vessel, type: text, labels: [Vessel / Voyage, Vessel]}
+      - {id: port_of_loading, name: Port of loading, type: text, labels: [Port of Loading], required: true}
+      - {id: port_of_discharge, name: Port of discharge, type: text, labels: [Port of Discharge], required: true}
+      - {id: packages, name: Number of packages, type: number, labels: [No. of Packages, Number of Packages]}
+      - {id: gross_weight, name: Gross weight (kg), type: number, labels: [Gross Weight]}
+      - {id: goods_description, name: Description of goods, type: text, labels: [Description of Goods]}
+      - {id: shipped_date, name: Shipped on board, type: date, labels: [Shipped on Board, Date of Shipment], required: true}
+  - id: packing_list
+    name: Packing list
+    group: commercial
+    signals: [packing list, packing slip, total packages, net weight, cartons]
+    fields:
+      - {id: invoice_ref, name: Invoice reference, type: ref, labels: [Invoice No, Invoice Reference]}
+      - {id: shipper, name: Shipper, type: party, labels: [Shipper, Seller]}
+      - {id: consignee, name: Consignee, type: party, labels: [Consignee, Buyer]}
+      - {id: packages, name: Number of packages, type: number, labels: [Total Packages], required: true}
+      - {id: quantity, name: Total quantity, type: number, labels: [Total Quantity]}
+      - {id: gross_weight, name: Gross weight (kg), type: number, labels: [Total Gross Weight, Gross Weight]}
+      - {id: goods_description, name: Description of goods, type: text, labels: [Description of Goods]}
+  - id: insurance_certificate
+    name: Insurance certificate
+    group: insurance
+    signals: [insurance certificate, certificate of insurance, policy number, sum insured, institute cargo clauses, assured, marine cargo]
+    fields:
+      - {id: policy_number, name: Policy number, type: ref, labels: [Policy Number, Certificate No], required: true}
+      - {id: assured, name: Assured, type: party, labels: [Assured, Insured]}
+      - {id: sum_insured, name: Sum insured, type: money, labels: [Sum Insured, Amount Insured], required: true}
+      - {id: cover_date, name: Cover effective from, type: date, labels: [Cover Effective From, Date of Issue]}
+  - id: certificate_of_origin
+    name: Certificate of origin
+    group: origin
+    signals: [certificate of origin, country of origin, chamber of commerce, originate, the undersigned authority]
+    fields:
+      - {id: certificate_number, name: Certificate number, type: ref, labels: [Certificate No, Certificate Number]}
+      - {id: exporter, name: Exporter, type: party, labels: [Exporter]}
+      - {id: consignee, name: Consignee, type: party, labels: [Consignee]}
+      - {id: origin, name: Country of origin, type: text, labels: [Country of Origin], required: true}
+      - {id: goods_description, name: Description of goods, type: text, labels: [Description of Goods]}
+      - {id: invoice_ref, name: Invoice reference, type: ref, labels: [Invoice No, Invoice Reference]}
+
+entities:
+  parties:
+    letter_of_credit.applicant: Applicant
+    letter_of_credit.beneficiary: Beneficiary
+    commercial_invoice.seller: Seller
+    commercial_invoice.buyer: Buyer
+    bill_of_lading.shipper: Shipper
+    bill_of_lading.carrier: Carrier
+    bill_of_lading.notify_party: Notify party
+    packing_list.shipper: Shipper
+    packing_list.consignee: Consignee
+    insurance_certificate.assured: Assured
+    certificate_of_origin.exporter: Exporter
+    certificate_of_origin.consignee: Consignee
+  goods:
+    - letter_of_credit.goods_description
+    - commercial_invoice.goods_description
+    - bill_of_lading.goods_description
+    - packing_list.goods_description
+    - certificate_of_origin.goods_description
+  references:
+    Credit: [letter_of_credit.lc_number, commercial_invoice.lc_number]
+    Invoice: [commercial_invoice.invoice_number, packing_list.invoice_ref, certificate_of_origin.invoice_ref]
+    Shipment: [bill_of_lading.bl_number]
+
+ontology:
+  domains:
+    Case: [Presentation, Applicant, Beneficiary, Examiner, Recommendation, Decision, Correspondence]
+    Credit: [DocumentaryCredit, CreditTerm, CreditAmount, ShipmentTerm, ExpiryTerm]
+    Transport: [Shipment, BillOfLading, Carrier, Vessel, Port, Package]
+    Documents and evidence: [Document, DocumentVersion, ExtractedField, EvidenceAssertion, Invoice, PackingList, InsuranceCertificate, CertificateOfOrigin]
+    Policy and audit: [Rule, RuleEvaluation, EvidenceRequirement, Agent, AgentRun, HumanFeedback, AuditEvent]
+  relationships:
+    - Presentation CONTAINS Document
+    - Document HAS_VERSION DocumentVersion
+    - DocumentVersion SUPPORTS EvidenceAssertion
+    - EvidenceAssertion MENTIONS Party | GoodsItem | Reference
+    - Invoice REFERENCES GoodsItem
+    - Shipment TRANSPORTS GoodsItem
+    - RuleEvaluation EVALUATES Rule
+    - RuleEvaluation SUPPORTED_BY EvidenceAssertion
+    - Recommendation BASED_ON RuleEvaluation
+
+synonyms:
+  party: {}
+
+evidence:
+  - {id: credit, title: Documentary credit, any_of: [letter_of_credit], required: always}
+  - {id: invoice, title: Commercial invoice, any_of: [commercial_invoice], required: always}
+  - {id: transport, title: Transport document, any_of: [bill_of_lading], required: always}
+  - {id: packing, title: Packing list, any_of: [packing_list], required: always}
+  - {id: insurance, title: Insurance document, any_of: [insurance_certificate], required: when, when: case.insurance_required, note: Required when the credit or the terms of sale call for insurance}
+  - {id: origin, title: Certificate of origin, any_of: [certificate_of_origin], required: always}
+
+rules:
+  - id: amount_within_credit
+    family: value
+    title: Invoice amount does not exceed the credit
+    type: amount_limit
+    amount: commercial_invoice.total
+    limit: letter_of_credit.credit_amount
+    tolerance_pct: 0
+    version: "1.0"
+    note: Illustrative. The credit's own tolerance replaces the zero used here.
+  - id: latest_shipment
+    family: timing
+    title: Shipped on or before the latest shipment date
+    type: date_order
+    first: bill_of_lading.shipped_date
+    then: letter_of_credit.latest_shipment_date
+    version: "1.0"
+  - id: presentation_period
+    family: timing
+    title: Presented within the presentation period
+    type: date_interval
+    from: bill_of_lading.shipped_date
+    to: case.presentation_date
+    max_days: 21
+    version: "1.0"
+    note: Illustrative 21 days after shipment; the credit's own period replaces it.
+  - id: within_expiry
+    family: timing
+    title: Presented on or before the expiry of the credit
+    type: date_order
+    first: case.presentation_date
+    then: letter_of_credit.expiry_date
+    version: "1.0"
+
+consistency:
+  - {id: beneficiary_seller, family: parties, title: Beneficiary is the seller and shipper, kind: party, severity: high,
+     fields: [letter_of_credit.beneficiary, commercial_invoice.seller, bill_of_lading.shipper, packing_list.shipper, certificate_of_origin.exporter]}
+  - {id: applicant_buyer, family: parties, title: Applicant is the buyer, kind: party, severity: high,
+     fields: [letter_of_credit.applicant, commercial_invoice.buyer, packing_list.consignee, certificate_of_origin.consignee]}
+  - {id: goods_description, family: goods, title: Goods correspond to the credit, kind: text, severity: high,
+     fields: [letter_of_credit.goods_description, commercial_invoice.goods_description, bill_of_lading.goods_description, packing_list.goods_description, certificate_of_origin.goods_description]}
+  - {id: port_of_loading, family: transport, title: Port of loading as the credit requires, kind: text, severity: medium,
+     fields: [letter_of_credit.port_of_loading, bill_of_lading.port_of_loading]}
+  - {id: port_of_discharge, family: transport, title: Port of discharge as the credit requires, kind: text, severity: medium,
+     fields: [letter_of_credit.port_of_discharge, bill_of_lading.port_of_discharge]}
+  - {id: package_count, family: transport, title: Package count agrees, kind: number, tolerance_pct: 0, severity: medium,
+     fields: [bill_of_lading.packages, packing_list.packages]}
+  - {id: gross_weight, family: transport, title: Gross weight agrees, kind: number, tolerance_pct: 1, severity: medium,
+     fields: [bill_of_lading.gross_weight, packing_list.gross_weight]}
+  - {id: credit_number, family: parties, title: Documents quote the credit number, kind: ref, severity: medium,
+     fields: [letter_of_credit.lc_number, commercial_invoice.lc_number]}
+  - {id: invoice_reference, family: goods, title: Documents refer to the same invoice, kind: ref, severity: medium,
+     fields: [commercial_invoice.invoice_number, packing_list.invoice_ref, certificate_of_origin.invoice_ref]}
+
+# What the integrity agent is told about this use case. Each line is a deterministic check; none is a model's opinion.
+integrity:
+  sums:
+    - {id: invoice_arithmetic, title: The invoice's quantity and unit price give its total, kind: product, parts: [commercial_invoice.quantity, commercial_invoice.unit_price], equals: commercial_invoice.total}
+  issued: [letter_of_credit.issue_date, commercial_invoice.invoice_date, bill_of_lading.shipped_date, insurance_certificate.cover_date]
+
+# Every party is screened, and so are the vessel and the ports the bill of lading names.
+screening:
+  fields:
+    - {field: bill_of_lading.vessel, kind: vessel}
+    - {field: bill_of_lading.port_of_loading, kind: place}
+    - {field: bill_of_lading.port_of_discharge, kind: place}
+
+# The examination period: a bank has at most five banking days following the day of presentation (UCP 600 article 14(b)).
+service:
+  target_days: 5
+  clock: working
+  starts: case.presentation_date
+  value: letter_of_credit.credit_amount
+  high_value: 250000
+  note: Five banking days following the day of presentation (UCP 600 article 14(b)); public holidays are not counted here. The high-value line is illustrative.
+
+outcomes:
+  proceed: {label: Complying presentation, description: "The documents are complete, in time, within the credit and consistent with each other."}
+  request_evidence: {label: Request missing documents, description: "A document the credit calls for has not been presented."}
+  review: {label: Discrepant presentation, description: "A term of the credit is not met or the documents conflict; an examiner must decide whether to refuse or seek a waiver."}
+
+correspondence:
+  evidence_request:
+    subject: "{reference}: documents outstanding and discrepancies noted"
+    opening: "We refer to the {case_noun} {reference}. On examination the documents cannot be taken up as presented."
+    closing: "Please let us have your instructions quoting {reference}."
+  decision_note:
+    subject: "{reference}: examination outcome"
+    opening: "We have completed the examination of {case_noun} {reference}."
+    closing: "This note records the documents and terms the outcome rests on."
+
+counterfactuals:
+  - id: add_insurance
+    title: Present an insurance certificate
+    expect: Resolves the missing document; discrepancies against the credit's terms remain.
+    change: {op: add_document, type: insurance_certificate, fields: {policy_number: "MC-2026-55871", assured: "@letter_of_credit.beneficiary", sum_insured: "USD 94,600.00", cover_date: "@bill_of_lading.shipped_date"}}
+  - id: invoice_within_credit
+    title: Bring the invoice within the credit amount
+    expect: Clears the amount discrepancy.
+    change: {op: set_field, field: commercial_invoice.total, value: "USD 84,000.00"}
+    ask: text
+  - id: ship_in_time
+    title: Ship on or before the latest shipment date
+    expect: Clears the late-shipment discrepancy; the presentation period is recalculated from the new date.
+    change: {op: set_field, field: bill_of_lading.shipped_date, value: "18 October 2026"}
+    ask: text
+  - id: present_late
+    title: Present after the credit has expired
+    expect: Both presentation rules fail.
+    change: {op: set_case, field: presentation_date, value: "2026-11-25"}
+    ask: date
+
+samples:
+  - id: discrepant
+    title: Discrepant presentation
+    story: The invoice exceeds the credit amount, the goods were shipped after the latest shipment date, and no insurance document was presented.
+    path: trade_finance
+    case: {reference: PRES-2026-00731, presentation_date: "2026-11-06", received_date: "2026-11-06"}
+    documents:
+      - {file: letter_of_credit.pdf, category: letter_of_credit}
+      - {file: invoice.pdf, category: commercial_invoice}
+      - {file: bill_of_lading.pdf, category: bill_of_lading}
+      - {file: packing_list.pdf, category: packing_list}
+      - {file: certificate_of_origin.pdf, category: certificate_of_origin}
+  - id: listed
+    title: A carrier and a vessel on a watchlist
+    story: "The same presentation, but the bill of lading names a carrier and a vessel that match the demonstration watchlist (invented names), the carrier through a different spelling. Screening finds both and the case goes to compliance before anyone else."
+    path: trade_finance
+    case: {reference: PRES-2026-00744, presentation_date: "2026-11-09", received_date: "2026-11-09"}
+    documents:
+      - {file: letter_of_credit.pdf, category: letter_of_credit}
+      - {file: invoice.pdf, category: commercial_invoice}
+      - {file: bill_of_lading_listed.pdf, category: bill_of_lading}
+      - {file: packing_list.pdf, category: packing_list}
+      - {file: certificate_of_origin.pdf, category: certificate_of_origin}

@@ -1,12 +1,14 @@
 # CX Nova Agent Orchestration Layer
 
 **One layer for every CX Nova agent: design a flow on a canvas, publish it, rent it, run it from your tools on the
-model your policy allows.** The layer carries 110 agents: the 28 blueprint agents of the Coforge Agentic Framework
-below, plus four **agent packs**: Campaign Studio (18 agents), the ARM SDLC Factory (51 agents), IntelliSight
-(5 agents, its analytics engines running as code) and VoyagerAI (8 agents, the airline CX journey). Flows are
+model your policy allows.** The layer carries 129 agents: the 28 blueprint agents of the Coforge Agentic Framework
+below, plus five **agent packs**: Campaign Studio (18 agents), the ARM SDLC Factory (51 agents), DocuInsights
+(19 agents, document and case intelligence, its own engine running as code), IntelliSight (5 agents, its analytics
+engines running as code) and VoyagerAI (8 agents, the airline CX journey). Flows are
 composed from any of them in the **orchestration designer** (`/shop/designer`): agents are nodes, a wire means
-"runs after", and the inspector sets what each step is asked to do. 27 flows ship built in (8 playbooks, 4 Campaign
-Studio stages, 9 ARM SDLC stages including the 50-step AI-to-Z release, 2 IntelliSight flows, 4 VoyagerAI journeys).
+"runs after", and the inspector sets what each step is asked to do. 31 flows ship built in (8 playbooks, 4 Campaign
+Studio stages, 9 ARM SDLC stages including the 50-step AI-to-Z release, 4 DocuInsights flows, 2 IntelliSight flows,
+4 VoyagerAI journeys).
 
 Around that: a storefront with indicative prices, customer accounts with API keys, subscriptions per agent or per
 flow, a model policy per customer (its own LLM deployment, masking, allowed websites, limits), usage metering, and
@@ -129,6 +131,7 @@ storefront, REST, MCP, A2A and the console.
 | ARM SDLC Factory (`arm_*`) | 51 | 9 (one per team stage, plus the 50-step AI-to-Z release) | generated: `python3 scripts/build_pack_arm.py --from <factory>/config` |
 | IntelliSight (`is_*`) | 5 | 2 (export to decisions: interpret → dashboard → recommend; ask the data) | `config/packs/intellisight.yaml`; the engines are ported to Python in `src/caf/accelerators/intellisight.py` from the accelerator's own `index.html` (github.com/Anant2510/IntelliSight) and run as **code** |
 | VoyagerAI (`vai_*`) | 8 | 4 (passenger journey, churn prevention, IROPS recovery, airport disruption) | `config/packs/voyagerai.yaml`, written from the eight agents VoyagerAI describes (github.com/Anant2510/VoyagerAI); modelled here, since VoyagerAI's own systems are not connected |
+| DocuInsights (`di_*`) | 19 | 4 (case assessment in fourteen steps; what-if; ask the case; assess, draft and file) | `config/packs/docuinsights.yaml`; the accelerator is its own package, `src/docuinsights` (no dependency on this layer, runs alone with `python -m docuinsights serve`), called as **code** through `src/caf/accelerators/docuinsights.py`; its workbench is mounted at `/docuinsights`. See [docs/DOCUINSIGHTS.md](docs/DOCUINSIGHTS.md) |
 
 Every pack agent takes `action` (one of the things it can do), `request` (plain words), the inputs its pack
 declares and `context`, and answers `{action, runner, summary, result, artifacts, human_followups, dry_run}`.
@@ -289,7 +292,7 @@ routing tier of each step (fast/balanced on Sonnet, pro/complex on Opus) and the
 reaches the browser. Files the agents produce are downloaded by the browser; the status chip reads
 "Claude on Microsoft Foundry connected" (or the provider in use).
 
-The hosted console, the designer and the storefront group all 110 agents by the work they do (strategy, analytics, design,
+The hosted console, the designer and the storefront group all 129 agents by the work they do (strategy, analytics, design,
 content, website optimization, engineering, quality, experimentation, compliance, activation, release), the blueprint's
 agents first in each group and a pack's agents beside them with the pack's tag (`CS`, `ARM`, `IS`, `VAI`); the order is
 `caf.core.spec.CATEGORY_ORDER`. A pack names its tag and each agent's category in its YAML. Blueprint agents run in
@@ -362,7 +365,7 @@ predictions, parameters, method and calibration: [`docs/VOYAGERAI_PROPENSITY.md`
   surfaces and every local connector, using the offline model and the demo data; axe-core and Playwright paths in
   Chromium; vendor adapters' request/response shapes against mocked APIs; all 28 browser twins and all 8 playbooks in
   Chromium (offline and mock-Claude paths); statistics recomputed against scipy/statsmodels; an independent security
-  review (findings fixed and covered by `tests/test_security.py`). Agent packs (`tests/test_packs.py`): all 110
+  review (findings fixed and covered by `tests/test_security.py`). Agent packs (`tests/test_packs.py`): all 129
   agents registered and answering, the four runners (code, home against a stand-in studio, model against a stand-in
   model, twin offline), dry runs, every surface, and designed flows including a 50-step clone. IntelliSight and
   VoyagerAI (`tests/test_intellisight_voyagerai.py`): the engine's totals, year-over-year, monthly series, rates and

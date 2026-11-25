@@ -49,10 +49,10 @@ def test_packs_join_the_catalog_and_the_routers_leave_them_alone(packs):
     from caf.orchestrator.router import catalog_for_planner, playbooks_for_planner
     from caf.packs import list_packs
 
-    assert len(all_agents()) == 110 and len(blueprint_agents()) == 28 + 5 + 8   # the blueprint, IntelliSight and VoyagerAI are planner-pickable
+    assert len(all_agents()) == 129 and len(blueprint_agents()) == 28 + 5 + 8   # the blueprint, IntelliSight and VoyagerAI are planner-pickable
     by_id = {p["id"]: p for p in list_packs()}
     assert by_id["campaign_studio"]["agents"] == 18 and by_id["arm_sdlc"]["agents"] == 51
-    assert by_id["intellisight"]["agents"] == 5 and by_id["voyagerai"]["agents"] == 8
+    assert by_id["intellisight"]["agents"] == 5 and by_id["voyagerai"]["agents"] == 8 and by_id["docuinsights"]["agents"] == 19
     assert by_id["campaign_studio"]["home"]["connected"] is False and by_id["arm_sdlc"]["home"] is None
     # a pack agent is a full agent: spec, typed input with its actions as an enum, the pack on the catalog entry
     x = get_agent("cs_xtender_variants")
@@ -67,7 +67,7 @@ def test_packs_join_the_catalog_and_the_routers_leave_them_alone(packs):
     assert entry["category"] == "engineering" and entry["category_label"] == "Engineering and build"
     # the product's own processes arrive as flows; every step names a registered agent in dependency order
     books = load_playbooks()
-    assert len(books) == 27 and validate_playbooks() == []
+    assert len(books) == 31 and validate_playbooks() == []
     assert len(books["arm_ai_to_z_release"].steps) == 50 and books["cs_stage_checks"].pack == "campaign_studio"
     # the routers and the planner choose among the blueprint's agents and playbooks, plus the packs that opt in (auto_route)
     assert len(catalog_for_planner()) == 41 and len(playbooks_for_planner()) == 8 + 2 + 4
@@ -206,11 +206,11 @@ def client(packs, monkeypatch, tmp_path):
 
 
 def test_packs_on_every_surface(client):
-    assert [(p["id"], p["agents"], p["flows"]) for p in client.get("/packs", headers=ADMIN).json()] == [("arm_sdlc", 51, 9), ("campaign_studio", 18, 4), ("intellisight", 5, 2), ("voyagerai", 8, 4)]
-    assert len(client.get("/agents", headers=ADMIN).json()) == 110
+    assert [(p["id"], p["agents"], p["flows"]) for p in client.get("/packs", headers=ADMIN).json()] == [("arm_sdlc", 51, 9), ("campaign_studio", 18, 4), ("docuinsights", 19, 4), ("intellisight", 5, 2), ("voyagerai", 8, 4)]
+    assert len(client.get("/agents", headers=ADMIN).json()) == 129
     assert len(client.get("/agents?pack=arm_sdlc", headers=ADMIN).json()) == 51 and len(client.get("/agents?pack=blueprint", headers=ADMIN).json()) == 28
     health = client.get("/health").json()
-    assert health["agents_registered"] == 28 and health["agents_expected"] == 28 and health["agents_total"] == 110 and health["status"] == "ok"
+    assert health["agents_registered"] == 28 and health["agents_expected"] == 28 and health["agents_total"] == 129 and health["status"] == "ok"
     assert health["packs"][1] == {"id": "campaign_studio", "name": "Campaign Studio", "agents": 18, "flows": 4, "home_connected": False}
     # one agent over REST: the twin offline, with the work of earlier steps accepted
     r = client.post("/agents/arm_design_velocity/run", headers=ADMIN, json={"inputs": {"action": "wireframes", "request": "Event hub pages"},
@@ -220,7 +220,7 @@ def test_packs_on_every_surface(client):
     assert desc["pack_name"] == "Campaign Studio" and "segment_codes" in desc["input_schema"]["properties"]
     # the storefront: pack agents listed with a model tier and an agent page; pack flows with their steps
     cat = client.get("/shop/catalog").json()
-    assert len(cat["agents"]) == 110 and len(cat["flows"]) == 27 and [p["id"] for p in cat["packs"]] == ["arm_sdlc", "campaign_studio", "intellisight", "voyagerai"]
+    assert len(cat["agents"]) == 129 and len(cat["flows"]) == 31 and [p["id"] for p in cat["packs"]] == ["arm_sdlc", "campaign_studio", "docuinsights", "intellisight", "voyagerai"]
     x = next(a for a in cat["agents"] if a["id"] == "cs_xtender_variants")
     assert x["model_tiers"] == ["balanced"] and x["accelerator"] == "Xtender" and x["price"]["monthly"]
     page = client.get("/shop/catalog/arm_blueswan").json()
@@ -249,7 +249,7 @@ def test_packs_on_every_surface(client):
     admin_tools = tools(ADMIN)
     from caf.api.mcp_server import GENERIC_TOOLS
 
-    assert len(admin_tools) == 110 + 27 + len(GENERIC_TOOLS) and {"run_cs_xtender_variants", "run_arm_front_velocity", "run_flow_arm_ai_to_z_release", "run_is_analytics_engine", "run_flow_vai_churn_prevention"} <= admin_tools
+    assert len(admin_tools) == 129 + 31 + len(GENERIC_TOOLS) and {"run_cs_xtender_variants", "run_arm_front_velocity", "run_flow_arm_ai_to_z_release", "run_is_analytics_engine", "run_flow_vai_churn_prevention"} <= admin_tools
     assert tools(hdr) == {"run_arm_site_auditor", "run_flow_cs_stage_checks", "list_agents", "list_flows", "run_flow", "orchestrate", "approve_actions",
                           "get_run"}
     # the console the layer hosts gets the pack agents (they run on the server) and every flow in its playbook list
@@ -311,13 +311,13 @@ def test_first_load_from_several_threads_at_once(packs):
 
 
 def test_every_agent_sits_in_a_category_that_names_its_work(packs):
-    """The catalog groups all 110 agents by what they do, blueprint and packs side by side, in CATEGORY_ORDER; no agent
+    """The catalog groups all 129 agents by what they do, blueprint and packs side by side, in CATEGORY_ORDER; no agent
     hides under a product name or the catch-all 'platform'."""
     from caf.core import all_agents
     from caf.core.spec import CATEGORY_ORDER, Category
 
     agents = all_agents()
-    assert len(agents) == 110
+    assert len(agents) == 129
     assert not [a.spec.id for a in agents if a.spec.category == Category.PLATFORM]
     rank = [CATEGORY_ORDER.index(a.spec.category) for a in agents]
     assert rank == sorted(rank)   # grouped, in the order the work happens
@@ -328,4 +328,4 @@ def test_every_agent_sits_in_a_category_that_names_its_work(packs):
     assert {"arm_sdlc", "campaign_studio"} <= set(by_cat[Category.STRATEGY])
     from caf.packs import list_packs
 
-    assert {p["id"]: p["tag"] for p in list_packs()} == {"arm_sdlc": "ARM", "campaign_studio": "CS", "intellisight": "IS", "voyagerai": "VAI"}
+    assert {p["id"]: p["tag"] for p in list_packs()} == {"arm_sdlc": "ARM", "campaign_studio": "CS", "docuinsights": "DI", "intellisight": "IS", "voyagerai": "VAI"}

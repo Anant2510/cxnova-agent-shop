@@ -1,0 +1,161 @@
+# Industry knowledge base: insurance (claims).
+# General knowledge about the industry, written for orientation and for tracing a finding back to the principle it rests on.
+# Insurance contract law differs by country. Regulations are named with their jurisdiction.
+id: insurance
+kind: industry
+head: Insurance
+name: Insurance knowledge base
+version: "1.0"
+about: Insurers, brokers and claims handlers. A claim is a request to be paid under a policy, and handling it means establishing that the loss happened, that the policy covers it and how much is owed.
+
+bodies:
+  - {name: International Accounting Standards Board, also: [IASB], says: "Sets the IFRS accounting standards."}
+
+standards:
+  - name: IFRS 17
+    title: IFRS 17 Insurance Contracts
+    by: International Accounting Standards Board
+    cite: IFRS 17
+    jurisdiction: International, where IFRS is used
+    says: The accounting standard for insurance contracts. It decides how claims and the reserves held for them appear in an insurer's accounts.
+  - name: Motor Insurance Directive
+    type: regulation
+    title: Directive 2009/103/EC relating to insurance against civil liability in respect of the use of motor vehicles
+    by: European Union
+    cite: Directive 2009/103/EC
+    jurisdiction: European Union
+    says: Requires every motor vehicle to be insured against liability to third parties and sets how quickly an insurer must answer a claim.
+    provisions:
+      - {ref: article 22, about: "three months to make a reasoned offer", says: "Within three months of a claim being presented the insurer must make a reasoned offer of compensation where liability is not contested and the damage is quantified, or a reasoned reply where it is not."}
+  - name: Solvency II
+    type: regulation
+    title: Directive 2009/138/EC on the taking-up and pursuit of the business of insurance and reinsurance
+    by: European Union
+    cite: Directive 2009/138/EC
+    jurisdiction: European Union
+    says: The prudential regime for insurers. It requires capital to be held against risks and reserves to be set for claims, which depends on claims being recorded and assessed reliably.
+  - name: Insurance Distribution Directive
+    type: regulation
+    title: Directive (EU) 2016/97 on insurance distribution
+    by: European Union
+    cite: Directive (EU) 2016/97
+    jurisdiction: European Union
+    says: Requires those who sell insurance to act honestly, fairly and professionally in the best interests of their customers.
+
+practices:
+  - name: Coverage verification before assessment
+    says: Before the amount of a loss is discussed, the handler confirms the policy was in force on the date of the loss and that the claimant is the insured.
+    guards: [Loss outside the period of cover, Claim by someone other than the insured]
+  - name: Independent loss assessment
+    says: The amount claimed is tested against an estimate or report from someone other than the claimant.
+    guards: [Inflated claim]
+  - name: Claims history check
+    says: A new claim is compared with earlier claims by the same policyholder, on the same policy and for the same insured object.
+    guards: [Duplicate claim]
+  - name: Reserving on notification
+    says: An estimate of the cost is set aside as soon as a claim is notified and revised as facts arrive.
+
+processes:
+  - name: Claims handling
+    says: A claim is taken in, cover is checked, the loss is assessed and the claim is settled or declined.
+    steps: [First notification of loss, Coverage verification, Investigation and loss assessment, Reserve set, Decision, Settlement or repudiation, Recovery from third parties]
+    documents: [Claim form, Policy schedule, Repair estimate, Incident report]
+    under: [Motor Insurance Directive, Solvency II, IFRS 17]
+    measures: [Claim cycle time, Claims settled at first contact, Reopened claim rate]
+    use_cases: [insurance_claim]
+  - name: First notification of loss
+    says: The insurer is told of a loss and records who, what, when and where.
+    documents: [Claim form, Incident report]
+  - name: Loss assessment
+    says: The cause and the amount of the loss are established, by an estimate, an inspection or an adjuster's report.
+    documents: [Repair estimate]
+  - name: Subrogation and recovery
+    says: After paying, the insurer recovers from the party responsible for the loss.
+    documents: [Incident report]
+  - name: Claims fraud investigation
+    says: Claims with signs of fraud are referred to investigators before they are paid.
+    measures: [Claims referred for investigation]
+
+risks:
+  - name: Loss outside the period of cover
+    says: The loss happened before the policy started or after it ended.
+    signs: [Date of loss before the start of cover, Date of loss after the end of cover, A loss dated very close to inception or expiry]
+    affects: [Claims handling]
+    caught_by: ["rule:insurance_claim/rules.loss_after_cover_start", "rule:insurance_claim/rules.loss_before_cover_end", Coverage verification before assessment]
+  - name: Late notification
+    says: The insurer was told of the loss after the period the policy allows, which can prejudice its investigation.
+    signs: [More than the permitted days between the loss and the notification]
+    affects: [First notification of loss, Claims handling]
+    caught_by: ["rule:insurance_claim/rules.notified_in_time"]
+  - name: Claim above the sum insured
+    says: More is claimed than the policy can pay.
+    signs: [Amount claimed above the sum insured]
+    affects: [Claims handling]
+    caught_by: ["rule:insurance_claim/rules.within_sum_insured"]
+  - name: Inflated claim
+    says: The amount claimed is more than the loss, by exaggeration or by adding damage that was already there.
+    signs: [Amount claimed above the repair estimate, Estimate items unrelated to the incident described]
+    affects: [Loss assessment, Claims handling]
+    caught_by: ["rule:insurance_claim/rules.estimate_supports_claim", Independent loss assessment]
+    measures: [Claims leakage]
+  - name: Claim by someone other than the insured
+    says: The person claiming is not the policyholder and has no right under the policy.
+    signs: [Claimant name differs from the policyholder, The policy number quoted belongs to another policy, The vehicle differs from the one insured]
+    affects: [Claims handling]
+    caught_by: ["rule:insurance_claim/consistency.claimant", "rule:insurance_claim/consistency.policy_number", "rule:insurance_claim/consistency.vehicle", Coverage verification before assessment]
+  - name: Duplicate claim
+    says: The same loss is claimed twice, on the same policy or on two.
+    signs: [A claim reference already seen, The same incident and vehicle in an earlier claim]
+    affects: [Claims handling]
+    caught_by: [Claims history check]
+    measures: [Claims leakage]
+  - name: Staged or fabricated loss
+    says: The incident did not happen as described, or was arranged.
+    signs: [No independent report where a third party was involved, Accounts of the incident that disagree]
+    affects: [Claims fraud investigation]
+    caught_by: ["rule:insurance_claim/evidence.incident"]
+    checked: "in part: the presence of an incident report is checked, the truth of the account is not"
+  - name: Slow claims handling
+    says: A claim is not answered within the time the law or the policyholder expects.
+    signs: [No offer or reasoned reply within the period the law sets]
+    affects: [Claims handling]
+    measures: [Claim cycle time]
+    checked: "no: handling times are not measured here"
+
+kpis:
+  - {name: Claim cycle time, says: "Days from notification of a loss to settlement or decline.", unit: days, better: lower}
+  - {name: Loss ratio, says: "Claims incurred divided by premiums earned.", unit: "%", better: lower}
+  - {name: Claims leakage, says: "Money paid on claims above what a correct handling would have paid.", unit: "% of claims paid", better: lower}
+  - {name: Claims settled at first contact, says: "The share of claims settled without a second exchange with the claimant.", unit: "%", better: higher}
+  - {name: Reopened claim rate, says: "The share of closed claims that had to be opened again.", unit: "%", better: lower}
+  - {name: Claims referred for investigation, says: "The share of claims sent to fraud investigators.", unit: "%"}
+
+terms:
+  - {name: Period of cover, says: "The dates between which the policy insures. A loss outside them is not covered.", also: [Policy period, Period of insurance]}
+  - {name: Sum insured, says: "The most the insurer will pay under the policy or a section of it.", also: [Limit of indemnity]}
+  - {name: Excess, says: "The first part of a loss, which the policyholder bears.", also: [Deductible]}
+  - {name: Principle of indemnity, says: "Insurance puts the insured back where they were before the loss and no better. The payment follows the loss actually suffered."}
+  - {name: Insurable interest, says: "The insured must stand to lose from the damage to what is insured. Without it there is no valid claim."}
+  - {name: Utmost good faith, says: "Both sides must deal honestly, and the insured must present the risk and the claim fairly."}
+  - {name: Proximate cause, says: "The dominant cause of a loss. The policy responds only if that cause is an insured one."}
+  - {name: Subrogation, says: "The insurer's right, after paying, to stand in the insured's place against whoever caused the loss."}
+  - {name: Notification condition, says: "The policy term that requires a loss to be reported within a set time."}
+  - {name: First notification of loss (FNOL), says: "The first report of a loss to the insurer.", also: [FNOL]}
+  - {name: Claims reserve, says: "The amount an insurer sets aside for a claim that has been notified but not yet paid."}
+  - {name: Repudiation, says: "The insurer's refusal of a claim, with its reasons."}
+
+basis:
+  insurance_claim:
+    rules.loss_after_cover_start: [Period of cover, Coverage verification before assessment]
+    rules.loss_before_cover_end: [Period of cover, Coverage verification before assessment]
+    rules.notified_in_time: [Notification condition]
+    rules.within_sum_insured: [Sum insured]
+    rules.estimate_supports_claim: [Principle of indemnity, Independent loss assessment]
+    consistency.claimant: [Insurable interest, Coverage verification before assessment]
+    consistency.policy_number: [Coverage verification before assessment]
+    consistency.vehicle: [Insurable interest, Coverage verification before assessment]
+    evidence.claim: [First notification of loss (FNOL)]
+    evidence.policy: [Coverage verification before assessment, Period of cover]
+    evidence.loss: [Independent loss assessment, Principle of indemnity]
+    evidence.incident: [Subrogation, Proximate cause]
+    integrity.estimate_arithmetic: [Recalculation of stated totals, Independent loss assessment]

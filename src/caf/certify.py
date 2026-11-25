@@ -262,7 +262,8 @@ def certify_agent(agent: Any, *, fast: bool = False, live: bool = False) -> dict
         trials.append({"trial": name, "pass": problem is None, "detail": (problem or detail)[:300], "ms": ms})
 
     # ---- contract: can it be found, understood and called
-    props = agent.Input.model_json_schema().get("properties") or {}
+    schema = agent.Input.model_json_schema()
+    props = schema.get("properties") or {}
     described = spec.model_dump()
     trial("contract", "; ".join(contract_problems(agent)) or None, f"{len(props)} inputs")
 

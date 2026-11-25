@@ -1,0 +1,141 @@
+# The ontology of the DocuInsights knowledge base.
+#
+# Written in the format of a KB Forge ontology (classes with a parent, a one-sentence definition and typed attributes;
+# relationships as verbs with a domain, a range and an inverse), so a knowledge base exported from here opens in
+# KB Forge and a knowledge base built there can be added here. Classes marked `source: core` are KB Forge's own and
+# keep its meaning; the others hang under one of them.
+#
+# level: which of KB Forge's four levels of knowledge a class belongs to in this graph:
+#   industry   the kind of organisation a use case serves
+#   domain     what a use case asks for: its kinds of document, its evidence, its rules, its references
+#   solution   the accelerator and its agents, each under its contract (KB Forge's third level: what was delivered)
+#   customer   the workspace: the organisations and goods met across cases, and each case with what it holds
+# depth: where a class sits when the graph is drilled down, 1 at the top (written on every entity as graphLevel).
+# A knowledge base may place one of its entities at its own level and depth (an industry's process sits with the
+# industry, a domain's measure with the domain); the class gives the default.
+version: "1.2"
+name: DocuInsights case knowledge
+description: Industries with their standards, processes and risks; the domain with its capabilities and practices; use cases and their rules; the accelerator's agents; the organisations and goods met across cases; and each case with its documents, identifiers and findings.
+
+classes:
+  - {name: IndustrySegment, source: core, level: industry, depth: 1, definition: "An industry or sector: the kind of organisation a use case serves."}
+  - {name: ExperienceDomain, source: core, level: domain, depth: 2, definition: "A solution domain organisations invest in. Here: document and case intelligence."}
+  - {name: Accelerator, source: core, level: solution, depth: 3, definition: "A reusable asset that speeds up or de-risks delivery.",
+     attributes: [{name: assetType, datatype: string}, {name: version, datatype: string}]}
+  - {name: TechnologySystem, source: core, level: solution, depth: 4, definition: "A software system or component."}
+  - {name: SoftwareAgent, parent: TechnologySystem, level: solution, depth: 5, definition: "One agent of the accelerator: a single job, run in the harness under a written contract.",
+     attributes: [{name: agentId, datatype: string}, {name: stage, datatype: string}, {name: needs, datatype: "string[]"}, {name: promises, datatype: "string[]"}, {name: never, datatype: "string[]"},
+                  {name: modelUse, datatype: string}, {name: onFailure, datatype: string}, {name: contractVersion, datatype: string}]}
+  - {name: Company, source: core, parent: Organization, level: customer, depth: 4, definition: "The organisation whose cases a workspace holds."}
+  - {name: BusinessProcess, source: core, level: domain, depth: 3, definition: "An end-to-end sequence of steps that delivers a business outcome.", attributes: [{name: steps, datatype: "string[]"}]}
+  - {name: BusinessEvent, source: core, level: customer, depth: 5, definition: "A significant occurrence that triggers, results from or changes the state of a process."}
+  - {name: Organization, source: core, level: customer, depth: 6, definition: "A legal or economic entity named in the documents of a case.",
+     attributes: [{name: address, datatype: string}, {name: seenInCases, datatype: integer}, {name: firstSeen, datatype: date}, {name: lastSeen, datatype: date}]}
+  - {name: Role, source: core, level: domain, depth: 4, definition: "The part a party plays in a case: seller, buyer, carrier, claimant, employer."}
+  - {name: Document, source: core, level: domain, depth: 4, definition: "A kind of business document a use case works with: an invoice, a policy schedule, a bill of lading.",
+     attributes: [{name: documentGroup, datatype: string}, {name: keyFields, datatype: "string[]"}, {name: recognisedBy, datatype: "string[]"}]}
+  - {name: SourceDocument, source: core, level: customer, depth: 6, definition: "One file uploaded to a case, kept as an immutable version with its hash.",
+     attributes: [{name: documentId, datatype: string}, {name: fileName, datatype: string}, {name: format, datatype: string}, {name: documentType, datatype: string},
+                  {name: pages, datatype: integer}, {name: sha256, datatype: string}, {name: factCount, datatype: integer}, {name: version, datatype: integer}, {name: readMethod, datatype: string}]}
+  - {name: Regulation, source: core, level: industry, depth: 2, definition: "A law, regulation, directive or binding rule that applies to the organisations of an industry.",
+     attributes: [{name: title, datatype: string}, {name: jurisdiction, datatype: string}, {name: citation, datatype: string}, {name: issuedBy, datatype: string}]}
+  - {name: Standard, source: core, level: industry, depth: 2, definition: "Rules, a nomenclature or a framework an industry adopts without a law requiring it.",
+     attributes: [{name: title, datatype: string}, {name: jurisdiction, datatype: string}, {name: citation, datatype: string}]}
+  - {name: StandardsBody, source: core, parent: Organization, level: industry, depth: 3, definition: "An organisation that writes and publishes standards or rules."}
+  - {name: Provision, level: industry, depth: 3, definition: "One article, rule or clause of a standard or a regulation, cited by its reference.",
+     attributes: [{name: reference, datatype: string}, {name: citation, datatype: string}]}
+  - {name: Risk, source: core, level: industry, depth: 2, definition: "Something that can go wrong for the organisations or processes of an industry.",
+     attributes: [{name: signs, datatype: "string[]"}, {name: checkedHere, datatype: string}]}
+  - {name: KPI, source: core, level: domain, depth: 4, definition: "A measure used to manage performance.",
+     attributes: [{name: formula, datatype: string}, {name: unit, datatype: string}, {name: direction, datatype: string}]}
+  - {name: PainPoint, source: core, level: industry, depth: 2, definition: "A recurring problem or friction."}
+  - {name: Challenge, source: core, parent: PainPoint, level: domain, depth: 3, definition: "A problem the domain exists to solve.", attributes: [{name: impact, datatype: string}]}
+  - {name: Capability, source: core, level: domain, depth: 4, definition: "Something the domain can do: a function a use case draws on."}
+  - {name: BestPractice, source: core, level: domain, depth: 4, definition: "A proven practice or control that makes the work reliable.", attributes: [{name: rationale, datatype: string}]}
+  - {name: DataSource, source: core, level: domain, depth: 4, definition: "A published source of reference data."}
+  - {name: DataObject, source: core, level: customer, depth: 6, definition: "A business data entity exchanged between parties."}
+  - {name: Term, source: core, level: domain, depth: 5, definition: "A domain term or coded concept."}
+  - {name: Product, source: core, level: customer, depth: 6, definition: "Specific goods or a specific product described in the documents of a case.",
+     attributes: [{name: characteristics, datatype: "string[]"}, {name: seenInCases, datatype: integer}]}
+
+  - {name: UseCase, parent: BusinessProcess, level: domain, depth: 3, definition: "A kind of case this installation assesses, declared by a profile: its documents, its evidence, its rules.",
+     attributes: [{name: profileId, datatype: string}, {name: profileVersion, datatype: string}, {name: caseNoun, datatype: string}]}
+  - {name: PolicyRule, parent: Regulation, level: domain, depth: 5, definition: "A deterministic rule or cross-document check of a use case, executed in code under a version.",
+     attributes: [{name: ruleKind, datatype: string}, {name: ruleFamily, datatype: string}, {name: ruleVersion, datatype: string}, {name: parameters, datatype: "string[]"}]}
+  - {name: ReferenceSource, parent: DataSource, level: domain, depth: 4, definition: "An external reference a use case reads for a date, kept with the address, date, version and hash of each retrieval.",
+     attributes: [{name: connector, datatype: string}, {name: url, datatype: uri}]}
+  - {name: ReferenceEntry, parent: Term, level: domain, depth: 5, definition: "One line of a reference source as retrieved for a date: a code and its description.",
+     attributes: [{name: code, datatype: string}, {name: asOf, datatype: date}, {name: sourceVersion, datatype: string}]}
+  - {name: Case, parent: BusinessEvent, level: customer, depth: 5, definition: "One case: a package of documents and a few case facts, assessed and decided.",
+     attributes: [{name: caseReference, datatype: string}, {name: status, datatype: string}, {name: outcome, datatype: string}, {name: outcomeLabel, datatype: string},
+                  {name: assessedAt, datatype: string}, {name: assessmentId, datatype: string}, {name: decision, datatype: string}, {name: decidedBy, datatype: string}]}
+  - {name: Identifier, parent: DataObject, level: customer, depth: 6, definition: "A reference number the documents of a case quote: an invoice number, a policy number, a shipment reference.",
+     attributes: [{name: identifierType, datatype: string}, {name: value, datatype: string}]}
+  - {name: CaseFinding, parent: BusinessEvent, level: customer, depth: 6, definition: "What one check concluded on one case, with the lines it rests on.",
+     attributes: [{name: status, datatype: string}, {name: severity, datatype: string}, {name: family, datatype: string}, {name: agent, datatype: string}, {name: ruleVersion, datatype: string}]}
+
+relationships:
+  - {name: processUsesDocument, source: core, domain: BusinessProcess, range: Document, inverse: documentUsedInProcess, definition: "The use case works with this kind of document."}
+  - {name: governedByRegulation, source: core, domain: BusinessProcess, range: Regulation, inverse: regulationGovernsProcess, definition: "The use case applies this rule."}
+  - {name: requiresDocument, source: core, domain: Regulation, range: Document, inverse: documentRequiredBy, definition: "The rule reads this kind of document."}
+  - {name: participatesInProcess, source: core, domain: Role, range: BusinessProcess, inverse: processInvolvesRole, definition: "The role takes part in the use case."}
+  - {name: hasSourceDocument, source: core, domain: Thing, range: SourceDocument, inverse: sourceDocumentOf, definition: "The case holds this file."}
+  - {name: mentions, source: core, domain: SourceDocument, range: Thing, inverse: mentionedIn, definition: "The file names this party, product or identifier, at the location given."}
+  - {name: relatedTo, source: core, domain: Thing, range: Thing, inverse: relatedTo, symmetric: true, definition: "A link whose kind is not in the ontology."}
+
+  - {name: domainRelevantToIndustry, source: core, domain: ExperienceDomain, range: IndustrySegment, inverse: industryUsesDomain, definition: "The domain is applied in this industry."}
+  - {name: acceleratorForDomain, source: core, domain: Accelerator, range: ExperienceDomain, inverse: domainHasAccelerator, definition: "The accelerator serves this domain."}
+
+  # what an industry knowledge base and a domain knowledge base say (KB Forge's own relationships)
+  - {name: regulationInIndustry, source: core, domain: Regulation, range: IndustrySegment, inverse: industryHasRegulation, definition: "The regulation applies in this industry."}
+  - {name: conformsToStandard, source: core, domain: BusinessProcess, range: Standard, inverse: standardAppliesToProcess, definition: "The process is run under this standard."}
+  - {name: processMeasuredBy, source: core, domain: BusinessProcess, range: KPI, inverse: kpiMeasuresProcess, definition: "The process is managed by this measure."}
+  - {name: affectsProcess, source: core, domain: Risk, range: BusinessProcess, inverse: exposedToRisk, definition: "The risk arises in this process."}
+  - {name: indicatedByKPI, source: core, domain: Risk, range: KPI, inverse: indicatesRisk, definition: "The measure shows how often the risk materialises."}
+  - {name: publishedBy, source: core, domain: Standard, range: StandardsBody, inverse: publishes, definition: "The body that publishes the standard."}
+  - {name: domainHasCapability, source: core, domain: ExperienceDomain, range: Capability, inverse: capabilityOfDomain, definition: "A capability of the domain."}
+  - {name: domainHasChallenge, source: core, domain: ExperienceDomain, range: Challenge, inverse: challengeOfDomain, definition: "A problem the domain exists to solve."}
+  - {name: domainHasBestPractice, source: core, domain: ExperienceDomain, range: BestPractice, inverse: bestPracticeOfDomain, definition: "A practice the domain relies on."}
+  - {name: challengeAddressedBy, source: core, domain: Challenge, range: BestPractice, inverse: practiceAddresses, definition: "The practice that answers the challenge."}
+  - {name: domainMeasuredBy, source: core, domain: ExperienceDomain, range: KPI, inverse: kpiOfDomain, definition: "A measure of how well the domain is run."}
+  - {name: domainUsesStandard, source: core, domain: ExperienceDomain, range: Standard, inverse: standardUsedInDomain, definition: "A standard the domain works to."}
+  - {name: domainGovernedBy, source: core, domain: ExperienceDomain, range: Regulation, inverse: regulationGovernsDomain, definition: "A regulation the domain has to respect."}
+
+  - {name: domainCoversUseCase, domain: ExperienceDomain, range: UseCase, inverse: useCaseOfDomain, definition: "The use case is one of the domain's."}
+  - {name: useCaseServesIndustry, domain: UseCase, range: IndustrySegment, inverse: industryRunsUseCase, definition: "The kind of organisation that runs the use case."}
+  - {name: acceleratorSupportsUseCase, domain: Accelerator, range: UseCase, inverse: useCaseSupportedBy, definition: "The accelerator assesses cases of this kind."}
+  - {name: acceleratorHasAgent, domain: Accelerator, range: SoftwareAgent, inverse: agentOfAccelerator, definition: "The agent is one of the accelerator's."}
+  - {name: findingProducedByAgent, domain: CaseFinding, range: SoftwareAgent, inverse: agentProducedFinding, definition: "The agent whose check concluded this."}
+  - {name: companyHasCase, domain: Company, range: Case, inverse: caseOfCompany, definition: "The case is one of the workspace's."}
+  - {name: usesReferenceSource, domain: UseCase, range: ReferenceSource, inverse: referenceSourceOf, definition: "The use case reads this reference for the case's date."}
+  - {name: referenceHasEntry, domain: ReferenceSource, range: ReferenceEntry, inverse: entryOfReference, definition: "The reference held this line when it was retrieved."}
+  - {name: caseOfUseCase, domain: Case, range: UseCase, inverse: useCaseHasCase, definition: "The case is of this kind."}
+  - {name: caseInvolvesOrganization, domain: Case, range: Organization, inverse: organizationInCase, definition: "The party is named in the case, in the role given."}
+  - {name: caseConcernsProduct, domain: Case, range: Product, inverse: productInCase, definition: "The case is about these goods."}
+  - {name: caseHasIdentifier, domain: Case, range: Identifier, inverse: identifierOfCase, definition: "The case's documents quote this reference number."}
+  - {name: caseHasFinding, domain: Case, range: CaseFinding, inverse: findingOfCase, definition: "A check concluded this on the case."}
+  - {name: documentOfKind, domain: SourceDocument, range: Document, inverse: kindOfSourceDocument, definition: "The file was classified as this kind of document."}
+  - {name: findingAppliesRule, domain: CaseFinding, range: PolicyRule, inverse: ruleAppliedInFinding, definition: "The finding is the result of this rule."}
+  - {name: findingCitesDocument, domain: CaseFinding, range: SourceDocument, inverse: documentCitedByFinding, definition: "The finding rests on a line of this file."}
+  - {name: organizationActsAs, domain: Organization, range: Role, inverse: roleActedByOrganization, definition: "The party has appeared in this role."}
+  - {name: transactsWith, domain: Organization, range: Organization, inverse: transactsWith, symmetric: true, definition: "The two parties are named together in a case."}
+  - {name: productClassifiedAs, domain: Product, range: ReferenceEntry, inverse: entryClassifiesProduct, definition: "The reference line the stated characteristics lead to."}
+  - {name: possiblySameAs, domain: Organization, range: Organization, inverse: possiblySameAs, symmetric: true, definition: "Two names that may be one party: a person has not yet decided."}
+  - {name: distinctFrom, domain: Thing, range: Thing, inverse: distinctFrom, symmetric: true, definition: "A person confirmed these are two different things despite similar names."}
+  - {name: sharesIdentifierWith, domain: Case, range: Case, inverse: sharesIdentifierWith, symmetric: true, definition: "Both cases quote the same reference number."}
+
+  # what this graph adds so a finding can be followed to the reason for its rule
+  - {name: ruleBasedOn, domain: PolicyRule, range: Thing, inverse: basisOfRule, definition: "Why the check exists: the provision, practice or term it applies."}
+  - {name: provisionOf, domain: Provision, range: Thing, inverse: hasProvision, definition: "The standard or regulation the article belongs to."}
+  - {name: riskCheckedBy, domain: Risk, range: Thing, inverse: checksForRisk, definition: "The rule, practice or capability that catches the risk."}
+  - {name: standardInIndustry, domain: Standard, range: IndustrySegment, inverse: industryUsesStandard, definition: "The standard is used in this industry."}
+  - {name: processInIndustry, domain: BusinessProcess, range: IndustrySegment, inverse: industryRunsProcess, definition: "The process is run in this industry."}
+  - {name: riskInIndustry, domain: Risk, range: IndustrySegment, inverse: industryExposedToRisk, definition: "The risk is met in this industry."}
+  - {name: kpiInIndustry, domain: KPI, range: IndustrySegment, inverse: industryMeasuredBy, definition: "The measure is used in this industry."}
+  - {name: termInIndustry, domain: Term, range: IndustrySegment, inverse: industryUsesTerm, definition: "The term belongs to this industry's vocabulary."}
+  - {name: practiceInIndustry, domain: BestPractice, range: IndustrySegment, inverse: industryUsesPractice, definition: "The practice or control is used in this industry."}
+  - {name: domainHasTerm, domain: ExperienceDomain, range: Term, inverse: termOfDomain, definition: "The term belongs to the domain's vocabulary."}
+  - {name: useCaseWithinProcess, domain: UseCase, range: BusinessProcess, inverse: processIncludesUseCase, definition: "The use case is one step of this process."}
+  - {name: capabilityDeliveredBy, domain: Capability, range: SoftwareAgent, inverse: agentDeliversCapability, definition: "The agent that provides the capability."}
+  - {name: challengeAnsweredBy, domain: Challenge, range: Capability, inverse: capabilityAnswersChallenge, definition: "The capability that answers the challenge."}
+  - {name: practiceGuardsAgainst, domain: BestPractice, range: Risk, inverse: riskGuardedByPractice, definition: "The risk the practice is there to prevent."}

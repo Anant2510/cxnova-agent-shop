@@ -1,0 +1,186 @@
+# Industry knowledge base: finance operations (accounts payable).
+# General knowledge about the function, written for orientation and for tracing a finding back to the control it rests on.
+# Regulations are named with their jurisdiction. Check the current text before relying on one.
+id: finance-operations
+kind: industry
+head: Finance operations
+name: Finance operations knowledge base
+version: "1.0"
+about: "The finance functions that pay suppliers, collect from customers and keep the books. In accounts payable the question for every invoice is the same: was this ordered, was it received, and is this what we agreed to pay."
+
+bodies:
+  - {name: Committee of Sponsoring Organizations of the Treadway Commission, also: [COSO], says: "Publishes the internal control framework most companies and auditors use."}
+  - {name: European Committee for Standardization, also: [CEN], says: "Publishes European standards, among them the standard for electronic invoices."}
+
+standards:
+  - name: COSO Internal Control Framework
+    title: Internal Control - Integrated Framework (2013)
+    by: Committee of Sponsoring Organizations of the Treadway Commission
+    cite: COSO Internal Control - Integrated Framework, 2013
+    jurisdiction: International
+    says: The reference model for internal control. Its five components are the control environment, risk assessment, control activities, information and communication, and monitoring. Matching, approval and segregation of duties are control activities.
+  - name: EN 16931
+    title: Electronic invoicing - Semantic data model of the core elements of an electronic invoice
+    by: European Committee for Standardization
+    cite: EN 16931-1
+    jurisdiction: European Union
+    says: Defines the fields a structured electronic invoice carries, so that an invoice can be read by a machine without interpretation.
+  - name: Sarbanes-Oxley Act section 404
+    type: regulation
+    title: Sarbanes-Oxley Act of 2002, section 404 - Management assessment of internal controls
+    by: United States Congress
+    cite: Sarbanes-Oxley Act of 2002, section 404
+    jurisdiction: United States, for companies listed there
+    says: Management must assess the effectiveness of internal control over financial reporting every year and report on it. Controls over payments to suppliers are part of that.
+  - name: EU VAT Directive
+    type: regulation
+    title: Council Directive 2006/112/EC on the common system of value added tax
+    by: European Union
+    cite: Directive 2006/112/EC
+    jurisdiction: European Union
+    says: The common rules for value added tax, including what an invoice must show for the tax on it to be recovered.
+    provisions:
+      - {ref: article 226, about: "what a VAT invoice must show", says: "A VAT invoice must show, among other details, its date of issue, a unique sequential number, the VAT identification numbers and the names and addresses of the supplier and the customer, the quantity and nature of the goods or services, the taxable amount, the VAT rate and the VAT payable."}
+  - name: EU Late Payment Directive
+    type: regulation
+    title: Directive 2011/7/EU on combating late payment in commercial transactions
+    by: European Union
+    cite: Directive 2011/7/EU
+    jurisdiction: European Union
+    says: Sets 30 days as the payment period between businesses when the contract is silent and 60 days as the normal contractual limit, with interest owed on late payment.
+
+practices:
+  - name: Three-way match
+    says: An invoice is paid only when it agrees with the purchase order and with the record that the goods or services were received, within an agreed tolerance.
+    why: It proves three things at once. The purchase was authorised, the goods arrived, and the price is the one agreed.
+    guards: [Overbilling, Payment for goods not received, Invoice from an unknown or fictitious supplier]
+  - name: Two-way match
+    says: An invoice is checked against the purchase order alone, used where there is no receipt to record.
+    guards: [Overbilling]
+  - name: Duplicate invoice check
+    says: Before payment an invoice is compared with those already received from the same supplier, by number, date and amount.
+    why: Paying twice is the most common payment error and the hardest to recover.
+    guards: [Duplicate payment]
+  - name: Purchase order before purchase
+    says: Nothing is ordered without an approved purchase order, so every invoice has an order to be matched against.
+    guards: [After-the-fact purchase order, Unauthorised spend]
+  - name: Segregation of duties
+    says: The people who order, who receive, who approve and who pay are different people.
+    guards: [Invoice from an unknown or fictitious supplier, Unauthorised spend]
+  - name: Approval limits
+    says: Who may approve a payment depends on its amount, as the delegation of authority sets out.
+    guards: [Unauthorised spend]
+  - name: Timely invoice presentation
+    says: Suppliers are asked to present invoices within a set period of the supply, so that liabilities are booked in the right period.
+    guards: [Late or stale invoice]
+  - name: Supplier bank detail verification
+    says: A change to a supplier's bank details is confirmed through a channel other than the one the request came by.
+    guards: [Payment diversion fraud]
+
+processes:
+  - name: Procure-to-pay
+    says: The chain from a request to buy through ordering, receiving, invoicing and payment.
+    steps: [Requisition, Purchase order, Goods or services received, Invoice received, Invoice matched and approved, Payment, Reconciliation]
+    documents: [Purchase order, Goods received note, Delivery note, Supplier invoice]
+    under: [COSO Internal Control Framework, Sarbanes-Oxley Act section 404]
+    measures: [Cost per invoice, Invoice cycle time]
+  - name: Invoice processing
+    says: An invoice is captured, matched to its order and receipt, exceptions are resolved and it is approved for payment.
+    steps: [Capture the invoice, Check that it is a valid invoice, Match it to the order and the receipt, Resolve exceptions, Approve, Release for payment]
+    documents: [Supplier invoice, Purchase order, Goods received note, Delivery note]
+    under: [COSO Internal Control Framework, EU VAT Directive, EN 16931]
+    measures: [First-time match rate, Exception rate, Touchless invoice rate, Invoice cycle time]
+    use_cases: [supplier_invoice]
+  - name: Supplier master data management
+    says: Supplier records are created and changed under control, because a payment goes where the record says.
+    under: [COSO Internal Control Framework]
+  - name: Payment run
+    says: Approved invoices are paid on their due dates.
+    under: [EU Late Payment Directive]
+    measures: [Invoices paid on time]
+
+risks:
+  - name: Duplicate payment
+    says: The same invoice is paid twice, because it was sent twice or entered twice.
+    signs: [An invoice number already seen from the same supplier, Same supplier amount and date under a slightly different number]
+    affects: [Invoice processing, Payment run]
+    caught_by: [Duplicate invoice check]
+    measures: [Duplicate payment rate]
+  - name: Overbilling
+    says: The invoice is for more than was ordered, in price or in quantity.
+    signs: [Invoice total above the order beyond tolerance, Quantity invoiced above quantity ordered]
+    affects: [Invoice processing]
+    caught_by: ["rule:supplier_invoice/rules.invoice_within_order", "rule:supplier_invoice/consistency.quantity", Three-way match]
+  - name: Payment for goods not received
+    says: An invoice is paid although the goods or services were not received, or not in full.
+    signs: [No goods received note, Quantity received below quantity invoiced]
+    affects: [Invoice processing]
+    caught_by: ["rule:supplier_invoice/evidence.receipt", "rule:supplier_invoice/consistency.quantity", Three-way match]
+  - name: After-the-fact purchase order
+    says: The order is raised after the invoice arrives, so the purchase was never approved in advance.
+    signs: [Order date later than invoice date]
+    affects: [Procure-to-pay]
+    caught_by: ["rule:supplier_invoice/rules.ordered_before_invoiced", Purchase order before purchase]
+  - name: Invoice from an unknown or fictitious supplier
+    says: An invoice is presented by a party the company never ordered from.
+    signs: [Supplier on the invoice differs from the supplier on the order, No purchase order quoted]
+    affects: [Invoice processing, Supplier master data management]
+    caught_by: ["rule:supplier_invoice/consistency.supplier", "rule:supplier_invoice/consistency.order_reference", Segregation of duties]
+  - name: Late or stale invoice
+    says: An invoice arrives long after the supply, when the period it belongs to has been closed.
+    signs: [Invoice presented after the permitted period]
+    affects: [Invoice processing]
+    caught_by: ["rule:supplier_invoice/rules.presented_in_time", Timely invoice presentation]
+  - name: Unauthorised spend
+    says: Money is committed by someone without the authority to commit it.
+    signs: [No approved order, Approval above the approver's limit]
+    affects: [Procure-to-pay]
+    caught_by: [Purchase order before purchase, Approval limits]
+    checked: "in part: the order is checked, approval limits are not read here"
+  - name: Payment diversion fraud
+    says: A fraudster poses as a supplier and has the bank details changed, so a genuine payment goes to the wrong account.
+    signs: [Bank details on the invoice differ from the supplier record, An urgent request to change payment details]
+    affects: [Supplier master data management, Payment run]
+    caught_by: ["rule:supplier_invoice/integrity.bank_details", "rule:supplier_invoice/integrity.bank_account_check", Supplier bank detail verification]
+    checked: "in part: an account that differs from the one the supplier used in earlier cases is sent to a person; the supplier master record is not read here"
+  - name: Altered or miscalculated invoice
+    says: The total on an invoice is not what its own quantity and price give, by mistake or because a figure was changed.
+    signs: [Quantity times unit price differs from the invoice total, A total that sits just inside the matching tolerance]
+    affects: [Invoice processing]
+    caught_by: ["rule:supplier_invoice/integrity.invoice_arithmetic", "rule:supplier_invoice/integrity.order_arithmetic"]
+
+kpis:
+  - {name: Cost per invoice, says: "The total cost of accounts payable divided by the number of invoices processed.", unit: currency, better: lower}
+  - {name: Invoice cycle time, says: "Days from receipt of an invoice to its approval for payment.", unit: days, better: lower}
+  - {name: First-time match rate, says: "The share of invoices that match their order and receipt without a person touching them.", unit: "%", better: higher}
+  - {name: Exception rate, says: "The share of invoices that need a person to resolve a mismatch.", unit: "%", better: lower}
+  - {name: Touchless invoice rate, says: "The share of invoices processed from receipt to payment without manual work.", unit: "%", better: higher}
+  - {name: Duplicate payment rate, says: "Duplicate payments as a share of all payments.", unit: "%", better: lower}
+  - {name: Invoices paid on time, says: "The share of invoices paid by their due date.", unit: "%", better: higher}
+
+terms:
+  - {name: Matching tolerance, says: "How far an invoice may differ from its order in price or quantity and still be paid without review."}
+  - {name: Blocked invoice, says: "An invoice held from payment until a mismatch is resolved."}
+  - {name: Credit note, says: "A document from the supplier that reduces what is owed on an invoice."}
+  - {name: Remittance advice, says: "The notice to a supplier of which invoices a payment covers."}
+  - {name: Maverick spend, says: "Purchases made outside the agreed ordering process."}
+  - {name: Accrual, says: "A liability booked for goods or services received but not yet invoiced."}
+  - {name: Purchase requisition, says: "An internal request to buy, approved before an order is placed."}
+
+basis:
+  supplier_invoice:
+    rules.invoice_within_order: [Three-way match, Matching tolerance]
+    rules.ordered_before_invoiced: [Purchase order before purchase]
+    rules.presented_in_time: [Timely invoice presentation]
+    consistency.supplier: [Three-way match, EU VAT Directive article 226]
+    consistency.buyer: [Three-way match, EU VAT Directive article 226]
+    consistency.quantity: [Three-way match]
+    consistency.order_reference: [Three-way match]
+    consistency.goods: [Three-way match, EU VAT Directive article 226]
+    evidence.order: [Three-way match, Purchase order before purchase]
+    evidence.invoice: [Three-way match]
+    evidence.receipt: [Three-way match]
+    integrity.order_arithmetic: [Recalculation of stated totals]
+    integrity.invoice_arithmetic: [Recalculation of stated totals, EU VAT Directive article 226]
+    integrity.bank_account_check: [Check-digit validation, ISO 13616]
+    integrity.bank_details: [Supplier bank detail verification, Verification of changed details]

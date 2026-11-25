@@ -1,0 +1,217 @@
+# Insurance claim review: a claim set against the policy it is made under and the evidence of the loss.
+#
+# The same engine as every other profile: only this file differs.
+#
+# The periods and tolerances are ILLUSTRATIVE. The insurer's own policy wording and claims rules replace them.
+id: insurance_claim
+name: Insurance claim review
+order: 20
+sector: Insurance
+plain: "Check a claim against the policy: was the loss inside the cover, is the amount supported, do the documents agree?"
+version: "1.0"
+description: A claim checked against its policy schedule and the evidence of the loss for cover dates, notification, amounts and consistency.
+
+brand:
+  workspace: Claim Review Workbench
+  client_label: ""
+  case_noun: claim
+
+case:
+  reference_label: Claim reference
+  reference_example: CLAIM-2026-11873
+  fields:
+    - {id: claim_type, name: Claim type, type: text, default: Motor damage claim}
+    - {id: notified_date, name: Claim notified, type: date}
+    - {id: received_date, name: Documents received, type: date}
+    - {id: third_party_involved, name: Third party involved, type: text, default: "no"}
+
+document_types:
+  - id: claim_form
+    name: Claim form
+    group: claim
+    signals: [claim form, claim number, date of loss, claimant, amount claimed, circumstances of loss]
+    fields:
+      - {id: claim_number, name: Claim number, type: ref, labels: [Claim Number], required: true}
+      - {id: policy_number, name: Policy number, type: ref, labels: [Policy Number], required: true}
+      - {id: claimant, name: Claimant, type: party, labels: [Claimant], required: true, personal: true}
+      - {id: loss_date, name: Date of loss, type: date, labels: [Date of Loss], required: true}
+      - {id: claimed_amount, name: Amount claimed, type: money, labels: [Amount Claimed], required: true}
+      - {id: vehicle, name: Vehicle registration, type: ref, labels: [Vehicle Registration]}
+      - {id: circumstances, name: Circumstances of loss, type: text, labels: [Circumstances of Loss]}
+  - id: policy_schedule
+    name: Policy schedule
+    group: policy
+    signals: [policy schedule, period of insurance, policyholder, sum insured, policy excess, cover start date]
+    fields:
+      - {id: policy_number, name: Policy number, type: ref, labels: [Policy Number], required: true}
+      - {id: policyholder, name: Policyholder, type: party, labels: [Policyholder], required: true, personal: true}
+      - {id: insurer, name: Insurer, type: party, labels: [Insurer]}
+      - {id: cover_start, name: Cover start, type: date, labels: [Cover Start Date], required: true}
+      - {id: cover_end, name: Cover end, type: date, labels: [Cover End Date], required: true}
+      - {id: sum_insured, name: Sum insured, type: money, labels: [Sum Insured], required: true}
+      - {id: excess, name: Policy excess, type: money, labels: [Policy Excess]}
+      - {id: vehicle, name: Vehicle registration, type: ref, labels: [Vehicle Registration]}
+  - id: repair_estimate
+    name: Repair estimate
+    group: loss
+    signals: [repair estimate, estimate number, labour, parts, estimate total, repairer, work required]
+    fields:
+      - {id: estimate_number, name: Estimate number, type: ref, labels: [Estimate Number], required: true}
+      - {id: repairer, name: Repairer, type: party, labels: [Repairer], required: true}
+      - {id: customer, name: Customer, type: party, labels: [Customer], personal: true}
+      - {id: vehicle, name: Vehicle registration, type: ref, labels: [Vehicle Registration]}
+      - {id: estimate_date, name: Estimate date, type: date, labels: [Estimate Date]}
+      - {id: labour, name: Labour, type: money, labels: [Labour]}
+      - {id: parts, name: Parts, type: money, labels: [Parts]}
+      - {id: estimate_total, name: Estimate total, type: money, labels: [Estimate Total], required: true}
+      - {id: work, name: Work required, type: text, labels: [Work Required]}
+  - id: incident_report
+    name: Incident report
+    group: loss
+    signals: [incident report, report number, date of incident, reporting officer, location of incident, parties involved]
+    fields:
+      - {id: report_number, name: Report number, type: ref, labels: [Report Number], required: true}
+      - {id: incident_date, name: Date of incident, type: date, labels: [Date of Incident], required: true}
+      - {id: reported_by, name: Reported by, type: party, labels: [Reported By], personal: true}
+      - {id: vehicle, name: Vehicle registration, type: ref, labels: [Vehicle Registration]}
+      - {id: location, name: Location of incident, type: text, labels: [Location of Incident]}
+
+entities:
+  parties:
+    claim_form.claimant: Claimant
+    policy_schedule.policyholder: Policyholder
+    policy_schedule.insurer: Insurer
+    repair_estimate.repairer: Repairer
+    repair_estimate.customer: Customer
+    incident_report.reported_by: Reporting party
+  goods: []
+  references:
+    Policy: [claim_form.policy_number, policy_schedule.policy_number]
+    Claim: [claim_form.claim_number]
+    Vehicle: [claim_form.vehicle, policy_schedule.vehicle, repair_estimate.vehicle, incident_report.vehicle]
+
+memory:
+  duplicates: [Claim]
+
+synonyms:
+  party: {}
+
+evidence:
+  - {id: claim, title: Claim form, any_of: [claim_form], required: always}
+  - {id: policy, title: Policy schedule, any_of: [policy_schedule], required: always}
+  - {id: loss, title: Repair estimate, any_of: [repair_estimate], required: always}
+  - {id: incident, title: Incident report, any_of: [incident_report], required: when, when: case.third_party_involved, note: Required when a third party was involved}
+
+rules:
+  - id: loss_after_cover_start
+    family: cover
+    title: The loss happened on or after the start of cover
+    type: date_order
+    first: policy_schedule.cover_start
+    then: claim_form.loss_date
+    version: "1.0"
+  - id: loss_before_cover_end
+    family: cover
+    title: The loss happened on or before the end of cover
+    type: date_order
+    first: claim_form.loss_date
+    then: policy_schedule.cover_end
+    version: "1.0"
+  - id: notified_in_time
+    family: timing
+    title: The claim was notified within the permitted period
+    type: date_interval
+    from: claim_form.loss_date
+    to: case.notified_date
+    max_days: 30
+    version: "1.0"
+    note: Illustrative 30 days from the date of loss to notification.
+  - id: within_sum_insured
+    family: value
+    title: The amount claimed is within the sum insured
+    type: amount_limit
+    amount: claim_form.claimed_amount
+    limit: policy_schedule.sum_insured
+    tolerance_pct: 0
+    version: "1.0"
+  - id: estimate_supports_claim
+    family: value
+    title: The repair estimate supports the amount claimed
+    type: amounts_match
+    amounts: [claim_form.claimed_amount, repair_estimate.estimate_total]
+    tolerance_pct: 5
+    version: "1.0"
+    note: Illustrative 5 percent tolerance between the claim and the estimate.
+
+consistency:
+  - {id: claimant, family: parties, title: The claimant is the policyholder, kind: party, severity: high,
+     fields: [claim_form.claimant, policy_schedule.policyholder, repair_estimate.customer]}
+  - {id: policy_number, family: cover, title: The claim quotes the policy it is made under, kind: ref, severity: high,
+     fields: [claim_form.policy_number, policy_schedule.policy_number]}
+  - {id: vehicle, family: loss, title: The same vehicle on every document, kind: ref, severity: high,
+     fields: [claim_form.vehicle, policy_schedule.vehicle, repair_estimate.vehicle, incident_report.vehicle]}
+
+# What the integrity agent is told about this use case. Each line is a deterministic check; none is a model's opinion.
+integrity:
+  sums:
+    - {id: estimate_arithmetic, title: Labour and parts give the estimate total, kind: sum, parts: [repair_estimate.labour, repair_estimate.parts], equals: repair_estimate.estimate_total}
+  issued: [claim_form.loss_date, policy_schedule.cover_start, repair_estimate.estimate_date, incident_report.incident_date]
+
+# Every party is screened against the watchlists (the default). The service target is ILLUSTRATIVE.
+service:
+  target_days: 5
+  clock: working
+  starts: case.received_date
+  value: claim_form.claimed_amount
+  high_value: 10000
+  note: Illustrative. Five working days from receipt of the claim; a claim of 10,000 or more is high value.
+
+outcomes:
+  proceed: {label: Ready to settle, description: "The loss is inside the cover, the amount is supported and the documents agree."}
+  request_evidence: {label: Request evidence, description: "A document the claim needs has not been provided."}
+  review: {label: Refer to a claims handler, description: "A cover or amount rule failed, the documents disagree, or the claim is already known: a handler must decide."}
+
+correspondence:
+  evidence_request:
+    subject: "{reference}: we need more information"
+    opening: "Thank you for your {case_noun} {reference}. We have reviewed what you sent and cannot complete the review yet."
+    closing: "Please send the items above quoting {reference}. The review resumes when they arrive."
+  decision_note:
+    subject: "{reference}: outcome of the review"
+    opening: "We have completed the review of {case_noun} {reference}."
+    closing: "This note records the documents and rules the outcome rests on."
+
+counterfactuals:
+  - id: loss_in_cover
+    title: Move the loss inside the period of cover
+    expect: Clears the cover-end rule; notification is recalculated from the new date.
+    change: {op: set_field, field: claim_form.loss_date, value: "14 August 2026"}
+    ask: text
+  - id: claim_matches_estimate
+    title: Claim the estimated amount
+    expect: The estimate then supports the claim.
+    change: {op: set_field, field: claim_form.claimed_amount, value: "@repair_estimate.estimate_total"}
+  - id: add_incident_report
+    title: Provide the incident report
+    expect: Resolves the missing evidence; the cover and amount findings remain.
+    change: {op: add_document, type: incident_report, fields: {report_number: "IR-2026-55410", incident_date: "@claim_form.loss_date", vehicle: "@claim_form.vehicle", location: "Junction of Mill Road and Station Road"}}
+
+samples:
+  - id: clean
+    title: Claim inside the cover
+    story: "The loss falls inside the period of insurance, it was notified in time, the estimate supports the amount and the documents agree."
+    path: insurance_claim
+    case: {reference: CLAIM-2026-11873, notified_date: "2026-08-19", received_date: "2026-08-24", third_party_involved: "no"}
+    documents:
+      - {file: claim_form.pdf, category: claim_form}
+      - {file: policy_schedule.pdf, category: policy_schedule}
+      - {file: repair_estimate.pdf, category: repair_estimate}
+  - id: out_of_cover
+    title: Loss after the cover ended
+    story: "The loss is dated after the cover ended, the amount claimed is well above the estimate, and a third party was involved but no incident report was sent."
+    path: insurance_claim
+    case: {reference: CLAIM-2026-12044, notified_date: "2026-10-09", received_date: "2026-10-14", third_party_involved: "yes"}
+    documents:
+      - {file: claim_form_late.pdf, category: claim_form}
+      - {file: policy_schedule.pdf, category: policy_schedule}
+      - {file: repair_estimate.pdf, category: repair_estimate}

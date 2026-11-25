@@ -1,0 +1,23 @@
+{
+  "source": "UK Integrated Online Tariff, heading 8482",
+  "url": "https://www.trade-tariff.service.gov.uk/headings/8482",
+  "heading": "8482",
+  "title": "Ball or roller bearings",
+  "date_of_trade": "2026-10-02",
+  "commodities_stated": 18,
+  "partial": true,
+  "note": "Bundled demonstration snapshot, transcribed by hand from the heading page as it was shown for 2 October 2026. It holds 11 of the lines of the heading (the heading lists 18 commodities) and one description is cut short. It is not a live retrieval and not an authority: connect the live connector (DOCUINSIGHTS_REFERENCE_LIVE=1) or replace this file before relying on a result.",
+  "nodes": [
+    {"code": "8482000000", "display": "8482", "description": "Ball or roller bearings", "parent": null, "declarable": false},
+    {"code": "8482100000", "display": "8482 10", "description": "Ball bearings", "parent": "8482000000", "declarable": false},
+    {"code": "8482101000", "display": "8482 10 10", "description": "With greatest external diameter not exceeding 30 mm", "parent": "8482100000", "declarable": false},
+    {"code": "8482101015", "display": "8482 10 10 15", "description": "Ball bearings with: an internal diameter of 4 mm or more but not more than 9 mm, an external diameter of not more than 26 mm, a width of not more than 8 mm, for use in the manufacture of electromotors with a range of 40 000 rpm or more but not more than 80 000 rpm", "parent": "8482101000", "declarable": true, "vat": "20%", "third_country_duty": "8.00 %"},
+    {"code": "8482101090", "display": "8482 10 10 90", "description": "Other", "parent": "8482101000", "declarable": true, "vat": "20%", "third_country_duty": "8.00 %"},
+    {"code": "8482109000", "display": "8482 10 90 00", "description": "Other", "parent": "8482100000", "declarable": true, "vat": "20%", "third_country_duty": "8.00 %"},
+    {"code": "8482200000", "display": "8482 20 00 00", "description": "Tapered roller bearings, including cone and tapered roller assemblies", "parent": "8482000000", "declarable": true, "vat": "20%", "third_country_duty": "8.00 %"},
+    {"code": "8482300000", "display": "8482 30 00 00", "description": "Spherical roller bearings", "parent": "8482000000", "declarable": true, "vat": "20%", "third_country_duty": "8.00 %"},
+    {"code": "8482400000", "display": "8482 40 00 00", "description": "Needle roller bearings, including cage and needle roller assemblies", "parent": "8482000000", "declarable": true, "vat": "20%", "third_country_duty": "8.00 %"},
+    {"code": "8482500000", "display": "8482 50", "description": "Other cylindrical roller bearings, including cage and roller assemblies", "parent": "8482000000", "declarable": false},
+    {"code": "8482500020", "display": "8482 50 00 20", "description": "Axial roller bearing made of steel: the retainer is made of cold-rolled steel with a carbon content of up to 0.25 percent [description cut short in the snapshot]", "parent": "8482500000", "declarable": true, "vat": "20%", "third_country_duty": "8.00 %", "supplementary_unit": "p/st"}
+  ]
+}

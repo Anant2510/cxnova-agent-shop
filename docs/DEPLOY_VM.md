@@ -117,6 +117,7 @@ Public addresses once that is in place:
 | Customer account | `.../agentshop/shop/account` |
 | Orchestration designer | `.../agentshop/shop/designer` (operator token) |
 | Runs (live, step by step) | `.../agentshop/portal#/runs` (the earlier `.../agentshop/shop/runs` still opens it) |
+| DocuInsights workbench (cases, evidence, graph, what-if, decisions) | `.../agentshop/docuinsights/` (signs in with the portal's token or key) |
 | Admin | `.../agentshop/shop/admin` (operator token) |
 | API docs | `.../agentshop/docs` |
 | MCP | `.../agentshop/mcp` |
@@ -140,7 +141,7 @@ From the VM (the CLI needs no token) or from the admin console:
 Open the **Designer** (`.../agentshop/shop/designer`, or Admin → Flows → **New flow in the designer**); it asks
 for the operator token once per browser.
 
-1. **Add agents.** The palette on the left lists all 110 agents by pack. Click one to add it after the selected
+1. **Add agents.** The palette on the left lists all 129 agents by pack. Click one to add it after the selected
    step (clicking down a list builds a chain), or drag it onto the canvas to place it unconnected.
 2. **Connect.** Drag from the port on a node's right edge to another node: the second runs after the first and
    sees its output. Steps with no wire between them run in parallel. Click a wire to remove it.
@@ -203,6 +204,47 @@ python3 scripts/build_pack_arm.py --from <arm-sdlc-factory>/config
 
 `CAF_PACKS_DISABLED=arm_sdlc` (ids separated by commas, or `*`) in `.env` leaves a pack out. The ARM pack carries
 client-specific prompts and sample outputs: keep the GitHub repository private.
+
+## DocuInsights on the VM
+
+DocuInsights ships inside this repository (`src/docuinsights`, `config/packs/docuinsights.yaml`), so there is nothing
+to install: once the commit that carries it is on GitHub, `update.ps1` (below) puts it on the VM with everything else.
+
+| | |
+| --- | --- |
+| Address | `https://cxnova2.centralindia.cloudapp.azure.com/agentshop/docuinsights/` |
+| Sign-in | The portal's: open `.../agentshop/portal` in the same browser and enter the operator token (everything) or a customer key (that customer's own cases) |
+| Model | The layer's (`CAF_LLM_PROVIDER` and the Foundry key in `.env`, step 3). Nothing more to set |
+| Data | `data\docuinsights\<tenant>\`: cases, the knowledge base (`knowledge\`), the ledger. `operator`, or `c-<customer id>`. Back it up with the VM |
+| PDF and scans | Text PDFs are read with `pdfplumber` (a dependency). A scanned image is transcribed by the connected model. A scanned PDF with no text layer is kept and flagged as unreadable; it is never guessed at |
+
+Check it after the update, on the VM:
+
+```powershell
+.venv\Scripts\caf health --packs                                              # every pack agent registered and answering, the 15 `di_` agents among them
+curl.exe -s https://cxnova2.centralindia.cloudapp.azure.com/agentshop/health     # "docuinsights": "mounted" (if not, the reason is in logs\service.log)
+```
+
+Then open the address, pick a use case on the home page and press a sample: the case opens on **Agent orchestration**
+and plays the assessment back. **Knowledge** shows the graph by level.
+
+To give a customer its own workspace (its cases and its knowledge are never visible to another customer):
+
+```powershell
+.venv\Scripts\caf shop add acme "Acme Ltd" --contact ops@acme.example
+.venv\Scripts\caf shop subscribe acme --flows di_case_assessment,di_what_if,di_ask,di_assess_and_file --agents di_verifier
+.venv\Scripts\caf shop key acme --label "case team"           # shown once: the customer signs in to the portal with it
+```
+
+**As a site of its own.** The standalone DocuInsights (its own repository, written by
+`scripts/export_docuinsights.py`) can run on the same VM next to the layer, at `.../docuinsights/` behind its own API
+key: clone it to `C:\cxnova`, run its `deploy\windows\install.ps1` (it copies the model settings from this layer's
+`.env`) and `service.ps1` (port 8090), and add one more proxy rule. Its `DEPLOY.md` has the steps. The two do not
+share cases: the layer keeps one workspace per customer, the standalone one workspace behind one key.
+
+Optional settings in `.env` (restart with `service.ps1 -Restart`): `DOCUINSIGHTS_WORKSPACE_NAME` (the name of the
+customer level in the knowledge graph), `DOCUINSIGHTS_MODEL_RPM` and `DOCUINSIGHTS_MODEL_CONCURRENCY` (throttling),
+`DOCUINSIGHTS_MAX_ASSESSMENTS`. `CAF_PACKS_DISABLED=docuinsights` takes it off the VM.
 
 ## Updating
 

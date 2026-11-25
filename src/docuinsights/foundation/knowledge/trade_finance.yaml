@@ -1,0 +1,184 @@
+# Industry knowledge base: trade finance.
+# General knowledge about the industry, written for orientation and for tracing a finding back to the rule it rests on.
+# Each standard is named with its publisher and reference. Check the current text of a standard before relying on it.
+id: trade-finance
+kind: industry
+head: Trade finance
+name: Trade finance knowledge base
+version: "1.0"
+about: Banks and trading companies that pay, guarantee or finance the movement of goods against documents. The bank's promise depends on the documents alone, so examining them is the core of the work.
+
+bodies:
+  - {name: International Chamber of Commerce, also: [ICC], says: "Publishes the rules most trade finance instruments are issued under, and the trade terms sales contracts use."}
+  - {name: Financial Action Task Force, also: [FATF], says: "Sets the international standards against money laundering, including guidance on trade-based money laundering."}
+
+standards:
+  - name: UCP 600
+    title: Uniform Customs and Practice for Documentary Credits, 2007 revision
+    by: International Chamber of Commerce
+    cite: ICC Publication No. 600
+    jurisdiction: International. It applies when the credit says it is subject to it.
+    says: The rules a documentary credit is examined under. Banks deal with documents, not with the goods, and decide on the face of the documents whether a presentation complies.
+    provisions:
+      - {ref: article 5, about: "documents, not goods", says: "Banks deal with documents and not with the goods, services or performance the documents relate to."}
+      - {ref: article 6(d)(i), about: "expiry date for presentation", says: "A credit must state an expiry date for presentation."}
+      - {ref: article 14(a), about: "examination on the face of the documents", says: "A bank examines a presentation on the basis of the documents alone, to decide whether they appear on their face to be a complying presentation."}
+      - {ref: article 14(b), about: "five banking days to examine", says: "Each bank has a maximum of five banking days following the day of presentation to decide whether a presentation complies."}
+      - {ref: article 14(c), about: "presentation within 21 days of shipment", says: "A presentation that includes an original transport document must be made not later than 21 calendar days after the date of shipment, and never later than the expiry date of the credit."}
+      - {ref: article 14(d), about: "data must not conflict", says: "Data in a document need not be identical to data in the credit or in another document, but must not conflict with it."}
+      - {ref: article 14(e), about: "goods description in other documents", says: "In documents other than the commercial invoice, the goods may be described in general terms that do not conflict with the description in the credit."}
+      - {ref: article 16(d), about: "time limit for a notice of refusal", says: "A notice of refusal must be given no later than the close of the fifth banking day following the day of presentation."}
+      - {ref: article 18(a), about: "who issues the invoice and to whom", says: "A commercial invoice must appear to be issued by the beneficiary, be made out in the name of the applicant and be in the currency of the credit."}
+      - {ref: article 18(b), about: "invoice for more than the credit", says: "A bank may accept a commercial invoice issued for more than the credit permits, provided it has not honoured or negotiated for more than the credit permits."}
+      - {ref: article 18(c), about: "goods description on the invoice", says: "The description of the goods, services or performance in the commercial invoice must correspond with the description in the credit."}
+      - {ref: article 20(a)(ii), about: "shipped on board at the port of loading", says: "A bill of lading must show that the goods have been shipped on board a named vessel at the port of loading stated in the credit."}
+      - {ref: article 20(a)(iii), about: "ports of loading and discharge", says: "A bill of lading must indicate shipment from the port of loading to the port of discharge stated in the credit."}
+      - {ref: article 28(e), about: "date of the insurance document", says: "The date of the insurance document must be no later than the date of shipment, unless the cover is shown to be effective from a date no later than shipment."}
+      - {ref: article 28(f)(ii), about: "minimum insurance cover", says: "If the credit does not say how much cover is required, the insurance must cover at least 110% of the CIF or CIP value of the goods."}
+      - {ref: article 29(a), about: "expiry on a day the bank is closed", says: "If the expiry date or the last day for presentation falls on a day the bank is closed for ordinary reasons, it is extended to the next banking day."}
+      - {ref: article 30(a), about: "tolerance for about and approximately", says: "The words 'about' or 'approximately' allow a tolerance of 10% more or less on the amount, quantity or unit price they refer to."}
+      - {ref: article 30(b), about: "five percent tolerance in quantity", says: "A tolerance of 5% more or less in the quantity of goods is allowed, unless the quantity is stated as a number of packing units or individual items, and provided the amount drawn does not exceed the credit."}
+  - name: ISBP
+    title: International Standard Banking Practice for the Examination of Documents under UCP 600
+    by: International Chamber of Commerce
+    cite: ICC publication (issued as No. 745, revised as No. 821)
+    jurisdiction: International
+    says: How the UCP 600 rules are applied document by document. The practice examiners follow for invoices, transport documents, insurance documents and certificates of origin.
+  - name: eUCP
+    title: Supplement to UCP 600 for Electronic Presentation
+    by: International Chamber of Commerce
+    cite: ICC supplement to UCP 600
+    jurisdiction: International. It applies when the credit says so.
+    says: Rules for presenting electronic records alone or together with paper documents.
+  - name: URC 522
+    title: Uniform Rules for Collections
+    by: International Chamber of Commerce
+    cite: ICC Publication No. 522
+    jurisdiction: International
+    says: Rules for documentary collections, where banks handle documents against payment or acceptance without promising to pay themselves.
+  - name: URDG 758
+    title: Uniform Rules for Demand Guarantees
+    by: International Chamber of Commerce
+    cite: ICC Publication No. 758
+    jurisdiction: International
+    says: Rules for guarantees payable on a demand that complies with the guarantee's terms.
+  - name: Incoterms 2020
+    title: ICC rules for the use of domestic and international trade terms
+    by: International Chamber of Commerce
+    cite: ICC Incoterms 2020
+    jurisdiction: International. They apply when the sales contract names one.
+    says: Eleven three-letter trade terms that say where delivery takes place and who pays for carriage, insurance and clearance. Under CIF and CIP the seller must insure the goods for the buyer.
+  - name: FATF Recommendations
+    title: International Standards on Combating Money Laundering and the Financing of Terrorism and Proliferation
+    by: Financial Action Task Force
+    cite: FATF Recommendations
+    jurisdiction: International. Countries write them into their own law.
+    says: The standards banks' checks on customers and transactions are built on, including the checks on trade transactions.
+
+processes:
+  - name: Documentary credit examination
+    says: A bank checks the documents a seller presents under a credit and decides whether to pay.
+    steps: [Receive the presentation, Check each document against the credit, Check the documents against each other, Apply the rules and standard banking practice, List any discrepancies, Honour or give notice of refusal within the time allowed]
+    documents: [Documentary credit, Commercial invoice, Bill of lading, Packing list, Insurance certificate, Certificate of origin]
+    under: [UCP 600, ISBP, eUCP]
+    measures: [Discrepancy rate on first presentation, Examination turnaround time, Straight-through examination rate]
+    use_cases: [trade_finance]
+  - name: Documentary credit issuance
+    says: A buyer applies for a credit, the issuing bank issues it and an advising bank passes it to the seller.
+    steps: [Application by the buyer, Credit approval, Issuance, Advising to the beneficiary, Amendments]
+    documents: [Documentary credit]
+    under: [UCP 600]
+  - name: Documentary collection
+    says: A bank releases the seller's documents to the buyer against payment or acceptance, without promising payment itself.
+    under: [URC 522]
+  - name: Trade transaction screening
+    says: Parties, goods, vessels and routes are screened for sanctions and for signs of money laundering before a bank acts on a trade transaction.
+    under: [FATF Recommendations]
+
+risks:
+  - name: Discrepant presentation
+    says: The documents do not comply with the credit or with each other, so the bank is not obliged to pay.
+    signs: [A required document is missing, Dates fall outside the periods of the credit, The invoice is for more than the credit, The goods are described differently from the credit, Weights or package counts differ between documents, Ports differ from the credit]
+    affects: [Documentary credit examination]
+    caught_by: ["rule:trade_finance/rules.amount_within_credit", "rule:trade_finance/rules.latest_shipment", "rule:trade_finance/rules.presentation_period", "rule:trade_finance/rules.within_expiry", "rule:trade_finance/consistency.goods_description"]
+    measures: [Discrepancy rate on first presentation]
+  - name: Late presentation
+    says: The documents reach the bank after the presentation period or after the credit has expired.
+    signs: [More than 21 calendar days between shipment and presentation, Presentation after the expiry date]
+    affects: [Documentary credit examination]
+    caught_by: ["rule:trade_finance/rules.presentation_period", "rule:trade_finance/rules.within_expiry"]
+  - name: Late shipment
+    says: The goods were shipped after the latest shipment date the credit allows.
+    signs: [On-board date later than the latest shipment date]
+    affects: [Documentary credit examination]
+    caught_by: ["rule:trade_finance/rules.latest_shipment"]
+  - name: Overdrawing
+    says: The amount claimed is more than the credit, beyond any tolerance it allows.
+    signs: [Invoice total above the credit amount, Quantity above the tolerance]
+    affects: [Documentary credit examination]
+    caught_by: ["rule:trade_finance/rules.amount_within_credit"]
+  - name: Insurance gap
+    says: The goods travel without the cover the credit or the terms of sale require.
+    signs: [No insurance document where CIF or CIP applies, Cover below 110% of the value, Insurance dated after shipment]
+    affects: [Documentary credit examination]
+    caught_by: ["rule:trade_finance/evidence.insurance"]
+  - name: Trade document fraud
+    says: Forged, altered or duplicated documents are presented to obtain payment or finance.
+    signs: [Details that differ between documents of the same shipment, The same invoice or transport document presented twice, A transport document for goods that never moved]
+    affects: [Documentary credit examination]
+    caught_by: ["rule:trade_finance/consistency.package_count", "rule:trade_finance/consistency.gross_weight", "rule:trade_finance/consistency.invoice_reference", "rule:trade_finance/consistency.credit_number"]
+  - name: Trade-based money laundering
+    says: Trade transactions are used to move or disguise the proceeds of crime, typically by misstating price, quantity or the goods themselves.
+    signs: [Price far from the market value of the goods, Goods that do not fit the buyer's or seller's business, Shipping routes that make no commercial sense, Third parties with no clear role in the trade]
+    affects: [Trade transaction screening]
+    checked: "no: the documents of one case do not show market prices or the parties' background"
+  - name: Sanctions exposure
+    says: A party, vessel, port or the goods are subject to sanctions.
+    signs: ["A listed party, vessel or port named in the documents"]
+    affects: [Trade transaction screening]
+    caught_by: ["rule:trade_finance/screening.parties"]
+    checked: "in part: parties, the vessel and the ports are compared with the lists the installation loads (the shipped list is invented, for demonstration); the goods are not screened"
+
+kpis:
+  - {name: Discrepancy rate on first presentation, says: "The share of presentations that show at least one discrepancy when first presented.", unit: "%", better: lower}
+  - {name: Examination turnaround time, says: "Banking days from presentation to the bank's decision. UCP 600 allows five.", unit: banking days, better: lower}
+  - {name: Straight-through examination rate, says: "The share of presentations decided without a query to the presenter.", unit: "%", better: higher}
+  - {name: Refusal notices given in time, says: "The share of refusals notified by the close of the fifth banking day.", unit: "%", better: higher}
+
+terms:
+  - {name: Complying presentation, says: "A presentation that agrees with the terms of the credit, the applicable rules and international standard banking practice."}
+  - {name: Discrepancy, says: "A point on which the documents presented do not comply with the credit, the rules or each other.", also: [Discrepant document]}
+  - {name: Presentation, says: "The delivery of documents under a credit to the issuing or nominated bank, or the documents so delivered."}
+  - {name: Latest shipment date, says: "The last day on which the goods may be shipped under the credit."}
+  - {name: Expiry date, says: "The last day on which documents may be presented under the credit."}
+  - {name: Presentation period, says: "The time after shipment within which documents must be presented: 21 calendar days unless the credit says otherwise."}
+  - {name: Honour, says: "To pay at sight, to incur a deferred payment undertaking and pay at maturity, or to accept a draft and pay at maturity."}
+  - {name: On-board notation, says: "The dated statement on a bill of lading that the goods have been loaded on a named vessel. Its date is the date of shipment."}
+  - {name: Issuing bank, says: "The bank that issues the credit at the request of the applicant."}
+  - {name: Nominated bank, says: "The bank with which the credit is available."}
+  - {name: Confirming bank, says: "A bank that adds its own undertaking to the credit at the issuing bank's request."}
+  - {name: Tolerance, says: "How far an amount or a quantity may differ and still comply."}
+
+basis:
+  trade_finance:
+    rules.amount_within_credit: [UCP 600 article 18(b), UCP 600 article 30(a), UCP 600 article 30(b)]
+    rules.latest_shipment: [Latest shipment date, UCP 600 article 20(a)(ii)]
+    rules.presentation_period: [UCP 600 article 14(c), Presentation period]
+    rules.within_expiry: [UCP 600 article 6(d)(i), UCP 600 article 29(a), Expiry date]
+    consistency.beneficiary_seller: [UCP 600 article 18(a), UCP 600 article 14(d)]
+    consistency.applicant_buyer: [UCP 600 article 18(a)]
+    consistency.goods_description: [UCP 600 article 18(c), UCP 600 article 14(e)]
+    consistency.port_of_loading: [UCP 600 article 20(a)(ii)]
+    consistency.port_of_discharge: [UCP 600 article 20(a)(iii)]
+    consistency.package_count: [UCP 600 article 14(d)]
+    consistency.gross_weight: [UCP 600 article 14(d)]
+    consistency.credit_number: [UCP 600 article 14(d)]
+    consistency.invoice_reference: [UCP 600 article 14(d)]
+    evidence.credit: [UCP 600 article 14(a)]
+    evidence.invoice: [UCP 600 article 14(a), UCP 600 article 18(a)]
+    evidence.transport: [UCP 600 article 14(a), UCP 600 article 20(a)(ii)]
+    evidence.packing: [UCP 600 article 14(a)]
+    evidence.origin: [UCP 600 article 14(a)]
+    evidence.insurance: [UCP 600 article 28(e), UCP 600 article 28(f)(ii), Incoterms 2020]
+    integrity.invoice_arithmetic: [Recalculation of stated totals]
+    screening.parties: [FATF Recommendations]

@@ -1,0 +1,419 @@
+# Customs claim and tariff evidence assessment.
+#
+# A trader or representative submits a case package (commercial, transport, product and financial evidence) for a
+# repayment, correction, relief or classification case. The caseworker must establish what goods moved, which parties
+# and shipment are involved, which classification the evidence supports, whether the required documents are present,
+# and whether timing and value conditions are met.
+#
+# This profile names no authority and no customer. The rules and thresholds are ILLUSTRATIVE: replace them with the
+# approved policy of the organisation that uses the profile, and keep each rule's version in step with that policy.
+id: customs_claim
+name: Customs claim intelligence
+order: 40
+sector: Customs and trade
+plain: "Check a customs claim: is the evidence complete, do the documents agree, and does the product evidence support the commodity code for the date?"
+version: "1.0"
+description: Evidence assessment for customs repayment, correction, relief and classification cases, grounded to a date-relevant tariff reference.
+
+brand:
+  workspace: Customs Claim Intelligence Workbench
+  client_label: ""            # optional text shown beside the product name, e.g. the business unit running the demo
+  case_noun: claim
+
+case:
+  reference_label: Case reference
+  reference_example: CLM-2026-000184
+  fields:
+    - {id: claim_type, name: Claim type, type: text}
+    - {id: claimed_amount, name: Claimed amount, type: money}
+    - {id: relevant_date, name: Relevant date (tariff as-of), type: date, description: The event date the tariff and the rules are read for}
+    - {id: received_date, name: Claim received, type: date}
+    - {id: physical_goods, name: Physical goods moved, type: text, default: "yes"}
+    - {id: classification_in_question, name: Classification in question, type: text, default: "yes"}
+
+document_types:
+  - id: commercial_invoice
+    name: Commercial invoice
+    group: commercial
+    signals: [commercial invoice, invoice no, invoice number, unit price, unit value, terms of sale, incoterms, seller, buyer]
+    fields:
+      - {id: invoice_number, name: Invoice number, type: ref, labels: [Invoice No, Invoice Number, Invoice No.], required: true}
+      - {id: invoice_date, name: Invoice date, type: date, labels: [Invoice Date, Date of Invoice], required: true}
+      - {id: seller, name: Seller, type: party, labels: [Seller, Exporter, Sold by], required: true}
+      - {id: buyer, name: Buyer, type: party, labels: [Buyer, Sold to, Bill to], required: true}
+      - {id: goods_description, name: Goods description, type: text, labels: [Description of Goods, Goods Description, Description], required: true}
+      - {id: commodity_code, name: Commodity code, type: code, labels: [Commodity Code, HS Code, Tariff Code, Customs Code], required: true}
+      - {id: origin, name: Country of origin, type: text, labels: [Country of Origin, Origin]}
+      - {id: quantity, name: Quantity, type: number, labels: [Quantity, Qty]}
+      - {id: unit_value, name: Unit value, type: money, labels: [Unit Price, Unit Value]}
+      - {id: goods_value, name: Goods value, type: money, labels: [Goods Value, Subtotal, Sub-total]}
+      - {id: freight, name: Freight, type: money, labels: [Freight, Shipping Cost, Shipping]}
+      - {id: total, name: Invoice total, type: money, labels: [Invoice Total, Total Amount, Total Due, Total], required: true}
+  - id: declaration
+    name: Import declaration extract
+    group: declaration
+    signals: [import declaration, declaration extract, movement reference, mrn, declaration item, customs value, acceptance date, procedure code]
+    fields:
+      - {id: declaration_ref, name: Declaration reference, type: ref, labels: [Movement Reference Number, MRN, Declaration Reference], required: true}
+      - {id: acceptance_date, name: Acceptance date, type: date, labels: [Acceptance Date, Date of Acceptance], required: true}
+      - {id: importer, name: Importer, type: party, labels: [Importer, Consignee], required: true}
+      - {id: exporter, name: Exporter, type: party, labels: [Exporter, Consignor]}
+      - {id: item_description, name: Item description, type: text, labels: [Goods Description, Item Description, Description of Goods]}
+      - {id: commodity_code, name: Declared commodity code, type: code, labels: [Commodity Code, Declared Commodity Code], required: true}
+      - {id: origin, name: Country of origin, type: text, labels: [Country of Origin, Origin]}
+      - {id: customs_value, name: Customs value, type: money, labels: [Customs Value, Value for Customs], required: true}
+      - {id: duty_paid, name: Duty paid, type: money, labels: [Duty Paid, Customs Duty]}
+      - {id: invoice_ref, name: Invoice reference, type: ref, labels: [Invoice Reference, Commercial Invoice]}
+  - id: air_waybill
+    name: Air waybill
+    group: transport
+    signals: [air waybill, airwaybill, master awb, awb no, airport of departure, airport of destination, chargeable weight, not negotiable]
+    fields:
+      - {id: awb_number, name: Air waybill number, type: ref, labels: [Master AWB No, AWB No, Air Waybill No, Air Waybill Number], required: true}
+      - {id: shipper, name: Shipper, type: party, labels: [Shipper, "Shipper's Name and Address"], required: true}
+      - {id: consignee, name: Consignee, type: party, labels: [Consignee, "Consignee's Name and Address"], required: true}
+      - {id: agent, name: Issuing carrier's agent, type: party, labels: ["Issuing Carrier's Agent", Agent]}
+      - {id: departure, name: Airport of departure, type: text, labels: [Airport of Departure, Departure]}
+      - {id: destination, name: Airport of destination, type: text, labels: [Airport of Destination, Destination]}
+      - {id: pieces, name: Number of pieces, type: number, labels: [No. of Pieces, Number of Pieces, Pieces], required: true}
+      - {id: gross_weight, name: Gross weight (kg), type: number, labels: [Gross Weight], required: true}
+      - {id: chargeable_weight, name: Chargeable weight (kg), type: number, labels: [Chargeable Weight]}
+      - {id: goods_description, name: Nature and quantity of goods, type: text, labels: [Nature and Quantity of Goods, Nature of Goods, Goods Description]}
+      - {id: execution_date, name: Executed on, type: date, labels: [Executed on, Date of Execution, Execution Date]}
+  - id: bill_of_lading
+    name: Bill of lading
+    group: transport
+    signals: [bill of lading, b/l no, port of loading, port of discharge, vessel, voyage, container no, shipped on board, ocean]
+    fields:
+      - {id: bl_number, name: Bill of lading number, type: ref, labels: [B/L No, Bill of Lading No, Bill of Lading Number], required: true}
+      - {id: carrier, name: Carrier, type: party, labels: [Carrier]}
+      - {id: shipper, name: Shipper, type: party, labels: [Shipper], required: true}
+      - {id: consignee, name: Consignee, type: party, labels: [Consignee], required: true}
+      - {id: vessel, name: Vessel and voyage, type: text, labels: [Vessel / Voyage, Vessel, Ocean Vessel]}
+      - {id: port_of_loading, name: Port of loading, type: text, labels: [Port of Loading]}
+      - {id: port_of_discharge, name: Port of discharge, type: text, labels: [Port of Discharge]}
+      - {id: container, name: Container number, type: ref, labels: [Container No, Container Number]}
+      - {id: packages, name: Number of packages, type: number, labels: [No. of Packages, Number of Packages, Packages], required: true}
+      - {id: gross_weight, name: Gross weight (kg), type: number, labels: [Gross Weight], required: true}
+      - {id: goods_description, name: Description of goods, type: text, labels: [Description of Goods, Description of Packages and Goods]}
+      - {id: shipped_date, name: Shipped on board, type: date, labels: [Shipped on Board, Date of Shipment, Shipment Date]}
+  - id: packing_list
+    name: Packing list
+    group: commercial
+    signals: [packing list, packing slip, carton no, cartons, net weight, dimensions per carton, marks and numbers]
+    fields:
+      - {id: packing_list_number, name: Packing list number, type: ref, labels: [Packing List No, Packing List Number]}
+      - {id: invoice_ref, name: Invoice reference, type: ref, labels: [Invoice No, Invoice Reference, Against Invoice]}
+      - {id: shipper, name: Shipper, type: party, labels: [Shipper, Seller, Exporter]}
+      - {id: consignee, name: Consignee, type: party, labels: [Consignee, Buyer]}
+      - {id: packages, name: Number of packages, type: number, labels: [Total Packages, Number of Packages, No. of Cartons, Total Cartons], required: true}
+      - {id: quantity, name: Total quantity, type: number, labels: [Total Quantity, Quantity]}
+      - {id: gross_weight, name: Gross weight (kg), type: number, labels: [Total Gross Weight, Gross Weight], required: true}
+      - {id: net_weight, name: Net weight (kg), type: number, labels: [Total Net Weight, Net Weight]}
+      - {id: goods_description, name: Description of goods, type: text, labels: [Description of Goods, Contents, Description]}
+  - id: technical_data_sheet
+    name: Technical data sheet
+    group: product
+    signals: [technical data sheet, data sheet, specifications, dimensions, material, limiting speed, load rating, standards, operating temperature, manufacturer]
+    fields:
+      - {id: manufacturer, name: Manufacturer, type: party, labels: [Manufacturer, Manufactured by]}
+      - {id: product_name, name: Product, type: text, labels: [Product Name, Product], required: true}
+      - {id: model, name: Model / designation, type: ref, labels: [Designation, Model, Part Number]}
+      - {id: product_type, name: Product type, type: text, labels: [Bearing Type, Product Type, Type], required: true}
+      - {id: material, name: Material, type: text, labels: [Material, Ring Material]}
+      - {id: internal_diameter_mm, name: Bore diameter (mm), type: number, labels: [Bore Diameter, Internal Diameter, Inner Diameter]}
+      - {id: external_diameter_mm, name: Outside diameter (mm), type: number, labels: [Outside Diameter, External Diameter, Outer Diameter], required: true}
+      - {id: width_mm, name: Width (mm), type: number, labels: [Width]}
+      - {id: limiting_speed_rpm, name: Limiting speed (rpm), type: number, labels: [Limiting Speed]}
+      - {id: intended_use, name: Intended use, type: text, labels: [Intended Use, Application, Typical Applications]}
+      - {id: standards, name: Standards, type: text, labels: [Standards, Conforms to]}
+  - id: bank_statement
+    name: Proof of payment
+    group: financial
+    signals: [bank statement, statement of account, payment advice, remittance advice, debit, credit, sort code, transaction date, beneficiary, value date]
+    fields:
+      - {id: account_holder, name: Account holder, type: party, labels: [Account Holder, Account Name, Ordering Customer], required: true}
+      - {id: payee, name: Beneficiary, type: party, labels: [Beneficiary, Payee, Paid to]}
+      - {id: transaction_date, name: Transaction date, type: date, labels: [Transaction Date, Value Date, Payment Date], required: true}
+      - {id: amount, name: Amount paid, type: money, labels: [Amount Paid, Payment Amount, Debit Amount, Amount], required: true}
+      - {id: payment_reference, name: Payment reference, type: ref, labels: [Payment Reference, Reference, Narrative]}
+  - id: correspondence
+    name: Correspondence
+    group: correspondence
+    signals: [dear sir, dear madam, yours faithfully, yours sincerely, we write, further to, regards, "re:"]
+    fields:
+      - {id: sender, name: Sender, type: party, labels: [From]}
+      - {id: date, name: Date, type: date, labels: [Date]}
+      - {id: subject, name: Subject, type: text, labels: [Subject, "Re"]}
+
+# How extracted fields become shared entities of the case graph.
+entities:
+  parties:
+    commercial_invoice.seller: Seller
+    commercial_invoice.buyer: Buyer
+    declaration.importer: Importer
+    declaration.exporter: Exporter
+    air_waybill.shipper: Shipper
+    air_waybill.consignee: Consignee
+    air_waybill.agent: Freight agent
+    bill_of_lading.shipper: Shipper
+    bill_of_lading.consignee: Consignee
+    bill_of_lading.carrier: Carrier
+    packing_list.shipper: Shipper
+    packing_list.consignee: Consignee
+    technical_data_sheet.manufacturer: Manufacturer
+    bank_statement.account_holder: Payer
+    bank_statement.payee: Payee
+  goods:
+    - commercial_invoice.goods_description
+    - declaration.item_description
+    - air_waybill.goods_description
+    - bill_of_lading.goods_description
+    - packing_list.goods_description
+    - technical_data_sheet.product_name
+  references:
+    Invoice: [commercial_invoice.invoice_number, declaration.invoice_ref, packing_list.invoice_ref, bank_statement.payment_reference]
+    Shipment: [air_waybill.awb_number, bill_of_lading.bl_number]
+    Declaration: [declaration.declaration_ref]
+  characteristics:
+    document_type: technical_data_sheet
+    fields: [product_type, material, internal_diameter_mm, external_diameter_mm, width_mm, limiting_speed_rpm, intended_use]
+
+ontology:
+  domains:
+    Case: [Case, CaseReference, ClaimType, CaseStatus, Applicant, Caseworker, ReviewTask, Recommendation, Decision, Correspondence]
+    Customs and goods: [ImportDeclaration, DeclarationItem, GoodsItem, Product, ProductCharacteristic, CommodityCode, TariffHeading, TariffMeasure, Origin, Importer, Exporter, Buyer, Seller]
+    Transport: [Shipment, Consignment, Package, Container, BillOfLading, AirWaybill, Carrier, Vessel, Port, Airport, Route]
+    Documents and evidence: [Document, DocumentVersion, DocumentType, ExtractedField, EvidenceAssertion, Invoice, PackingList, TechnicalDataSheet, BankStatement, PaymentTransaction]
+    Policy and audit: [Policy, EligibilityRule, EvidenceRequirement, RuleEvaluation, Agent, AgentRun, Citation, HumanFeedback, AuditEvent]
+  relationships:
+    - Case CONTAINS Document
+    - Document HAS_VERSION DocumentVersion
+    - DocumentVersion SUPPORTS EvidenceAssertion
+    - EvidenceAssertion MENTIONS Party | GoodsItem | Reference
+    - Shipment TRANSPORTS GoodsItem
+    - Invoice REFERENCES GoodsItem
+    - GoodsItem HAS_CHARACTERISTIC ProductCharacteristic
+    - GoodsItem CANDIDATE_CLASSIFICATION CommodityCode
+    - CommodityCode CHILD_OF TariffHeading
+    - RuleEvaluation EVALUATES Rule
+    - RuleEvaluation SUPPORTED_BY EvidenceAssertion
+    - Recommendation BASED_ON RuleEvaluation
+    - HumanFeedback CORRECTS EvidenceAssertion
+
+# Vocabulary the engine normalises with. The feedback loop proposes additions; nothing is added without approval.
+synonyms:
+  product_type:
+    deep groove ball bearing: ball
+    ball bearing: ball
+    ball bearings: ball
+    angular contact ball bearing: ball
+    tapered roller bearing: tapered_roller
+    tapered roller bearings: tapered_roller
+    spherical roller bearing: spherical_roller
+    needle roller bearing: needle_roller
+    cylindrical roller bearing: cylindrical_roller
+  party: {}
+
+evidence:
+  - {id: invoice, title: Commercial invoice, any_of: [commercial_invoice], required: always}
+  - {id: declaration, title: Import declaration, any_of: [declaration], required: always}
+  - {id: transport, title: Transport evidence, any_of: [air_waybill, bill_of_lading], required: always, note: An air waybill or a bill of lading is accepted}
+  - {id: payment, title: Proof of payment, any_of: [bank_statement], required: always}
+  - {id: packing, title: Packing list, any_of: [packing_list], required: when, when: case.physical_goods, note: Required when physical goods moved}
+  - {id: product, title: Product evidence, any_of: [technical_data_sheet], required: when, when: case.classification_in_question, note: Required when the classification is in question}
+
+reference_sources:
+  - id: tariff
+    name: Integrated online tariff, heading 8482 (ball or roller bearings)
+    kind: hierarchy
+    connector: uk_trade_tariff
+    heading: "8482"
+    as_of: case.relevant_date
+    snapshot: tariff_8482.json
+    characteristics_from: technical_data_sheet
+    declared_codes: [declaration.commodity_code, commercial_invoice.commodity_code]
+    # Classification aids: how a product characteristic bears on each line of the hierarchy. They are an aid for the
+    # caseworker, written from the line descriptions; the tariff itself stays the authority. A line with no aid under a
+    # parent whose other lines all have one is the residual ("Other") line.
+    aids:
+      "8482100000": {all: [{field: product_type, equals: ball}]}
+      "8482101000": {all: [{field: external_diameter_mm, max: 30}]}
+      "8482101015": {all: [{field: internal_diameter_mm, min: 4, max: 9}, {field: external_diameter_mm, max: 26}, {field: width_mm, max: 8},
+                           {field: intended_use, contains: electromotor}, {field: limiting_speed_rpm, min: 40000, max: 80000}]}
+      "8482200000": {all: [{field: product_type, equals: tapered_roller}]}
+      "8482300000": {all: [{field: product_type, equals: spherical_roller}]}
+      "8482400000": {all: [{field: product_type, equals: needle_roller}]}
+      "8482500000": {all: [{field: product_type, equals: cylindrical_roller}]}
+
+rules:
+  - id: claim_window
+    family: timing
+    title: Claim received within the permitted period
+    type: date_interval
+    from: declaration.acceptance_date
+    to: case.received_date
+    max_days: 1095
+    version: "1.0"
+    note: Illustrative three-year window, counted in days from acceptance of the declaration to receipt of the claim.
+  - id: date_sequence
+    family: timing
+    title: Invoice precedes acceptance of the declaration
+    type: date_order
+    first: commercial_invoice.invoice_date
+    then: declaration.acceptance_date
+    version: "1.0"
+  - id: value_reconciliation
+    family: value
+    title: Invoice, declaration and payment values reconcile
+    type: amounts_match
+    amounts: [commercial_invoice.total, declaration.customs_value, bank_statement.amount]
+    tolerance_pct: 0.5
+    version: "1.0"
+    note: Illustrative tolerance of 0.5 percent, same currency required.
+  - id: commodity_consistency
+    family: commodity
+    title: Declared, invoiced and evidence-supported commodity codes agree
+    type: codes_consistent
+    codes: [declaration.commodity_code, commercial_invoice.commodity_code]
+    reference: tariff
+    version: "1.0"
+
+consistency:
+  - {id: seller_shipper, family: transport, title: Seller and shipper are the same party, kind: party, severity: medium,
+     fields: [commercial_invoice.seller, declaration.exporter, air_waybill.shipper, bill_of_lading.shipper, packing_list.shipper]}
+  - {id: buyer_consignee, family: transport, title: "Buyer, importer and consignee are the same party", kind: party, severity: high,
+     fields: [commercial_invoice.buyer, declaration.importer, air_waybill.consignee, bill_of_lading.consignee, packing_list.consignee]}
+  - {id: package_count, family: transport, title: Package count agrees across transport and packing evidence, kind: number, tolerance_pct: 0, severity: medium,
+     fields: [air_waybill.pieces, bill_of_lading.packages, packing_list.packages]}
+  - {id: gross_weight, family: transport, title: Gross weight agrees across transport and packing evidence, kind: number, tolerance_pct: 1, severity: medium,
+     fields: [air_waybill.gross_weight, bill_of_lading.gross_weight, packing_list.gross_weight]}
+  - {id: quantity, family: transport, title: Quantity invoiced equals quantity packed, kind: number, tolerance_pct: 0, severity: medium,
+     fields: [commercial_invoice.quantity, packing_list.quantity]}
+  - {id: goods_description, family: transport, title: Goods are described consistently, kind: text, severity: high,
+     fields: [commercial_invoice.goods_description, declaration.item_description, air_waybill.goods_description, bill_of_lading.goods_description, packing_list.goods_description, technical_data_sheet.product_name]}
+  - {id: invoice_reference, family: value, title: Documents refer to the same invoice, kind: ref, severity: medium,
+     fields: [commercial_invoice.invoice_number, declaration.invoice_ref, packing_list.invoice_ref, bank_statement.payment_reference]}
+  - {id: origin, family: commodity, title: Country of origin agrees, kind: text, severity: medium,
+     fields: [commercial_invoice.origin, declaration.origin]}
+
+# What the integrity agent is told about this use case. Each line is a deterministic check; none is a model's opinion.
+integrity:
+  sums:
+    - {id: invoice_goods_value, title: The invoice's quantity and unit value give the goods value, kind: product, parts: [commercial_invoice.quantity, commercial_invoice.unit_value], equals: commercial_invoice.goods_value}
+    - {id: invoice_total, title: Goods value and freight give the invoice total, kind: sum, parts: [commercial_invoice.goods_value, commercial_invoice.freight], equals: commercial_invoice.total}
+  issued: [commercial_invoice.invoice_date, declaration.acceptance_date, air_waybill.execution_date, bill_of_lading.shipped_date, bank_statement.transaction_date]
+
+# Every party is screened, and so is the vessel a bill of lading names.
+screening:
+  fields:
+    - {field: bill_of_lading.vessel, kind: vessel}
+
+# The service target is ILLUSTRATIVE.
+service:
+  target_days: 30
+  clock: calendar
+  starts: case.received_date
+  value: case.claimed_amount
+  high_value: 10000
+  note: Illustrative. Thirty days from receipt of the claim; a claim of 10,000 or more is high value.
+
+outcomes:
+  proceed: {label: Decision-ready, description: "Required evidence is present, the rules pass and no unresolved contradiction remains."}
+  request_evidence: {label: Request evidence, description: Required evidence is missing or a classification cannot be supported without more product detail.}
+  review: {label: Refer for review, description: "A rule failed or the documents contradict each other; a caseworker must resolve it."}
+
+correspondence:
+  evidence_request:
+    subject: "{reference}: further evidence required"
+    opening: "Thank you for your {case_noun} {reference}. We have assessed the documents provided and cannot complete the assessment yet."
+    closing: "Please send the items above quoting {reference}. The assessment will resume when they are received."
+  decision_note:
+    subject: "{reference}: assessment outcome"
+    opening: "We have completed the assessment of {case_noun} {reference}."
+    closing: "This note records the evidence and rules the outcome rests on."
+
+counterfactuals:
+  - id: add_packing_list
+    title: Add a valid packing list
+    expect: Resolves the missing-evidence finding and corroborates the package count; a commodity-code review may remain.
+    change: {op: add_document, type: packing_list, fields: {packages: "@air_waybill.pieces", gross_weight: "@air_waybill.gross_weight", quantity: "@commercial_invoice.quantity",
+             shipper: "@commercial_invoice.seller", consignee: "@commercial_invoice.buyer", goods_description: "@commercial_invoice.goods_description", invoice_ref: "@commercial_invoice.invoice_number"}}
+  - id: add_commodity_code
+    title: Add the evidence-supported commodity code to the invoice
+    expect: Recalculates code consistency and classification confidence; the case may move toward decision-ready.
+    change: {op: set_field, field: commercial_invoice.commodity_code, value: "@reference.tariff.candidate"}
+  - id: change_relevant_date
+    title: Change the relevant date
+    expect: The tariff is read again for the new date and the dependent checks rerun.
+    change: {op: set_case, field: relevant_date, value: "2026-10-02"}
+    ask: date
+  - id: late_claim
+    title: Move the claim outside the permitted period
+    expect: The timing rule fails and the case is referred for review.
+    change: {op: set_case, field: received_date, value: "2030-01-15"}
+    ask: date
+  - id: correct_goods_description
+    title: Change the invoiced goods description
+    expect: Entity links, the goods-consistency check and the recommendation are recomputed.
+    change: {op: set_field, field: commercial_invoice.goods_description, value: "Tapered roller bearings 30206, single row"}
+    ask: text
+  - id: remove_payment
+    title: Remove the proof of payment
+    expect: Creates an evidence gap and a targeted evidence request.
+    change: {op: remove_document, type: bank_statement}
+  - id: thin_product_evidence
+    title: Remove the outside diameter from the data sheet
+    expect: The classification can no longer be supported; targeted product evidence is requested instead of a guess.
+    change: {op: clear_field, field: technical_data_sheet.external_diameter_mm}
+
+samples:
+  - id: review
+    title: Review path
+    story: The packing list is missing and the invoice carries no commodity code. One file was uploaded under the wrong category.
+    path: customs_claim
+    case: {reference: CLM-2026-000184, claim_type: Repayment of import duty, claimed_amount: "GBP 1,233.60", relevant_date: "2026-11-03", received_date: "2026-11-20"}
+    documents:
+      - {file: invoice_no_code.pdf, category: commercial_invoice}
+      - {file: declaration.pdf, category: declaration}
+      - {file: air_waybill.pdf, category: packing_list}
+      - {file: proof_of_payment.pdf, category: bank_statement}
+      - {file: data_sheet.pdf, category: other}
+  - id: positive
+    title: Positive path
+    story: All evidence is present and consistent, and the product evidence supports the declared classification.
+    path: customs_claim
+    case: {reference: CLM-2026-000185, claim_type: Repayment of import duty, claimed_amount: "GBP 1,233.60", relevant_date: "2026-11-03", received_date: "2026-11-20"}
+    documents:
+      - {file: invoice.pdf, category: commercial_invoice}
+      - {file: declaration.pdf, category: declaration}
+      - {file: air_waybill.pdf, category: air_waybill}
+      - {file: packing_list.png, category: packing_list}
+      - {file: proof_of_payment.pdf, category: bank_statement}
+      - {file: data_sheet.pdf, category: technical_data_sheet}
+  - id: contradiction
+    title: Contradiction path
+    story: The package count, the amount paid, the consignee and the invoiced commodity code do not agree with the other evidence.
+    path: customs_claim
+    case: {reference: CLM-2026-000186, claim_type: Repayment of import duty, claimed_amount: "GBP 1,233.60", relevant_date: "2026-11-03", received_date: "2026-11-20"}
+    documents:
+      - {file: invoice_wrong_code.pdf, category: commercial_invoice}
+      - {file: declaration.pdf, category: declaration}
+      - {file: air_waybill_mismatch.pdf, category: air_waybill}
+      - {file: packing_list.png, category: packing_list}
+      - {file: proof_of_payment_short.pdf, category: bank_statement}
+      - {file: data_sheet.pdf, category: technical_data_sheet}
+  - id: temporal
+    title: Temporal path
+    story: The case is first assessed with an invoice that has no commodity code; an amended invoice then arrives and the case is assessed again.
+    path: customs_claim
+    case: {reference: CLM-2026-000187, claim_type: Repayment of import duty, claimed_amount: "GBP 1,233.60", relevant_date: "2026-11-03", received_date: "2026-11-20"}
+    documents:
+      - {file: invoice_no_code.pdf, category: commercial_invoice}
+      - {file: declaration.pdf, category: declaration}
+      - {file: air_waybill.pdf, category: air_waybill}
+      - {file: packing_list.png, category: packing_list}
+      - {file: proof_of_payment.pdf, category: bank_statement}
+      - {file: data_sheet.pdf, category: technical_data_sheet}
+    amendments:
+      - {file: invoice.pdf, replaces: invoice_no_code.pdf, note: Amended invoice received with the commodity code}

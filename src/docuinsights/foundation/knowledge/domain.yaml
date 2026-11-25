@@ -1,0 +1,226 @@
+# Domain knowledge base: document and case intelligence.
+# What the domain is for, what it can do, the practices it relies on and how it is measured. The same in every industry.
+id: document-and-case-intelligence
+kind: domain
+head: Document and case intelligence
+name: Document and case intelligence knowledge base
+version: "1.0"
+about: Reading the documents of a case, linking what they say, checking them against rules and handing a person a recommendation they can verify. The domain exists wherever a decision rests on a package of documents.
+
+bodies:
+  - {name: International Organization for Standardization, also: [ISO], says: "Publishes international standards, among them the standards for records, information security and the management of AI."}
+  - {name: National Institute of Standards and Technology, also: [NIST], says: "The United States standards body that publishes the AI Risk Management Framework."}
+  - {name: World Wide Web Consortium, also: [W3C], says: "Publishes web standards, among them the model for describing provenance."}
+
+standards:
+  - name: ISO 15489
+    title: Information and documentation - Records management
+    by: International Organization for Standardization
+    cite: ISO 15489-1
+    jurisdiction: International
+    says: What makes a record trustworthy. It must be authentic, reliable, complete and usable, and kept so that it can be shown to be.
+  - name: ISO/IEC 27001
+    title: Information security management systems - Requirements
+    by: International Organization for Standardization
+    cite: ISO/IEC 27001
+    jurisdiction: International
+    says: The standard for managing the security of information, including the documents and personal data a case holds.
+  - name: ISO/IEC 42001
+    title: Artificial intelligence - Management system
+    by: International Organization for Standardization
+    cite: ISO/IEC 42001
+    jurisdiction: International
+    says: The standard for managing AI responsibly inside an organisation, with defined roles, controls and records for each AI system.
+  - name: NIST AI Risk Management Framework
+    title: Artificial Intelligence Risk Management Framework (AI RMF 1.0)
+    by: National Institute of Standards and Technology
+    cite: NIST AI 100-1
+    jurisdiction: United States, used internationally as a reference
+    says: A framework for governing, mapping, measuring and managing the risks of an AI system, including that its output can be explained and traced.
+  - name: W3C PROV
+    title: PROV - the provenance data model
+    by: World Wide Web Consortium
+    cite: W3C PROV-DM Recommendation
+    jurisdiction: International
+    says: A model for recording where a piece of information came from, in terms of the things, activities and agents that produced it.
+  - name: GDPR
+    type: regulation
+    title: Regulation (EU) 2016/679, the General Data Protection Regulation
+    by: European Union
+    cite: Regulation (EU) 2016/679
+    jurisdiction: European Union
+    says: The data protection law of the European Union. It applies to the personal data in case documents and limits decisions made by machines alone.
+    provisions:
+      - {ref: "article 5(1)(c)", about: "data minimisation", says: "Personal data must be adequate, relevant and limited to what is necessary for the purposes for which it is processed."}
+      - {ref: article 32, about: "security of processing", says: "The controller and the processor put in place technical and organisational measures appropriate to the risk, among them pseudonymisation and encryption of personal data where appropriate."}
+      - {ref: article 22, about: "decisions based solely on automated processing", says: "A person has the right not to be subject to a decision based solely on automated processing that has legal or similarly significant effects on them."}
+  - name: ISO 13616
+    title: Financial services - International bank account number (IBAN)
+    by: International Organization for Standardization
+    cite: ISO 13616-1
+    jurisdiction: International
+    says: Defines the international bank account number. Its two check digits let a mistyped or altered account number be caught before a payment is sent.
+  - name: EU AI Act
+    type: regulation
+    title: Regulation (EU) 2024/1689 laying down harmonised rules on artificial intelligence
+    by: European Union
+    cite: Regulation (EU) 2024/1689
+    jurisdiction: European Union
+    says: The law on AI systems in the European Union. Systems used for decisions such as creditworthiness are high-risk and must be overseen by people, logged and documented.
+    provisions:
+      - {ref: article 14, about: "human oversight", says: "A high-risk AI system must be designed so that people can oversee it effectively while it is in use, understand its output and decide not to use or to override it."}
+
+challenges:
+  - {name: Documents arrive in every shape, says: "The same kind of document looks different from every sender, arrives as a scan, a PDF or a photograph, and has to be recognised and read before anything else can happen.", impact: Slow intake and re-keying}
+  - {name: Missing evidence is found late, says: "A case is worked for days before someone notices a required document was never sent.", impact: Long cycle times and repeated requests}
+  - {name: Documents disagree with each other, says: "A name, an amount or a date differs between two documents of the same case, and nobody notices because each is read on its own.", impact: Wrong decisions and fraud that goes unseen}
+  - {name: Decisions cannot be explained, says: "A case is decided, and later nobody can show which line of which document the decision rested on.", impact: Failed audits and disputes that cannot be defended}
+  - {name: Rules live in people's heads, says: "What has to be checked depends on who handles the case, so the same case can end two ways.", impact: Inconsistent outcomes}
+  - {name: The same thing is submitted twice, says: "An invoice, a claim or an application comes in again, and each handler sees it for the first time.", impact: Duplicate payments and repeated work}
+  - {name: Model output cannot be trusted on its own, says: "A language model reads well but can state things the documents do not say, and cannot be the one that decides.", impact: Unsafe automation}
+  - {name: Knowledge is lost between cases, says: "What one case taught about a supplier, a product or a pattern is gone when the next case opens.", impact: The same lesson learned again and again}
+  - {name: Reference data changes over time, says: "The rule or the rate that applied on the day of the case is not the one in force today.", impact: Decisions made on the wrong version}
+  - {name: A document does not hold together, says: "A total its own figures do not give, a date that cannot be, an account number that fails its check: each document is read for what it says and never tested against itself.", impact: "Errors and altered documents pass, because the documents still agree with each other."}
+  - {name: A listed party goes unnoticed, says: "A party, a vessel or a place on a sanctions list or an internal watchlist is named in the documents, and nobody compared the names.", impact: "Dealing with a listed party can be an offence, whatever else the case shows."}
+  - {name: Personal data travels further than it needs to, says: "Case documents carry names, account numbers and contact details, and these are copied into exports, letters and notifications unchanged.", impact: "Every copy is one more place the data has to be protected and, one day, deleted."}
+  - {name: Urgent work waits behind routine work, says: "Cases are handled in the order they arrive, so one that is about to miss its deadline waits behind ten that are not.", impact: "Service targets are missed on the cases that mattered most."}
+
+capabilities:
+  - {name: Document intake and integrity, says: "Take in each file, check that it is what it claims to be, keep it as an unchangeable version with its hash and read its text.", agents: [intake], answers: [Documents arrive in every shape]}
+  - {name: Document classification, says: "Name the kind of each document from what it says, and show where that differs from what the sender called it.", agents: [classify], answers: [Documents arrive in every shape]}
+  - {name: Field extraction with source anchors, says: "Lift the facts a use case needs, each with the page and line it was read from.", agents: [extract], answers: [Documents arrive in every shape, Decisions cannot be explained]}
+  - {name: Entity resolution, says: "Recognise the same company, product or reference number across documents and across cases, and leave near-matches to a person.", agents: [resolve], answers: [Documents disagree with each other, The same thing is submitted twice]}
+  - {name: Case knowledge graph, says: "Write the case as a graph of documents, facts, entities and findings, so anything can be followed to where it came from.", agents: [graph], answers: [Decisions cannot be explained, Knowledge is lost between cases]}
+  - {name: Evidence completeness checking, says: "Check that every document the use case requires is there, including those required only in certain circumstances.", agents: [evidence], answers: [Missing evidence is found late]}
+  - {name: Reference data reasoning, says: "Read an external reference as it stood on the date of the case and reason from the stated characteristics to the line that applies.", agents: [reference], answers: [Reference data changes over time]}
+  - {name: Rule and date checking, says: "Run the use case's rules on amounts, dates and periods in code, under a version, never by a model.", agents: [policy], answers: [Rules live in people's heads]}
+  - {name: Cross-document consistency checking, says: "Compare the same fact across the documents of a case and report where they disagree.", agents: [contradiction], answers: [Documents disagree with each other]}
+  - {name: Verification and recommendation, says: "Check that every finding shows its sources, block any that does not, and aggregate the findings into one of three recommendations for a person.", agents: [verification], answers: [Decisions cannot be explained, Model output cannot be trusted on its own]}
+  - {name: Orchestration with human checkpoints, says: "Plan the assessment, run each agent under its contract, and stop where a person has to decide.", agents: [orchestrator], answers: [Model output cannot be trusted on its own, Rules live in people's heads]}
+  - {name: What-if simulation, says: "Show how the outcome would change if a document were added or a value were different, without touching the case.", agents: [counterfactual], answers: [Decisions cannot be explained]}
+  - {name: Correspondence drafting, says: "Draft the request for missing evidence or the decision note from the findings, for a person to edit and send.", agents: [correspondence], answers: [Missing evidence is found late]}
+  - {name: Learning from review, says: "Turn a reviewer's corrections into proposals for the shared vocabulary, applied only after approval and a regression run.", agents: [feedback], answers: [Knowledge is lost between cases]}
+  - {name: Case question answering, says: "Answer questions about a case from its findings and documents, and say so when the case does not hold the answer.", agents: [assistant], answers: [Decisions cannot be explained]}
+  - {name: Records filing, says: "File the documents and the assessment to the content repository with their metadata.", agents: [repository]}
+  - {name: Document integrity checking, says: "Test each document against itself and against what the workspace remembers: recalculate its sums, validate its check digits, question impossible dates, spot the same file twice and notice details that changed.", agents: [integrity], answers: [A document does not hold together, The same thing is submitted twice]}
+  - {name: Watchlist screening, says: "Compare every party, vessel and place with the watchlists, allow for differences of spelling, and leave each possible match to a person.", agents: [screening], answers: [A listed party goes unnoticed]}
+  - {name: Personal data discovery and masking, says: "Find the personal data in a package, by document and by kind, and mask it in whatever leaves the system.", agents: [privacy], answers: [Personal data travels further than it needs to]}
+  - {name: Triage against a service target, says: "Give each case a priority, a queue and a due date by fixed rules, with the reasons.", agents: [triage], answers: [Urgent work waits behind routine work]}
+
+practices:
+  - name: Evidence completeness check
+    says: Before a case is assessed on its merits, every document the use case requires is confirmed to be present.
+    why: A decision made on an incomplete file has to be made again.
+    answers: [Missing evidence is found late]
+  - name: Cross-document reconciliation
+    says: The same fact is read from every document that states it and the values are compared.
+    why: A single document can be wrong or altered. Agreement between independent documents is evidence.
+    answers: [Documents disagree with each other]
+  - name: Source anchoring
+    says: Every extracted value and every finding carries the document, page and line it rests on.
+    why: A conclusion that cannot be traced to a line cannot be checked, and is treated as unsupported.
+    answers: [Decisions cannot be explained]
+  - name: Rules decide, models advise
+    says: Anything that decides the outcome is a rule in code under a version. A model may read and draft, never decide.
+    why: A rule gives the same answer every time and can be audited. A model cannot promise either.
+    answers: [Model output cannot be trusted on its own, Rules live in people's heads]
+  - name: A person decides
+    says: The system recommends and a person decides. A decision that differs from the recommendation needs a note.
+    why: Accountability stays with someone who can be asked why.
+    answers: [Model output cannot be trusted on its own]
+  - name: Agent contracts
+    says: Each agent has a written contract stating what it needs, what it promises and what it must never do, checked before and after every run.
+    why: A broken promise is caught at the agent that broke it, not three steps later.
+    answers: [Model output cannot be trusted on its own]
+  - name: Tamper-evident record
+    says: Every agent run, review and decision is written to a ledger in which each entry carries the fingerprint of the one before.
+    why: A record that could have been edited proves nothing.
+    answers: [Decisions cannot be explained]
+  - name: Duplicate detection across cases
+    says: The reference numbers and parties of a new case are compared with every earlier case in the workspace.
+    answers: [The same thing is submitted twice]
+  - name: Point-in-time reference data
+    says: A reference is read as it stood on the date that matters for the case, and the retrieval is kept with its date, version and hash.
+    answers: [Reference data changes over time]
+  - name: Knowledge that accumulates
+    says: What each case establishes about parties, products and patterns is written to a shared graph the next case can use.
+    answers: [Knowledge is lost between cases]
+  - name: Date-sequence check
+    says: Dates that must fall in an order or within a period are checked against each other.
+  - name: Tolerance-based matching
+    says: Amounts and quantities are compared within a stated tolerance, so a rounding difference is not a discrepancy and a real one is.
+  - name: Recalculation of stated totals
+    says: A total a document states is worked out again from the figures on the same document.
+    why: A mistyped or altered figure still agrees with every other document that was prepared from it. Only the document's own arithmetic shows it.
+    answers: [A document does not hold together]
+  - name: Check-digit validation
+    says: An identifier that carries check digits, such as a bank account or a container number, is tested before it is used.
+    why: Check digits catch most single mistyped or swapped characters.
+    answers: [A document does not hold together]
+  - name: Plausibility of dates and amounts
+    says: A document is not dated in the future or implausibly long ago, and an amount on it is not below zero.
+    answers: [A document does not hold together]
+  - name: One document counts once
+    says: The same file, or the same text under another file name, is not counted as two pieces of evidence.
+    why: A copy agrees with its original by construction. Agreement is evidence only between independent documents.
+    answers: [The same thing is submitted twice]
+  - name: Verification of changed details
+    says: A detail that differs from what the same party gave before, above all a bank account, is confirmed through a channel the organisation already trusts.
+    why: A request to change payment details is the commonest route for payment fraud, and it arrives looking like the genuine supplier.
+    answers: [A document does not hold together]
+  - name: Watchlist screening with human disposition
+    says: Names are compared with the lists by fixed rules that allow for spelling. Every possible match is confirmed or cleared by a person, with the reason on record.
+    why: A wrongly cleared match is the costly error, so the system never clears one itself.
+    answers: [A listed party goes unnoticed]
+  - name: Data minimisation and masking
+    says: Personal data is shown where the work needs it and masked in whatever leaves the system.
+    answers: [Personal data travels further than it needs to]
+  - name: Triage by risk and deadline
+    says: Each case gets a priority, a queue and a due date from fixed rules, so the order of work does not depend on the order of arrival.
+    answers: [Urgent work waits behind routine work]
+
+kpis:
+  - {name: Cases within service target, says: "The share of cases decided by their due date.", unit: "%", better: higher}
+  - {name: Straight-through processing rate, says: "The share of cases that reach a recommendation to proceed without a person correcting anything.", unit: "%", better: higher}
+  - {name: First-time-right rate, says: "The share of cases decided on the documents first submitted.", unit: "%", better: higher}
+  - {name: Case cycle time, says: "Time from receipt of a case to its decision.", unit: days, better: lower}
+  - {name: Exception rate, says: "The share of cases that need a person because a check failed.", unit: "%", better: lower}
+  - {name: Evidence request rate, says: "The share of cases for which more evidence had to be requested.", unit: "%", better: lower}
+  - {name: Sourced finding rate, says: "The share of findings that show the lines they rest on.", unit: "%", better: higher}
+  - {name: Reviewer override rate, says: "The share of decisions that differ from the recommendation.", unit: "%"}
+  - {name: Extraction accuracy, says: "The share of extracted values a reviewer did not have to correct.", unit: "%", better: higher}
+  - {name: Cost per case, says: "The total cost of handling divided by the number of cases.", unit: currency, better: lower}
+
+terms:
+  - {name: Case, says: "One matter to be decided: a package of documents and a few facts about it."}
+  - {name: Case package, says: "The documents submitted for a case."}
+  - {name: Evidence requirement, says: "A document a use case needs, always or in stated circumstances."}
+  - {name: Finding, says: "What one check concluded on one case, with the lines it rests on."}
+  - {name: Recommendation, says: "The outcome proposed to the person who decides: proceed, request evidence, or refer for review."}
+  - {name: Provenance, says: "Where a piece of information came from, and what was done to it on the way."}
+  - {name: Source anchor, says: "The document, page and line a value or a finding was read from."}
+  - {name: Knowledge graph, says: "Entities and the links between them, each with what supports it."}
+  - {name: Shared memory, says: "What agents leave for each other within a run, and what the workspace remembers from earlier cases."}
+  - {name: Agent harness, says: "The one place an agent runs, where its contract is checked before and after."}
+  - {name: Grounding, says: "Giving an agent the known facts it may rely on, here the nodes of the knowledge graph its contract names."}
+  - {name: Human in the loop, says: "A person reviews and decides at defined points. The system never decides for them."}
+  - {name: Hallucination, says: "A statement by a language model that its sources do not support."}
+  - {name: Counterfactual, says: "A what-if: the same case with one thing changed, to see what the outcome depends on."}
+  - {name: Watchlist, says: "A list of parties, vessels or places an organisation must not deal with, or must look at before it does: sanctions lists, and its own."}
+  - {name: Possible match, says: "A name in a case that is the same as, or close to, a name on a watchlist. It stays open until a person confirms or clears it."}
+  - {name: Check digit, says: "One or two characters of an identifier worked out from the others, so that a mistake in any of them shows."}
+  - {name: Service target, says: "The time within which a case is to be decided, counted from a stated day."}
+  - {name: Masking, says: "Showing only part of a value, enough to recognise it and too little to use it."}
+  - {name: Use-case profile, says: "The configuration that declares one kind of case: its documents, evidence, rules and wording."}
+
+basis_by_family:
+  evidence: [Evidence completeness check]
+  consistency: [Cross-document reconciliation]
+
+# The checks every use case runs under the same key.
+basis_by_rule:
+  integrity.dates: [Plausibility of dates and amounts]
+  integrity.amounts: [Plausibility of dates and amounts]
+  integrity.duplicate_documents: [One document counts once]
+  screening.parties: [Watchlist screening with human disposition]
+  privacy.personal_data: [Data minimisation and masking, "GDPR article 5(1)(c)"]

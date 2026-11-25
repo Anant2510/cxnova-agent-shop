@@ -1,0 +1,190 @@
+# Loan application check: what an applicant declares set against the documents that prove it.
+#
+# The same engine as every other profile: only this file differs.
+#
+# The periods and tolerances are ILLUSTRATIVE. The lender's own credit policy replaces them. The accelerator checks
+# documents; it does not score credit and does not decide a loan.
+id: loan_application
+name: Loan application check
+order: 30
+sector: Banking and lending
+plain: "Check what an applicant declared against the payslip, the bank statement and the employer's letter."
+version: "1.0"
+description: A loan application checked against proof of income and employment for recency, agreement of the amounts and consistency of names.
+
+brand:
+  workspace: Application Check Workbench
+  client_label: ""
+  case_noun: application
+
+case:
+  reference_label: Application reference
+  reference_example: LOAN-2026-30518
+  fields:
+    - {id: claim_type, name: Product, type: text, default: Personal loan}
+    - {id: received_date, name: Application received, type: date}
+
+document_types:
+  - id: application_form
+    name: Application form
+    group: application
+    signals: [loan application, application number, applicant, declared monthly income, amount requested, repayment term]
+    fields:
+      - {id: application_number, name: Application number, type: ref, labels: [Application Number], required: true}
+      - {id: application_date, name: Application date, type: date, labels: [Application Date], required: true}
+      - {id: applicant, name: Applicant, type: party, labels: [Applicant], required: true, personal: true}
+      - {id: employer, name: Employer declared, type: party, labels: [Employer], required: true}
+      - {id: declared_income, name: Declared monthly income, type: money, labels: [Declared Monthly Income], required: true}
+      - {id: amount_requested, name: Amount requested, type: money, labels: [Amount Requested], required: true}
+  - id: payslip
+    name: Payslip
+    group: income
+    signals: [payslip, pay date, employee, gross pay, net pay, tax code, deductions]
+    fields:
+      - {id: employee, name: Employee, type: party, labels: [Employee], required: true, personal: true}
+      - {id: employer, name: Employer, type: party, labels: [Employer], required: true}
+      - {id: pay_date, name: Pay date, type: date, labels: [Pay Date], required: true}
+      - {id: gross_pay, name: Gross pay, type: money, labels: [Gross Pay]}
+      - {id: deductions, name: Deductions, type: money, labels: [Deductions]}
+      - {id: net_pay, name: Net pay, type: money, labels: [Net Pay], required: true}
+  - id: bank_statement
+    name: Bank statement
+    group: income
+    signals: [bank statement, account holder, statement period, salary credit, closing balance, sort code]
+    fields:
+      - {id: account_holder, name: Account holder, type: party, labels: [Account Holder], required: true, personal: true}
+      - {id: period_end, name: Statement period end, type: date, labels: [Statement Period End], required: true}
+      - {id: salary_credit, name: Salary credit, type: money, labels: [Salary Credit], required: true}
+      - {id: paid_by, name: Salary paid by, type: party, labels: [Salary Paid By]}
+  - id: employment_letter
+    name: Employment letter
+    group: employment
+    signals: [employment letter, confirmation of employment, to whom it may concern, position held, employed since, annual salary]
+    fields:
+      - {id: employer, name: Employer, type: party, labels: [Employer], required: true}
+      - {id: employee, name: Employee, type: party, labels: [Employee], required: true, personal: true}
+      - {id: letter_date, name: Letter date, type: date, labels: [Letter Date]}
+      - {id: position, name: Position held, type: text, labels: [Position Held]}
+      - {id: employed_since, name: Employed since, type: date, labels: [Employed Since]}
+
+entities:
+  parties:
+    application_form.applicant: Applicant
+    application_form.employer: Employer
+    payslip.employee: Employee
+    payslip.employer: Employer
+    bank_statement.account_holder: Account holder
+    bank_statement.paid_by: Employer
+    employment_letter.employer: Employer
+    employment_letter.employee: Employee
+  goods: []
+  references:
+    Application: [application_form.application_number]
+
+memory:
+  duplicates: [Application]
+
+synonyms:
+  party: {}
+
+evidence:
+  - {id: application, title: Application form, any_of: [application_form], required: always}
+  - {id: income, title: Proof of income, any_of: [payslip], required: always}
+  - {id: statement, title: Bank statement, any_of: [bank_statement], required: always}
+  - {id: employment, title: Proof of employment, any_of: [employment_letter], required: always}
+
+rules:
+  - id: payslip_recent
+    family: recency
+    title: The payslip is recent
+    type: date_interval
+    from: payslip.pay_date
+    to: application_form.application_date
+    max_days: 60
+    version: "1.0"
+    note: Illustrative 60 days between the pay date and the application.
+  - id: statement_recent
+    family: recency
+    title: The bank statement is recent
+    type: date_interval
+    from: bank_statement.period_end
+    to: application_form.application_date
+    max_days: 60
+    version: "1.0"
+    note: Illustrative 60 days between the end of the statement and the application.
+  - id: income_supported
+    family: income
+    title: Declared income is supported by the payslip and the bank statement
+    type: amounts_match
+    amounts: [application_form.declared_income, payslip.net_pay, bank_statement.salary_credit]
+    tolerance_pct: 5
+    version: "1.0"
+    note: Illustrative 5 percent tolerance between the declared income and what the documents show.
+
+consistency:
+  - {id: applicant, family: identity, title: "The applicant is the employee and the account holder", kind: party, severity: high,
+     fields: [application_form.applicant, payslip.employee, bank_statement.account_holder, employment_letter.employee]}
+  - {id: employer, family: employment, title: The same employer on every document, kind: party, severity: high,
+     fields: [application_form.employer, payslip.employer, bank_statement.paid_by, employment_letter.employer]}
+
+# What the integrity agent is told about this use case. Each line is a deterministic check; none is a model's opinion.
+integrity:
+  sums:
+    - {id: payslip_arithmetic, title: Gross pay less deductions gives net pay, kind: difference, parts: [payslip.gross_pay, payslip.deductions], equals: payslip.net_pay}
+  issued: [application_form.application_date, payslip.pay_date, bank_statement.period_end, employment_letter.letter_date]
+
+# Every party is screened against the watchlists (the default). The service target is ILLUSTRATIVE.
+service:
+  target_days: 3
+  clock: working
+  starts: case.received_date
+  value: application_form.amount_requested
+  high_value: 20000
+  note: Illustrative. Three working days from receipt of the application; a request of 20,000 or more is high value.
+
+outcomes:
+  proceed: {label: Documents verified, description: "The documents are recent, support the declared income and agree on who the applicant and the employer are."}
+  request_evidence: {label: Request documents, description: "A document the application needs has not been provided."}
+  review: {label: Refer to an underwriter, description: "The documents do not support what was declared or do not agree: an underwriter must decide."}
+
+correspondence:
+  evidence_request:
+    subject: "{reference}: documents needed to continue"
+    opening: "Thank you for your {case_noun} {reference}. We have checked the documents you sent and cannot continue yet."
+    closing: "Please send the items above quoting {reference}. The check resumes when they arrive."
+  decision_note:
+    subject: "{reference}: outcome of the document check"
+    opening: "We have completed the document check of {case_noun} {reference}."
+    closing: "This note records the documents and rules the outcome rests on. It is not a credit decision."
+
+counterfactuals:
+  - id: declare_actual_income
+    title: Declare the income the documents show
+    expect: The income rule then passes.
+    change: {op: set_field, field: application_form.declared_income, value: "@payslip.net_pay"}
+  - id: recent_payslip
+    title: Provide a recent payslip
+    expect: Clears the recency rule.
+    change: {op: set_field, field: payslip.pay_date, value: "30 September 2026"}
+    ask: text
+
+samples:
+  - id: clean
+    title: Documents support the application
+    story: "The payslip and statement are recent, the declared income matches both, and the names agree."
+    path: loan_application
+    case: {reference: LOAN-2026-30518, received_date: "2026-10-12"}
+    documents:
+      - {file: application_form.pdf, category: application_form}
+      - {file: payslip.pdf, category: payslip}
+      - {file: bank_statement.pdf, category: bank_statement}
+      - {file: employment_letter.pdf, category: employment_letter}
+  - id: income_mismatch
+    title: Declared income not supported
+    story: "The application declares more than the payslip and the statement show, the payslip is four months old, the employer's name differs between documents, and no employment letter was sent."
+    path: loan_application
+    case: {reference: LOAN-2026-30677, received_date: "2026-10-20"}
+    documents:
+      - {file: application_form_high.pdf, category: application_form}
+      - {file: payslip_old.pdf, category: payslip}
+      - {file: bank_statement.pdf, category: bank_statement}

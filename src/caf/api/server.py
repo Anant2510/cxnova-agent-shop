@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import hmac
 import json
+import logging
 import mimetypes
 import os
 from contextlib import asynccontextmanager
@@ -105,8 +106,9 @@ class ContinueRequest(BaseModel):
 
 
 PUBLIC_PATHS = {"/", "/console", "/portal", "/health", "/docs", "/docs/oauth2-redirect", "/redoc", "/openapi.json", "/.well-known/agent-card.json",
-                "/shop", "/shop/account", "/shop/admin", "/admin", "/shop/designer", "/shop/runs", "/shop/catalog", "/shop/requests", "/favicon.svg", "/favicon.ico"}
-PUBLIC_PREFIXES = ("/shop/static/", "/shop/catalog/", "/shop/agents/", "/shop/flows/")
+                "/shop", "/shop/account", "/shop/admin", "/admin", "/shop/designer", "/shop/runs", "/shop/catalog", "/shop/requests", "/favicon.svg", "/favicon.ico",
+                "/docuinsights", "/docuinsights/"}   # the DocuInsights workbench page (its API is not public)
+PUBLIC_PREFIXES = ("/shop/static/", "/shop/catalog/", "/shop/agents/", "/shop/flows/", "/docuinsights/static/")
 LOOPBACK = {"127.0.0.1", "::1", "localhost", "testclient"}
 
 
@@ -279,6 +281,14 @@ def create_app() -> FastAPI:
 
     console_host.register(app, settings)
     shop_api.register(app, settings, shop, orchestrator=orch)
+    app.state.docuinsights_error = None
+    try:   # the DocuInsights workbench (the pack's own screens) at /docuinsights; the layer serves without it if it cannot mount
+        from ..accelerators import docuinsights as docuinsights_pack
+
+        docuinsights_pack.register(app, settings, shop, orch)
+    except Exception as exc:
+        app.state.docuinsights_error = repr(exc)
+        logging.getLogger("caf.api").warning("DocuInsights workbench not mounted: %r", exc)
 
     def customer(request: Request) -> dict[str, Any] | None:
         return getattr(request.state, "customer", None)
@@ -315,6 +325,7 @@ def create_app() -> FastAPI:
     def health() -> dict[str, Any]:
         info = summary()
         info["status"] = "ok" if not info["missing"] else "degraded"
+        info["docuinsights"] = "mounted" if app.state.docuinsights_error is None else "not mounted (the reason is in the service log)"
         return info
 
     @app.get("/health/agents")

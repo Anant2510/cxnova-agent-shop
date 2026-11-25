@@ -1,0 +1,173 @@
+# Industry knowledge base: customs and trade.
+# General knowledge about the industry, written for orientation and for tracing a finding back to the rule it rests on.
+# Customs law differs by country. Where a regulation is named it is one jurisdiction's, given as an example.
+id: customs-and-trade
+kind: industry
+head: Customs and trade
+name: Customs and trade knowledge base
+version: "1.0"
+about: Importers, exporters, brokers and customs authorities. Every shipment across a border is declared, classified and valued, and the duty that follows can be corrected or repaid when the evidence supports it.
+
+bodies:
+  - {name: World Customs Organization, also: [WCO], says: "The intergovernmental body that maintains the Harmonized System and the conventions on customs procedure."}
+  - {name: World Trade Organization, also: [WTO], says: "The body whose agreements set the common rules for customs valuation, origin and trade facilitation."}
+  - {name: International Chamber of Commerce, also: [ICC], says: "Publishes the rules most trade finance instruments are issued under, and the trade terms sales contracts use."}
+
+standards:
+  - name: Harmonized System
+    title: International Convention on the Harmonized Commodity Description and Coding System
+    by: World Customs Organization
+    cite: WCO Harmonized System Convention and its General Rules for the Interpretation
+    jurisdiction: International. Countries add their own digits after the first six.
+    says: The nomenclature nearly every customs tariff is built on. Goods are classified to six digits by the terms of the headings and the notes, and each country extends the code for its own tariff.
+    provisions:
+      - {ref: General Rule 1, about: "headings and legal notes decide", says: "Classification is decided by the terms of the headings and of the section and chapter notes."}
+      - {ref: General Rule 3, about: "the most specific heading", says: "Where goods could fall under two or more headings, the most specific description is preferred; mixtures and sets follow the material or component that gives them their essential character; failing that, the heading last in numerical order applies."}
+      - {ref: General Rule 6, about: "classification in subheadings", says: "Classification in the subheadings of a heading follows the same rules, comparing only subheadings at the same level."}
+  - name: WTO Customs Valuation Agreement
+    title: Agreement on Implementation of Article VII of the General Agreement on Tariffs and Trade 1994
+    by: World Trade Organization
+    cite: WTO Agreement on Customs Valuation
+    jurisdiction: International. WTO members write it into their customs law.
+    says: The common method for the customs value of imported goods. The starting point is what was actually paid for them.
+    provisions:
+      - {ref: Article 1, about: "transaction value", says: "The customs value is the transaction value: the price actually paid or payable for the goods when sold for export to the country of import, adjusted as Article 8 provides."}
+      - {ref: Article 8, about: "additions to the price paid", says: "Certain costs are added to the price paid where they are not already in it, such as commissions, packing, goods or services supplied by the buyer and royalties, and, where the country's law says so, transport and insurance to the place of import."}
+  - name: Rules of origin
+    title: Rules that determine the country of origin of goods
+    by: World Trade Organization
+    cite: WTO Agreement on Rules of Origin and the origin rules of each trade agreement
+    jurisdiction: International framework. The rules themselves are national or set by each trade agreement.
+    says: Origin decides which duty rate, quota or trade measure applies. A preferential rate needs proof that the goods meet the agreement's origin rule.
+  - name: Revised Kyoto Convention
+    title: International Convention on the Simplification and Harmonization of Customs Procedures
+    by: World Customs Organization
+    cite: WCO Revised Kyoto Convention
+    jurisdiction: International
+    says: The blueprint for modern customs procedure, including the right to correct a declaration and to claim repayment of duty that was not due.
+  - name: WTO Trade Facilitation Agreement
+    title: Agreement on Trade Facilitation
+    by: World Trade Organization
+    cite: WTO Trade Facilitation Agreement
+    jurisdiction: International
+    says: Commits customs administrations to publish their rules, to release goods promptly and to offer review of their decisions.
+  - name: Incoterms 2020
+    title: ICC rules for the use of domestic and international trade terms
+    by: International Chamber of Commerce
+    cite: ICC Incoterms 2020
+    jurisdiction: International. They apply when the sales contract names one.
+    says: Eleven three-letter trade terms that say where delivery takes place and who pays for carriage, insurance and clearance. Under CIF and CIP the seller must insure the goods for the buyer.
+  - name: Union Customs Code
+    type: regulation
+    title: Regulation (EU) No 952/2013 laying down the Union Customs Code
+    by: European Union
+    cite: Regulation (EU) No 952/2013
+    jurisdiction: European Union. Given as an example. Other jurisdictions set their own conditions and periods.
+    says: The customs law of the European Union. Among much else it says when duty is repaid or remitted and how long an applicant has to ask.
+    provisions:
+      - {ref: article 15, about: "accuracy of information given to customs", says: "Whoever gives information to customs is responsible for its accuracy and completeness and for the authenticity of the documents supporting it."}
+      - {ref: article 51, about: "keeping supporting documents", says: "Documents supporting a declaration are kept for at least three years so that customs can check them."}
+      - {ref: article 116, about: "when duty is repaid or remitted", says: "Duty is repaid or remitted where it was overcharged, where the goods are defective or not as contracted, where the authorities made an error, or in equity."}
+      - {ref: article 121(1)(a), about: "three years to apply for overcharged duty", says: "An application for repayment of overcharged duty must be made within three years of the date the customs debt was notified."}
+      - {ref: article 121(1)(b), about: "one year for defective or non-compliant goods", says: "For defective goods or goods that do not comply with the contract the application must be made within one year of that date."}
+
+processes:
+  - name: Import declaration and clearance
+    says: Goods are declared to customs with their classification, value and origin, duty is assessed and the goods are released.
+    steps: [Lodge the declaration, Customs accepts the declaration, Documentary or physical checks, Duty is assessed and paid or secured, Goods are released]
+    documents: [Import declaration extract, Commercial invoice, Bill of lading, Air waybill, Packing list]
+    under: [Harmonized System, WTO Customs Valuation Agreement, Rules of origin, Revised Kyoto Convention, Union Customs Code]
+    measures: [Clearance time]
+  - name: Tariff classification
+    says: The goods are given the commodity code that decides the duty rate and the measures that apply.
+    steps: [Establish what the goods are, Apply the headings and notes, Apply the general rules in order, Record the reasoning and the evidence]
+    documents: [Technical data sheet, Commercial invoice]
+    under: [Harmonized System]
+  - name: Customs valuation
+    says: The value on which duty is charged is worked out from the price paid and the adjustments the law requires.
+    documents: [Commercial invoice, Proof of payment]
+    under: [WTO Customs Valuation Agreement, Incoterms 2020]
+  - name: Duty repayment or remission claim
+    says: An importer asks for duty to be repaid or waived because it was not due, and supports the request with the documents of the shipment.
+    steps: [Claim received with its evidence, Check that the claim is in time, Check that the evidence is complete, Reconcile value classification and origin across the documents, Decide or ask for more evidence, Repay or refuse with reasons]
+    documents: [Commercial invoice, Import declaration extract, Bill of lading, Air waybill, Packing list, Technical data sheet, Proof of payment, Correspondence]
+    under: [Revised Kyoto Convention, Union Customs Code]
+    measures: [Claim cycle time, Claims decided without a request for evidence, Evidence request rate]
+    use_cases: [customs_claim]
+  - name: Post-clearance audit
+    says: Customs checks declarations against the trader's records after the goods have been released.
+    under: [Revised Kyoto Convention, Union Customs Code]
+
+risks:
+  - name: Misclassification
+    says: The goods are declared under a commodity code that does not describe them, so the wrong duty is charged.
+    signs: [The code on the declaration differs from the code on the invoice, The description fits another heading, No technical evidence for a code that depends on the product's characteristics]
+    affects: [Tariff classification, Import declaration and clearance, Duty repayment or remission claim]
+    caught_by: ["rule:customs_claim/rules.commodity_consistency", "rule:customs_claim/evidence.product"]
+  - name: Misstated customs value
+    says: The value declared is not the price actually paid, so duty is over- or under-charged.
+    signs: [Invoice total differs from the declared value, The payment differs from the invoice, Currency or delivery term applied inconsistently]
+    affects: [Customs valuation, Duty repayment or remission claim]
+    caught_by: ["rule:customs_claim/rules.value_reconciliation", "rule:customs_claim/evidence.payment"]
+  - name: Origin misstatement
+    says: The country of origin is stated wrongly, so a preferential rate or a trade measure is applied in error.
+    signs: ["Origin differs between the invoice, the declaration and the certificate"]
+    affects: [Import declaration and clearance, Duty repayment or remission claim]
+    caught_by: ["rule:customs_claim/consistency.origin"]
+  - name: Claim outside the time limit
+    says: A repayment is asked for after the period the law allows.
+    signs: [More than the permitted period between the duty decision and the claim]
+    affects: [Duty repayment or remission claim]
+    caught_by: ["rule:customs_claim/rules.claim_window"]
+  - name: Unsupported claim
+    says: A claim arrives without the documents needed to decide it, and the missing evidence is found late.
+    signs: [No proof of payment, No transport document, No packing list for physical goods]
+    affects: [Duty repayment or remission claim]
+    caught_by: ["rule:customs_claim/evidence.invoice", "rule:customs_claim/evidence.declaration", "rule:customs_claim/evidence.transport", "rule:customs_claim/evidence.payment", "rule:customs_claim/evidence.packing"]
+    measures: [Evidence request rate]
+  - name: Documents that do not describe one shipment
+    says: The documents of a claim disagree on the parties, the quantities or the goods, so they may not belong together.
+    signs: [Package counts or weights differ, Buyer and consignee differ without explanation, Documents quote different invoice numbers]
+    affects: [Duty repayment or remission claim]
+    caught_by: ["rule:customs_claim/consistency.package_count", "rule:customs_claim/consistency.gross_weight", "rule:customs_claim/consistency.quantity", "rule:customs_claim/consistency.invoice_reference", "rule:customs_claim/consistency.buyer_consignee", "rule:customs_claim/consistency.seller_shipper", "rule:customs_claim/consistency.goods_description"]
+
+kpis:
+  - {name: Claim cycle time, says: "Days from receipt of a claim to its decision.", unit: days, better: lower}
+  - {name: Claims decided without a request for evidence, says: "The share of claims that could be decided on the documents first sent.", unit: "%", better: higher}
+  - {name: Evidence request rate, says: "The share of claims for which more evidence had to be requested.", unit: "%", better: lower}
+  - {name: Clearance time, says: "Time from lodging a declaration to release of the goods.", unit: hours, better: lower}
+
+terms:
+  - {name: Commodity code, says: "The number that identifies goods in a customs tariff. The first six digits are the Harmonized System code.", also: [Tariff code, HS code]}
+  - {name: Customs value, says: "The value of imported goods on which duty is charged."}
+  - {name: Transaction value, says: "The price actually paid or payable for the goods when sold for export, with the adjustments the valuation rules require."}
+  - {name: Customs debt, says: "The obligation to pay the duty that applies to goods."}
+  - {name: Declarant, says: "The person who lodges a customs declaration, or in whose name it is lodged."}
+  - {name: Country of origin, says: "The country where the goods were wholly obtained or last substantially transformed."}
+  - {name: Repayment, says: "The refunding of duty that has been paid."}
+  - {name: Remission, says: "The waiving of duty that has not yet been paid."}
+  - {name: Acceptance of the declaration, says: "The moment customs accepts a declaration. The rules in force on that date decide the duty."}
+  - {name: Tariff heading, says: "A four-digit group of the Harmonized System."}
+
+basis:
+  customs_claim:
+    rules.claim_window: [Union Customs Code article 121(1)(a)]
+    rules.date_sequence: [Transaction value, Acceptance of the declaration]
+    rules.value_reconciliation: [WTO Customs Valuation Agreement Article 1, WTO Customs Valuation Agreement Article 8, Customs value]
+    rules.commodity_consistency: [Harmonized System General Rule 1, Commodity code]
+    consistency.origin: [Rules of origin, Country of origin]
+    consistency.seller_shipper: [Union Customs Code article 15]
+    consistency.buyer_consignee: [Union Customs Code article 15]
+    consistency.package_count: [Union Customs Code article 15]
+    consistency.gross_weight: [Union Customs Code article 15]
+    consistency.quantity: [Union Customs Code article 15]
+    consistency.goods_description: [Harmonized System General Rule 1, Union Customs Code article 15]
+    consistency.invoice_reference: [Union Customs Code article 15]
+    evidence.invoice: [WTO Customs Valuation Agreement Article 1, Union Customs Code article 51]
+    evidence.declaration: [Union Customs Code article 116, Union Customs Code article 51]
+    evidence.transport: [Union Customs Code article 51]
+    evidence.payment: [WTO Customs Valuation Agreement Article 1]
+    evidence.packing: [Union Customs Code article 51]
+    evidence.product: [Harmonized System General Rule 1]
+    integrity.invoice_goods_value: [Recalculation of stated totals, Customs value]
+    integrity.invoice_total: [Recalculation of stated totals, Customs value]

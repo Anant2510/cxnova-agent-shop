@@ -1,0 +1,3 @@
+# DocuInsights sample documents are binary: no line-ending conversion on checkout (it would break the PDFs on Windows)
+src/docuinsights/samples/**/*.pdf binary
+src/docuinsights/samples/**/*.png binary

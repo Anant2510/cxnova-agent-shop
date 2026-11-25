@@ -1,0 +1,160 @@
+# Industry knowledge base: banking and lending.
+# General knowledge about the industry, written for orientation and for tracing a finding back to the rule it rests on.
+# Lending law differs by country. Regulations are named with their jurisdiction. Check the current text before relying on one.
+id: banking-and-lending
+kind: industry
+head: Banking and lending
+name: Banking and lending knowledge base
+version: "1.0"
+about: Banks and other lenders. Before money is lent the lender has to know who the borrower is and whether the borrower can repay, and has to be able to show how it knew.
+
+bodies:
+  - {name: European Banking Authority, also: [EBA], says: "The European Union's banking regulator. Its guidelines say how lenders are expected to grant and monitor loans."}
+  - {name: Financial Action Task Force, also: [FATF], says: "Sets the international standards against money laundering, including guidance on trade-based money laundering."}
+  - {name: Basel Committee on Banking Supervision, also: [BCBS], says: "Sets the international standards for the prudential regulation of banks."}
+
+standards:
+  - name: EBA Guidelines on loan origination and monitoring
+    title: Guidelines on loan origination and monitoring
+    by: European Banking Authority
+    cite: EBA/GL/2020/06
+    jurisdiction: European Union
+    says: How lenders are expected to collect and verify information about a borrower, assess creditworthiness, document the decision and monitor the loan afterwards.
+  - name: FATF Recommendations
+    title: International Standards on Combating Money Laundering and the Financing of Terrorism and Proliferation
+    by: Financial Action Task Force
+    cite: FATF Recommendations
+    jurisdiction: International. Countries write them into their own law.
+    says: The standards banks' checks on customers and transactions are built on, including the checks on trade transactions.
+    provisions:
+      - {ref: Recommendation 10, about: "customer due diligence", says: "Customer due diligence: a financial institution identifies its customer and verifies that identity using reliable, independent documents, data or information."}
+  - name: Basel Framework
+    title: The Basel Framework
+    by: Basel Committee on Banking Supervision
+    cite: Basel Framework
+    jurisdiction: International
+    says: The prudential standards for banks. The capital a bank holds against a loan depends on the credit risk of the borrower, which starts with what was verified at origination.
+  - name: Mortgage Credit Directive
+    type: regulation
+    title: Directive 2014/17/EU on credit agreements for consumers relating to residential immovable property
+    by: European Union
+    cite: Directive 2014/17/EU
+    jurisdiction: European Union
+    says: The rules for lending to consumers against residential property, including how creditworthiness is assessed and on what information.
+    provisions:
+      - {ref: article 18, about: "creditworthiness assessment before lending", says: "Before a credit agreement is concluded the lender must make a thorough assessment of the consumer's creditworthiness, taking account of the factors relevant to whether the consumer can repay."}
+      - {ref: article 20, about: "verified information on income and expenses", says: "The assessment is made on necessary, sufficient and proportionate information on the consumer's income, expenses and other financial circumstances, obtained from relevant sources and appropriately verified."}
+  - name: Consumer Credit Directive
+    type: regulation
+    title: Directive (EU) 2023/2225 on credit agreements for consumers
+    by: European Union
+    cite: Directive (EU) 2023/2225
+    jurisdiction: European Union
+    says: The rules for consumer credit. Before granting credit the lender must assess the consumer's creditworthiness on relevant and accurate information about income and expenses, appropriately verified.
+
+practices:
+  - name: Income verification against independent evidence
+    says: The income an applicant declares is confirmed against documents the applicant did not write, such as a payslip from the employer and the salary credits on a bank statement.
+    why: A declared figure is a claim. Two independent documents that agree with it are evidence.
+    guards: [Overstated income]
+  - name: Recency of evidence
+    says: Documents that prove income or balances must be recent, because an old payslip says nothing about today's employment.
+    guards: [Stale evidence]
+  - name: Identity and party matching
+    says: The applicant, the employee named on the payslip and the holder of the bank account must be the same person.
+    guards: [Identity mismatch]
+  - name: Employment verification
+    says: Employment is confirmed by the employer, and the employer named is the same across the documents.
+    guards: [Unverified employment]
+  - name: Application history check
+    says: A new application is compared with earlier ones from the same applicant.
+    guards: [Repeat or duplicate application]
+
+processes:
+  - name: Loan origination
+    says: An application is taken in, the applicant is identified, income and employment are verified, creditworthiness is assessed and a decision is made.
+    steps: [Application received, Identity and customer due diligence, Income and employment verification, Creditworthiness assessment, Credit decision, Offer and agreement]
+    documents: [Application form, Payslip, Bank statement, Employment letter]
+    under: [EBA Guidelines on loan origination and monitoring, Mortgage Credit Directive, Consumer Credit Directive, FATF Recommendations]
+    measures: [Time to decision, Applications complete at first submission, Manual review rate]
+    use_cases: [loan_application]
+  - name: Customer due diligence
+    says: The lender establishes who the customer is and verifies it from independent sources.
+    under: [FATF Recommendations]
+  - name: Creditworthiness assessment
+    says: The lender judges whether the borrower can meet the repayments, from verified income, expenses and existing commitments.
+    documents: [Payslip, Bank statement]
+    under: [Mortgage Credit Directive, Consumer Credit Directive, EBA Guidelines on loan origination and monitoring]
+  - name: Credit monitoring
+    says: After the loan is granted the lender watches for signs that the borrower's position has changed.
+    under: [EBA Guidelines on loan origination and monitoring, Basel Framework]
+    measures: [Early default rate]
+
+risks:
+  - name: Overstated income
+    says: The income declared on the application is higher than the documents support.
+    signs: [Declared income above the payslip, Salary credits on the bank statement below the payslip, Round or inconsistent figures]
+    affects: [Loan origination, Creditworthiness assessment]
+    caught_by: ["rule:loan_application/rules.income_supported", Income verification against independent evidence]
+  - name: Stale evidence
+    says: The documents offered as proof are too old to show the applicant's present position.
+    signs: [Payslip older than the permitted period, Bank statement older than the permitted period]
+    affects: [Loan origination]
+    caught_by: ["rule:loan_application/rules.payslip_recent", "rule:loan_application/rules.statement_recent", Recency of evidence]
+  - name: Identity mismatch
+    says: The documents do not all belong to the applicant.
+    signs: [Name on the payslip or the bank statement differs from the applicant]
+    affects: [Loan origination, Customer due diligence]
+    caught_by: ["rule:loan_application/consistency.applicant", Identity and party matching]
+  - name: Unverified employment
+    says: The employment claimed cannot be confirmed, or the employer differs between documents.
+    signs: [Employer on the payslip differs from the employer on the letter, No employment letter]
+    affects: [Loan origination]
+    caught_by: ["rule:loan_application/consistency.employer", "rule:loan_application/evidence.employment", Employment verification]
+  - name: Altered or fabricated documents
+    says: A payslip or a statement has been edited or invented.
+    signs: [Figures that do not add up within a document, Documents that disagree with each other]
+    affects: [Loan origination]
+    caught_by: ["rule:loan_application/rules.income_supported", "rule:loan_application/consistency.employer"]
+    checked: "in part: documents are checked against each other, not for signs of editing"
+  - name: Repeat or duplicate application
+    says: The same applicant applies again, sometimes with different figures.
+    signs: [An application reference or applicant already seen]
+    affects: [Loan origination]
+    caught_by: [Application history check]
+  - name: Unaffordable lending
+    says: Credit is granted that the borrower cannot repay.
+    signs: [Commitments high against verified income]
+    affects: [Creditworthiness assessment]
+    measures: [Early default rate]
+    checked: "no: affordability is not calculated here, only the evidence for it is checked"
+
+kpis:
+  - {name: Time to decision, says: "Time from a complete application to the credit decision.", unit: hours, better: lower}
+  - {name: Applications complete at first submission, says: "The share of applications that arrive with every document needed.", unit: "%", better: higher}
+  - {name: Manual review rate, says: "The share of applications a person has to examine.", unit: "%", better: lower}
+  - {name: Early default rate, says: "The share of loans that default within the first months.", unit: "%", better: lower}
+  - {name: Approval rate, says: "The share of applications approved.", unit: "%"}
+
+terms:
+  - {name: Creditworthiness, says: "The likelihood that a borrower will meet the repayments of a loan."}
+  - {name: Affordability, says: "Whether the repayments fit within the borrower's income after expenses and existing commitments."}
+  - {name: Debt-to-income ratio, says: "Debt repayments as a share of income.", also: [DTI]}
+  - {name: Know your customer, says: "Establishing and verifying who a customer is before doing business with them.", also: [KYC, Customer due diligence (CDD)]}
+  - {name: Net income, says: "Pay after tax and deductions: the figure a bank statement shows as a salary credit."}
+  - {name: Gross income, says: "Pay before tax and deductions."}
+  - {name: Underwriting, says: "The assessment of an application against the lender's criteria."}
+  - {name: Declared income, says: "The income the applicant states on the application, before it is verified."}
+
+basis:
+  loan_application:
+    rules.payslip_recent: [Recency of evidence, Mortgage Credit Directive article 20]
+    rules.statement_recent: [Recency of evidence, Mortgage Credit Directive article 20]
+    rules.income_supported: [Income verification against independent evidence, Mortgage Credit Directive article 20, Consumer Credit Directive, Declared income]
+    consistency.applicant: [Identity and party matching, FATF Recommendations Recommendation 10]
+    consistency.employer: [Employment verification]
+    evidence.application: [Mortgage Credit Directive article 18]
+    evidence.income: [Income verification against independent evidence, Mortgage Credit Directive article 20]
+    evidence.statement: [Income verification against independent evidence, Mortgage Credit Directive article 20]
+    evidence.employment: [Employment verification]
+    integrity.payslip_arithmetic: [Recalculation of stated totals, Income verification against independent evidence]

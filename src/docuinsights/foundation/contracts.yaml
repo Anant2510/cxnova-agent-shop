@@ -1,0 +1,295 @@
+# Agent contracts: what each agent is for, what it needs before it starts, what it promises when it ends, what it must
+# never do, what it may spend, and what happens when it fails.
+#
+# The harness (docuinsights/harness.py) enforces every line that names a check:
+#   needs      checked before the agent starts; unmet, the agent does not run
+#   promises   checked after it ends; a broken promise is recorded and sends the case to a person
+#   writes     the parts of the case the agent may change; a change anywhere else breaks the contract
+#   reads      the parts of the case it works from; the harness records which agents wrote them (the run's shared memory)
+#   grounding  the classes of the knowledge graph the harness hands it before it starts, for the case's use case. With its rules
+#              an agent is handed what each rule rests on (the provision, practice or term), and puts that on each finding.
+#   model      `none` hands the agent no model at all; otherwise a call past max_calls or max_tokens is refused
+#   memory     the memory scopes it may read and write; anything else is refused
+#   limits     a run longer than timeout_s is reported; retries apply to a failed run
+#   on_failure stop (the assessment stops), degrade (carry on without this agent's contribution, and say so) or
+#              escalate (carry on, and send the case to a person)
+version: "1.1"
+contracts:
+  - id: orchestrator
+    purpose: Runs the agents in order, holds the human checkpoints, and writes what the case taught the workspace.
+    needs: []
+    promises: []
+    never: ["take an evidence, rule or outcome decision", "skip a stage a later stage depends on"]
+    writes: [progress, memory]
+    model: {use: none}
+    memory: {read: [run, case, workspace], write: [run, workspace]}
+    limits: {timeout_s: 600, retries: 0}
+    on_failure: stop
+
+  - id: intake
+    purpose: Registers the case, checks each file, keeps it as an unchangeable version with its hash, and reads it into text.
+    needs: [case_has_documents]
+    promises:
+      - {check: versions_are_hashed, text: Every file is kept as a version with its SHA-256.}
+      - {check: documents_read_or_reported, text: "Every file is read, or the reason it could not be read is recorded."}
+    never: ["change a file", "decide what a document is"]
+    writes: [documents]
+    reads: []
+    grounding: []
+    model: {use: optional, tier: balanced, max_calls: 12, max_tokens: 120000, note: only to transcribe a scanned image}
+    memory: {read: [case], write: [run]}
+    limits: {timeout_s: 300, retries: 1}
+    on_failure: stop
+
+  - id: classify
+    purpose: Names each document as one of the use case's document kinds, with a confidence, beside what the uploader called it.
+    needs: [documents_are_read]
+    promises:
+      - {check: types_come_from_the_profile, text: A document is only ever given a kind the use case declares.}
+      - {check: confidence_is_stated, text: "Every classification carries a confidence between 0 and 1 and how it was reached."}
+    never: ["invent a document kind", "overrule a reviewer's correction"]
+    writes: [documents]
+    reads: [documents]
+    grounding: [Document]
+    model: {use: optional, tier: fast, max_calls: 4, max_tokens: 40000}
+    memory: {read: [run, case, workspace], write: [run]}
+    limits: {timeout_s: 120, retries: 1}
+    on_failure: degrade
+
+  - id: extract
+    purpose: Lifts the facts each document states, each with the page and the line it was read from.
+    needs: [documents_are_read, documents_are_classified]
+    promises:
+      - {check: values_are_anchored_or_flagged, text: "Every value points to the line it came from, or is marked unverified."}
+      - {check: fields_are_declared, text: Only the fields the use case declares for that kind of document are extracted.}
+    never: ["guess a value that is not in the text", "decide whether a value is acceptable"]
+    writes: [documents]
+    reads: [documents]
+    grounding: [Document]
+    model: {use: optional, tier: balanced, max_calls: 16, max_tokens: 160000}
+    memory: {read: [run, case, workspace], write: [run]}
+    limits: {timeout_s: 300, retries: 1}
+    on_failure: degrade
+
+  - id: resolve
+    purpose: Links the parties, goods and reference numbers the documents repeat, and recalls what the workspace already knows about them.
+    needs: [facts_are_extracted]
+    promises:
+      - {check: entities_trace_to_mentions, text: Every entity is backed by at least one line of a document or a case fact.}
+      - {check: near_matches_are_left_to_a_person, text: "Two names that are only similar are never merged: a person decides."}
+    never: ["merge two parties on similarity alone", "write to the workspace's memory", "let what it recalls change a document's facts"]
+    writes: [entities, findings]
+    reads: [documents]
+    grounding: [Organization, Product, Role]
+    model: {use: none}
+    memory: {read: [run, case, workspace], write: [run]}
+    limits: {timeout_s: 60, retries: 0}
+    on_failure: stop
+
+  - id: graph
+    purpose: "Writes the case as a graph: documents, versions, facts, entities and the links between them."
+    needs: [entities_are_resolved]
+    promises:
+      - {check: graph_has_no_dangling_edges, text: Every link joins two things that exist in the graph.}
+    never: ["add a fact that no document, case record or reference supports"]
+    writes: [graph]
+    reads: [documents, entities]
+    grounding: []
+    model: {use: none}
+    memory: {read: [run, case], write: [run]}
+    limits: {timeout_s: 60, retries: 0}
+    on_failure: stop
+
+  - id: evidence
+    purpose: "Checks the evidence the use case asks for (always, when a condition holds, or one of several) and explains how an absence was established."
+    needs: [documents_are_classified]
+    promises:
+      - {check: every_requirement_is_answered, text: Every evidence requirement of the use case gets a finding.}
+      - {check: findings_show_their_reasoning, text: Every finding says how it was reached.}
+    never: ["treat an unreadable file as evidence", "use a model"]
+    writes: [findings, graph]
+    reads: [documents, graph]
+    grounding: [PolicyRule, Document, Provision, BestPractice, Term, Standard, Regulation]
+    model: {use: none}
+    memory: {read: [run, case], write: [run]}
+    limits: {timeout_s: 60, retries: 0}
+    on_failure: stop
+
+  - id: reference
+    purpose: Retrieves the reference content for the date of the case, keeps where and when it came from, and reasons over it from the stated facts.
+    needs: [entities_are_resolved]
+    promises:
+      - {check: retrievals_are_recorded, text: "Every retrieval keeps its address, the date asked for, when it was retrieved and a hash of the content."}
+    never: ["classify without the characteristic that decides it", "present a snapshot as live content"]
+    writes: [findings, references, graph]
+    reads: [documents, entities, graph]
+    grounding: [ReferenceSource, ReferenceEntry]
+    model: {use: none}
+    memory: {read: [run, case], write: [run]}
+    limits: {timeout_s: 120, retries: 1}
+    on_failure: escalate
+
+  - id: policy
+    purpose: "Executes the use case's deterministic rules (dates, amounts, codes) and shows each calculation under a rule version."
+    needs: [facts_are_extracted]
+    promises:
+      - {check: rule_findings_carry_a_version, text: Every rule result names the rule and the version it was run under.}
+      - {check: findings_show_their_reasoning, text: Every result shows the calculation it rests on.}
+    never: ["use a model", "apply a rule the use case does not declare"]
+    writes: [findings, graph]
+    reads: [documents, references, graph]
+    grounding: [PolicyRule, Provision, BestPractice, Term, Standard, Regulation]
+    model: {use: none}
+    memory: {read: [run, case], write: [run]}
+    limits: {timeout_s: 60, retries: 0}
+    on_failure: stop
+
+  - id: contradiction
+    purpose: Compares the same fact across documents and reports where they agree and where they do not.
+    needs: [facts_are_extracted]
+    promises:
+      - {check: discrepancies_cite_both_sides, text: A discrepancy names at least two sources that disagree.}
+    never: ["use a model", "decide which document is right"]
+    writes: [findings, graph]
+    reads: [documents, graph]
+    grounding: [PolicyRule, Provision, BestPractice, Term, Standard, Regulation]
+    model: {use: none}
+    memory: {read: [run, case], write: [run]}
+    limits: {timeout_s: 60, retries: 0}
+    on_failure: stop
+
+  - id: verification
+    purpose: "Checks that every finding is supported by a source, blocks the ones that are not, and aggregates the recommendation."
+    needs: [findings_exist]
+    promises:
+      - {check: outcome_is_one_of_three, text: "The recommendation is one of three outcomes: proceed, request evidence, or refer for review."}
+      - {check: no_unsupported_positive, text: A positive finding that cannot show its source never counts towards the outcome.}
+      - {check: a_person_decides, text: "The recommendation is advice: it always waits for a person."}
+    never: ["use a model", "decide the case"]
+    writes: [findings, graph, recommendation]
+    reads: [findings, graph, entities, references]
+    grounding: [PolicyRule]
+    model: {use: none}
+    memory: {read: [run, case, workspace], write: [run]}
+    limits: {timeout_s: 60, retries: 0}
+    on_failure: stop
+
+  - id: privacy
+    purpose: "Finds the personal data in the package (by document and by kind) so that it can be masked in whatever leaves the system."
+    needs: [documents_are_read]
+    promises:
+      - {check: personal_data_is_reported, text: "What personal data the package holds is reported, by document and by kind."}
+      - {check: personal_values_are_masked, text: A personal value is never repeated in the clear in a finding.}
+      - {check: findings_show_their_reasoning, text: Every finding says how it was reached.}
+    never: ["send a document to a model", "copy a personal value into a finding unmasked", "alter or redact a stored document"]
+    writes: [privacy, findings]
+    reads: [documents]
+    grounding: [PolicyRule, Provision, BestPractice, Term, Standard, Regulation]
+    model: {use: none}
+    memory: {read: [run, case], write: [run]}
+    limits: {timeout_s: 60, retries: 0}
+    on_failure: escalate
+
+  - id: screening
+    purpose: "Compares every party, and any vessel or place the use case names, with the watchlists, and leaves each possible match to a person."
+    needs: [entities_are_resolved]
+    promises:
+      - {check: every_party_is_screened, text: Every party the use case asks to be screened was screened.}
+      - {check: matches_wait_for_a_person, text: "A possible match always waits for a person: the system never clears one."}
+      - {check: findings_show_their_reasoning, text: Every finding says how it was reached.}
+    never: ["clear a possible match", "use a model", "report a screening that did not happen as clear"]
+    writes: [screening, findings]
+    reads: [entities, documents]
+    grounding: [PolicyRule, Provision, BestPractice, Term, Standard, Regulation]
+    model: {use: none}
+    memory: {read: [run, case], write: [run]}
+    limits: {timeout_s: 60, retries: 0}
+    on_failure: escalate
+
+  - id: integrity
+    purpose: "Checks that each document holds together on its own: its sums, its dates, the check digits of its identifiers, the same file twice, and details that changed since the workspace last saw the party."
+    needs: [facts_are_extracted, entities_are_resolved]
+    promises:
+      - {check: declared_checks_are_answered, text: Every calculation the use case declares gets a finding.}
+      - {check: findings_show_their_reasoning, text: Every finding says how it was reached.}
+    never: ["use a model", "call a document forged: it reports what does not hold and a person concludes", "accept a changed detail on the document's own word"]
+    writes: [findings, graph]
+    reads: [documents, entities, graph]
+    grounding: [PolicyRule, Provision, BestPractice, Term, Standard, Regulation]
+    model: {use: none}
+    memory: {read: [run, case, workspace], write: [run]}
+    limits: {timeout_s: 60, retries: 0}
+    on_failure: escalate
+
+  - id: triage
+    purpose: "Says how urgent the case is, which queue should pick it up and when it is due, each with its reasons."
+    needs: [recommendation_exists]
+    promises:
+      - {check: triage_is_complete, text: "The case gets a priority, a queue and a due date, each with its reasons."}
+    never: ["change a finding or the recommendation", "use a model", "assign the case to a named person"]
+    writes: [triage]
+    reads: [findings, recommendation]
+    model: {use: none}
+    memory: {read: [run, case], write: [run]}
+    limits: {timeout_s: 30, retries: 0}
+    on_failure: degrade
+
+  - id: counterfactual
+    purpose: "Changes one fact on a copy of the case, reruns the checks that depend on it, and reports what moved."
+    needs: [case_is_assessed]
+    promises:
+      - {check: original_is_unchanged, text: The case itself is never altered by a what-if.}
+    never: ["save a what-if as the case's assessment"]
+    writes: []
+    model: {use: none}
+    memory: {read: [case], write: []}
+    limits: {timeout_s: 120, retries: 0}
+    on_failure: degrade
+
+  - id: correspondence
+    purpose: "Drafts an evidence request or a decision note from the findings, for a person to edit and send."
+    needs: [case_is_assessed]
+    promises:
+      - {check: draft_keeps_every_item, text: "Every request or reason in the findings survives into the draft, word for word."}
+    never: ["send anything", "add a request the findings do not hold"]
+    writes: []
+    model: {use: optional, tier: balanced, max_calls: 2, max_tokens: 20000}
+    memory: {read: [case], write: []}
+    limits: {timeout_s: 120, retries: 1}
+    on_failure: degrade
+
+  - id: feedback
+    purpose: Turns a reviewer's corrections into improvement proposals and tests each one before anyone can approve it.
+    needs: []
+    promises:
+      - {check: nothing_changes_without_approval, text: The shared vocabulary changes only when a person approves a proposal.}
+    never: ["change the vocabulary by itself", "hide a regression"]
+    writes: []
+    model: {use: none}
+    memory: {read: [case, workspace], write: []}
+    limits: {timeout_s: 300, retries: 0}
+    on_failure: degrade
+
+  - id: assistant
+    purpose: "Answers a question about one case from its graph, its documents and what the knowledge graph says its rules rest on, cites what it used, and declines what they do not hold."
+    needs: [case_is_assessed]
+    promises:
+      - {check: answer_is_grounded_or_declined, text: An answer cites its sources or says the case does not hold the answer.}
+    never: ["answer from general knowledge", "change the case"]
+    writes: []
+    model: {use: optional, tier: balanced, max_calls: 2, max_tokens: 30000}
+    memory: {read: [case, workspace], write: []}
+    limits: {timeout_s: 120, retries: 1}
+    on_failure: degrade
+
+  - id: repository
+    purpose: Files the assessed case and its assessment to the content repository.
+    needs: [case_is_assessed]
+    promises:
+      - {check: filing_is_recorded, text: "What was filed, where and when is kept on the case."}
+    never: ["file a case that has not been assessed", "delete from the repository"]
+    writes: [filed]
+    model: {use: none}
+    memory: {read: [case], write: []}
+    limits: {timeout_s: 300, retries: 1}
+    on_failure: degrade

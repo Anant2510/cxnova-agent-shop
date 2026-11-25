@@ -61,6 +61,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 caf = ["vendor/axe-core/*"]
+docuinsights = ["profiles/*.yaml", "foundation/*.yaml", "foundation/knowledge/*.yaml", "reference/*.json", "web/*", "samples/*/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

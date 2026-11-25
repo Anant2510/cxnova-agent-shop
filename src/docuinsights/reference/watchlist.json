@@ -1,0 +1,21 @@
+{
+  "id": "demonstration",
+  "name": "Demonstration watchlist",
+  "version": "2026.1",
+  "published": "2026-01-15",
+  "demonstration": true,
+  "source": "Shipped with the accelerator",
+  "note": "Every entry is invented so that screening can be shown without a real list. No entry refers to a real person, company, vessel or place; any resemblance is unintended. An installation names its own lists with DOCUINSIGHTS_WATCHLISTS, and this one is then no longer used.",
+  "entries": [
+    {"name": "Quellmar Shipping Lines", "kind": "party", "aliases": ["Quellmar Lines", "QSL Shipping"], "reason": "Invented entry: carrier listed for carrying restricted cargo.", "programme": "Demonstration programme A", "country": "Invented"},
+    {"name": "Tyberon Gulf Trading FZE", "kind": "party", "aliases": ["Tyberon Trading"], "reason": "Invented entry: trading company listed for acting on behalf of a listed party.", "programme": "Demonstration programme A", "country": "Invented"},
+    {"name": "Zorvane Maritime Holdings", "kind": "party", "aliases": [], "reason": "Invented entry: owner of listed vessels.", "programme": "Demonstration programme B", "country": "Invented"},
+    {"name": "Ostrel Kessmar Commodities", "kind": "party", "aliases": ["OK Commodities Trading"], "reason": "Invented entry: listed for trade in controlled goods.", "programme": "Demonstration programme B", "country": "Invented"},
+    {"name": "Halvreth Dray Logistics", "kind": "party", "aliases": [], "reason": "Invented entry: freight agent listed for falsifying shipping documents.", "programme": "Demonstration programme C", "country": "Invented"},
+    {"name": "Varnholt Asset Finance", "kind": "party", "aliases": ["Varnholt Finance"], "reason": "Invented entry: lender listed for unlicensed activity.", "programme": "Demonstration programme C", "country": "Invented"},
+    {"name": "Brenmoor Accident Repair Centre", "kind": "party", "aliases": ["Brenmoor Auto Repair"], "reason": "Invented entry: repairer on an insurer's watch list for inflated estimates.", "programme": "Demonstration counter-fraud list", "country": "Invented"},
+    {"name": "Tyberon Star", "kind": "vessel", "aliases": ["Tiberon Star"], "reason": "Invented entry: vessel owned by a listed party.", "programme": "Demonstration programme B", "country": "Invented"},
+    {"name": "Zorvane Meridian", "kind": "vessel", "aliases": [], "reason": "Invented entry: vessel listed for calling at a restricted port.", "programme": "Demonstration programme B", "country": "Invented"},
+    {"name": "Port Zorvane", "kind": "place", "aliases": ["Zorvane"], "reason": "Invented entry: port under a trade restriction.", "programme": "Demonstration programme B", "country": "Invented"}
+  ]
+}
