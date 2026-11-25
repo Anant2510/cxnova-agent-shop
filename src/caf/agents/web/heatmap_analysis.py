@@ -573,15 +573,16 @@ class HeatmapInput(BaseModel):
     page_url: str | None = Field(default=None, description="Page to analyse (default: the page with the most events)")
     html: str | None = Field(default=None, description="Optional page HTML for component mapping when the page cannot be fetched",
                              json_schema_extra={"ui": "textarea"})
-    device: Literal["all", "desktop", "mobile", "tablet"] = "all"
+    device: Literal["all", "desktop", "mobile", "tablet"] = Field(default="all", description="Only sessions on this device type (all = every device)")
     start_date: str | None = Field(default=None, description="Optional ISO date filter (inclusive)")
     end_date: str | None = Field(default=None, description="Optional ISO date filter (inclusive)")
     rage_window_s: float = Field(default=2.0, ge=0.5, le=5.0, description="Rage click: clicks on one selector within this many seconds")
-    rage_min_clicks: int = Field(default=3, ge=3, le=10)
+    rage_min_clicks: int = Field(default=3, ge=3, le=10, description="Rage click: at least this many clicks on one selector inside the window")
     min_rage_sessions: int = Field(default=3, ge=1, description="Sessions needed before a rage-click hotspot is reported")
-    false_bottom_min_drop_pp: float = Field(default=15.0, ge=5.0, le=60.0)
+    false_bottom_min_drop_pp: float = Field(default=15.0, ge=5.0, le=60.0,
+                                            description="False bottom: scroll reach falls by at least this many percentage points in one step of the page")
     ignored_cta_ctr: float = Field(default=0.015, ge=0.0, le=0.2, description="CTA clicked by fewer sessions than this share is 'ignored'")
-    low_cta_ctr: float = Field(default=0.03, ge=0.0, le=0.5)
+    low_cta_ctr: float = Field(default=0.03, ge=0.0, le=0.5, description="CTA clicked by fewer sessions than this share (but not 'ignored') is 'low'")
     use_browser: bool = Field(default=True, description="Measure layout and capture a screenshot background with Playwright when available")
 
 

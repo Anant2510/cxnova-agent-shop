@@ -61,7 +61,7 @@ def test_packs_join_the_catalog_and_the_routers_leave_them_alone(packs):
     fv = get_agent("arm_front_velocity")
     schema = fv.Input.model_json_schema()
     assert len(fv.spec.actions) == 11 and "page_scaffold" in schema["$defs"]["ArmFrontVelocityAction"]["enum"]
-    assert fv.spec.runners == ["model", "twin"] and "ADS v5" in fv.agent_def.skill.system_prompt
+    assert fv.spec.runners == ["model", "twin"] and "the customer's web estate" in fv.agent_def.skill.system_prompt   # generic: no customer named
     entry = next(a for a in catalog() if a["id"] == "arm_factory_nfr_spec")
     assert entry["pack"] == "arm_sdlc" and entry["pack_name"] == "ARM SDLC Factory" and entry["actions"] == ["functional_and_nfr_spec", "revise"]
     assert entry["category"] == "engineering" and entry["category_label"] == "Engineering and build"

@@ -588,14 +588,14 @@ def chart_bars(labels: list[str], values: list[float], notes: list[str], title: 
 class TrafficInput(BaseModel):
     start_date: date | None = Field(default=None, description="First day of the report (default: 30 complete days ending at end_date)")
     end_date: date | None = Field(default=None, description="Last day (default: last day of available data, or yesterday for live providers)")
-    compare_to: Literal["previous_period", "previous_year"] = Field(default="previous_period")
+    compare_to: Literal["previous_period", "previous_year"] = Field(default="previous_period", description="What the period is compared with: the period just before it, or the same period a year earlier")
     domain: str | None = Field(default=None, description="Optional hostname filter passed to the analytics provider")
-    top_pages: int = Field(default=10, ge=3, le=50)
+    top_pages: int = Field(default=10, ge=3, le=50, description="How many of the most visited pages the report lists (3 to 50)")
     anomaly_method: Literal["consensus", "either", "mad", "stl"] = Field(
         default="consensus", description="consensus = rolling-median MAD and STL must agree (fewest false alarms); either = more sensitive")
     anomaly_threshold: float = Field(default=3.5, ge=2.0, le=10.0, description="Robust z-score threshold")
     anomaly_min_change: float = Field(default=0.15, ge=0.0, le=1.0, description="Minimum deviation from expected (practical significance)")
-    include_charts: bool = True
+    include_charts: bool = Field(default=True, description="Draw the trend and channel charts into the report; false returns the tables and findings only")
     non_conversion_paths: str = Field(default=r"(login|account|sign-?in|register|search|claims|track|help|faq|privacy|terms|cookie|careers|contact)",
                                       description="Regex of utility pages that are not expected to convert (excluded from low-conversion findings)")
 

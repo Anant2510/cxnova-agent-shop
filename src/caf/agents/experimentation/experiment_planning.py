@@ -385,7 +385,9 @@ class PlanInput(BaseModel):
     alpha: float = Field(default=0.05, gt=0, lt=0.5, description="Two-sided significance level")
     power: float = Field(default=0.8, gt=0.5, lt=1, description="Statistical power")
     n_variants: int = Field(default=2, ge=2, le=8, description="Number of arms including the control")
-    design: Literal["frequentist", "bayesian", "sequential"] = "frequentist"
+    design: Literal["frequentist", "bayesian", "sequential"] = Field(
+        default="frequentist", description="How the test is analysed: frequentist (one fixed sample size), sequential (planned interim looks, "
+                                           "may stop early) or bayesian (probability that a variant is better)")
     traffic_allocation: float = Field(default=100.0, gt=0, le=100, description="Percent of eligible traffic in the experiment")
     max_duration_days: int = Field(default=42, ge=7, le=365, description="Longest acceptable runtime")
     looks: int = Field(default=4, ge=1, le=12, description="Analyses (interim + final) for the sequential design")

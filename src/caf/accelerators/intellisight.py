@@ -28,8 +28,8 @@ from pydantic import BaseModel, Field
 
 MAX_ROWS = 60_000
 MAX_CSV_CHARS = 40_000_000
-SAMPLES = {"westjet": "intellisight/westjet_adobe_analytics_sample.csv"}
-INDUSTRY = {"westjet": "Airlines & Travel"}
+SAMPLES = {"xperion": "intellisight/xperion_adobe_analytics_sample.csv"}
+INDUSTRY = {"xperion": "Airlines & Travel"}
 
 EVAR_GUESSES_AIRLINE = {"eVar1": "Page Name", "eVar2": "Site Section", "eVar3": "Server", "eVar4": "Marketing Channel", "eVar5": "Device Type",
                         "eVar6": "Operating System", "eVar7": "Browser", "eVar8": "Campaign", "eVar9": "Search Term", "eVar10": "Language",
@@ -232,7 +232,7 @@ def guess_industry(columns: list[str], rows: list[dict[str, str]]) -> str:
 
 # ------------------------------------------------------------------------------------------------ loading
 def load_dataset(inputs: dict[str, Any], ctx: Any = None) -> Dataset:
-    """The dataset named by the inputs: pasted CSV text (`dataset`), a bundled sample (`dataset_name`: westjet), or the
+    """The dataset named by the inputs: pasted CSV text (`dataset`), a bundled sample (`dataset_name`: xperion), or the
     dataset an earlier step of the run interpreted (`ctx.upstream`)."""
     text = inputs.get("dataset")
     name = str(inputs.get("dataset_name") or "").strip().lower()
@@ -251,7 +251,7 @@ def load_dataset(inputs: dict[str, Any], ctx: Any = None) -> Dataset:
             path = Path(ctx.artifacts.runs_dir) / str(res["dataset_file"])
             if path.exists():
                 return parse_csv(path.read_text(encoding="utf-8"), name=str(res.get("dataset") or "dataset"), industry=str(res.get("industry") or ""))
-    raise ValueError("give the export as `dataset` (CSV text) or name a bundled sample with `dataset_name` (westjet)")
+    raise ValueError("give the export as `dataset` (CSV text) or name a bundled sample with `dataset_name` (xperion)")
 
 
 def _sample_path(rel: str, ctx: Any) -> Path:

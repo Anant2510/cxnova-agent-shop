@@ -9,8 +9,8 @@
     const i = location.pathname.indexOf("/shop");
     return i > 0 ? location.pathname.slice(0, i) : "";
   })();
-  const THEME_KEY = "cxnova.theme";
-  function theme() { try { return localStorage.getItem(THEME_KEY) || "dark"; } catch (e) { return "dark"; } }
+  const THEME_KEY = "cxnova.theme.2";   // porcelain (light) unless this browser chose midnight
+  function theme() { try { return localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light"; } catch (e) { return "light"; } }
   function setTheme(t) { try { localStorage.setItem(THEME_KEY, t); } catch (e) {} document.documentElement.setAttribute("data-theme", t); }
   document.documentElement.setAttribute("data-theme", theme());
   const TOKEN_KEY = "cxnova.shop.token";
@@ -81,15 +81,20 @@
   function param(name) { return new URLSearchParams(location.search).get(name); }
   function pathTail() { const parts = location.pathname.replace(/\/+$/, "").split("/"); return decodeURIComponent(parts[parts.length - 1] || ""); }
   function copy(text) { navigator.clipboard && navigator.clipboard.writeText(text).then(() => toast("Copied")); }
-  function mark() {
-    return h("span", { class: "mark", html: "<svg viewBox='0 0 32 32' width='30' height='30' aria-hidden='true'><rect width='32' height='32' rx='7' fill='#1F3D7A'/><circle cx='9' cy='11' r='3' fill='#fff'/><path d='M9 11 L21 11 Q24 11 24 14 L24 22' stroke='#fff' stroke-width='2.4' fill='none' stroke-linecap='round'/><path d='M6 24 H26' stroke='#fff' stroke-width='2.4' stroke-linecap='round'/></svg>" });
+  function mark() {   // the CX Nova mark: a node, a path and a baseline, on a lacquered tile in the theme's colour
+    return h("span", { class: "mark", html: "<svg viewBox='0 0 32 32' width='30' height='30' aria-hidden='true'><defs>"
+      + "<linearGradient id='cxn-tile' x1='0' y1='0' x2='0' y2='1'><stop offset='0' style='stop-color:var(--mark-a)'/><stop offset='1' style='stop-color:var(--mark-b)'/></linearGradient>"
+      + "<linearGradient id='cxn-gloss' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#fff' stop-opacity='.42'/><stop offset='1' stop-color='#fff' stop-opacity='0'/></linearGradient></defs>"
+      + "<rect width='32' height='32' rx='8' fill='url(#cxn-tile)'/><path d='M0 8 Q0 0 8 0 H24 Q32 0 32 8 V13 Q16 18 0 13 Z' fill='url(#cxn-gloss)'/>"
+      + "<circle cx='9' cy='11' r='3' fill='#fff'/><path d='M9 11 L21 11 Q24 11 24 14 L24 22' stroke='#fff' stroke-width='2.4' fill='none' stroke-linecap='round'/>"
+      + "<path d='M6 24 H26' stroke='#fff' stroke-width='2.4' stroke-linecap='round'/></svg>" });
   }
   function topbar(current) {
     const product = document.body.dataset.product || "CX Nova Agent Orchestration Layer";
     const company = document.body.dataset.company || "Coforge";
     const links = [["portal", "Portal", BASE + "/portal"], ["designer", "Designer", BASE + "/shop/designer"], ["console", "Console", BASE + "/console"],
       ["shop", "Storefront", BASE + "/shop"], ["account", "My account", BASE + "/shop/account"], ["admin", "Admin", BASE + "/shop/admin"], ["docs", "API", BASE + "/docs"]];
-    const toggle = h("button", { class: "btn sm ghost theme-toggle", type: "button", title: "Switch between the midnight and paper themes", "aria-label": "Switch theme",
+    const toggle = h("button", { class: "btn sm ghost theme-toggle", type: "button", title: "Switch between the porcelain and midnight themes", "aria-label": "Switch theme",
       onclick: () => { setTheme(theme() === "dark" ? "light" : "dark"); clear(toggle).append(themeIcon()); } }, themeIcon());
     return h("header", { class: "topbar" }, h("div", { class: "inner" },
       h("a", { class: "brand", href: BASE + "/portal" }, mark(), h("div", null, h("div", { class: "name" }, product), h("div", { class: "by" }, "by " + company))),

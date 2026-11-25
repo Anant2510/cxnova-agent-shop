@@ -1,0 +1,149 @@
+# What the figures of each ARM SDLC Factory action rest on (see caf.packs.model: basis). The pack itself is generated from the
+# factory's configuration (scripts/build_pack_arm.py), so the classification lives here and survives a regeneration.
+#
+# The factory has no run-one-agent API: on this layer every ARM agent is modelled. A model can write a spec, a test case or a
+# review from what it is given; it cannot run a test suite, scan a build, crawl a site or publish a page. So:
+#   executed  the action runs or changes something. Modelled, it is a DRY RUN: the plan, and no result.
+#   measured  the action reports what a tool observed. Modelled, it may only repeat figures found in its inputs.
+#   judgement the model's own assessment, labelled as one.
+#   authored  the model writes, plans or reviews from what it is given; a count is a count of what it wrote.
+# An action's own line wins over its agent's `.*` line. A line that names nothing stops the start-up.
+basis:
+  executed:
+    - arm_blueswan.ui_regression_run            # test runs: builds, totals, failures
+    - arm_blueswan.compatibility_run
+    - arm_blueswan.marketo_lead_flow_test
+    - arm_blueswan.release_regression
+    - arm_accessibility_validator.wcag_test     # a retest against the rendered pages
+    - arm_quality_digital_workers.tracking_tests
+    - arm_quality_digital_workers.field_presence_tests
+    - arm_devops_runbook.run_pipeline
+    - arm_design_velocity.hifi_mockups          # creates the Figma file
+    - arm_design_velocity.handoff_pack          # exports frames and assets from it
+    - arm_intellisight.build_reporting          # builds the dashboard
+    - arm_sitecore_design_studio.responsive_preview   # renders and measures the preview
+    - arm_sitecore_marketer_mcp.create_test_page      # creates and edits items in Sitecore
+    - arm_sitecore_marketer_mcp.add_components
+    - arm_sitecore_marketer_mcp.wire_datasources
+    - arm_sitecore_marketer_mcp.build_pages
+    - arm_sitecore_marketer_mcp.stage_content
+    - arm_sitecore_marketer_mcp.edit_item
+    - arm_factory_unit_test.run_tests
+    - arm_factory_perf_test.performance_test
+    - arm_factory_vuln_scan.vulnerability_scan
+    - arm_factory_defect_logger.triage_and_log   # logs defects in the tracker
+    - arm_factory_asana_sync.compile_generated_data   # writes the ticket
+  measured:
+    - arm_intellisight.*                        # analytics baselines, event and tracking validation: observations of the live site
+    - arm_site_auditor.*                        # crawls: issues, broken links, cookies, performance baselines
+    - arm_accessibility_validator.wcag_review   # automated findings on rendered pages
+    - arm_quality_digital_workers.package_evidence   # evidence gathered from the runs
+    - arm_quality_digital_workers.evidence_pack
+    - arm_xops.collect_evidence
+    - arm_sitecore_audience_summary.*           # first-party Sitecore data
+    - arm_sitecore_market_signals.*
+    - arm_sitecore_marketer_mcp.inspect_field   # reads a field from Sitecore
+    - arm_factory_pipeline_quality.*            # reads pipeline, SonarQube, Snyk and ESLint findings
+    - arm_factory_onetrust_classifier.*         # inspects page scripts and cookies
+  judgement:
+    - arm_sitecore_researcher.*                 # research with no search connected: the model's own knowledge
+    - arm_sitecore_competitor_analyzer.*
+    - arm_factory_evaluator.*                   # a rubric verdict
+  authored:
+    - arm_front_velocity.*
+    - arm_design_velocity.*
+    - arm_app_velocity.*
+    - arm_brand_auditor.*
+    - arm_quality_digital_workers.*
+    - arm_blueswan.*
+    - arm_localization_validator.*
+    - arm_xtender.*
+    - arm_xops.*
+    - arm_migrate_dxp.*
+    - arm_sitecore_brief_generator.*
+    - arm_sitecore_strategy.*
+    - arm_sitecore_persona_auditor.*
+    - arm_sitecore_design_studio.*
+    - arm_sitecore_structured_extractor.*
+    - arm_sitecore_translator.*
+    - arm_sitecore_content_generator.*
+    - arm_factory_nfr_spec.*
+    - arm_factory_test_case_drafter.*
+    - arm_factory_test_reviewer.*
+    - arm_factory_test_strategy.*
+    - arm_factory_automation_planner.*
+    - arm_factory_automation_scripter.*
+    - arm_factory_code_reviewer.*
+    - arm_factory_tracking_implementer.*
+    - arm_factory_tool_smith.*
+
+# The factory's agents declare no inputs of their own (the pack is generated from its configuration), so on this layer they
+# had only a request to work from. Every agent takes these two:
+inputs:
+  "*":
+    - name: material
+      type: any
+      file: [txt, json, csv]
+      description: "What to work on, as a file or pasted text: a requirements document, a design export, code, a page's HTML, a test plan, a brief"
+    - name: evidence
+      type: any
+      file: [json, csv, txt]
+      description: "What a tool or a system observed, to report from: a crawl export, a scan result, a test report, an analytics export. An agent that reports measurements reports only what is in here"
+# A measured action reads `evidence`. Run alone without it, it refuses: nothing on this layer can crawl, scan or run a suite.
+evidence:
+  "*": [evidence]
+# What the self-test of each agent whose first action reports measurements runs on: a small invented sample (a fictional
+# events site on example.com). None of it describes a real estate.
+selftest:
+  arm_site_auditor:
+    evidence:
+      - {url: "https://www.example.com/events/", status: 200, load_ms: 1840, lcp_ms: 2310, broken_links: 0, title: "Events", tags: [analytics, consent], consent_banner: true}
+      - {url: "https://www.example.com/events/tokyo/", status: 200, load_ms: 3920, lcp_ms: 4480, broken_links: 2, title: "", tags: [analytics], consent_banner: false}
+      - {url: "https://www.example.com/events/tokyo/agenda", status: 404, load_ms: 310, lcp_ms: null, broken_links: 0, title: "Not found", tags: [], consent_banner: false}
+      - {url: "https://www.example.com/events/register", status: 200, load_ms: 2210, lcp_ms: 2890, broken_links: 0, title: "Register", tags: [analytics, consent, forms], consent_banner: true}
+  arm_intellisight:
+    evidence:
+      - {page: /events/, event: page_view, expected: true, fired: true, hits_7d: 18420}
+      - {page: /events/register, event: form_start, expected: true, fired: true, hits_7d: 2310}
+      - {page: /events/register, event: form_submit, expected: true, fired: false, hits_7d: 0}
+      - {page: /events/tokyo/, event: video_play, expected: true, fired: true, hits_7d: 640}
+  arm_quality_digital_workers:
+    evidence:
+      suite: "Events hub regression"
+      build: "web-482"
+      total: 86
+      passed: 81
+      failed: 3
+      skipped: 2
+      failures:
+        - {id: REG-014, title: "Registration form rejects a valid postcode", severity: high}
+        - {id: REG-031, title: "Agenda tab order skips the filter", severity: medium}
+        - {id: REG-052, title: "Japanese page shows the English footer", severity: medium}
+  arm_accessibility_validator:
+    evidence:
+      - {rule: color-contrast, impact: serious, page: /events/, selector: ".hero .cta", count: 3}
+      - {rule: label, impact: critical, page: /events/register, selector: "#postcode", count: 1}
+      - {rule: image-alt, impact: serious, page: /events/tokyo/, selector: "img.speaker", count: 7}
+      - {rule: heading-order, impact: moderate, page: /events/tokyo/agenda, selector: "h4", count: 2}
+  arm_sitecore_audience_summary:
+    evidence:
+      - {segment: "Registered attendees", members: 4210, consented_email: 3890, active_30d: 2740}
+      - {segment: "Past attendees, not registered", members: 9630, consented_email: 6120, active_30d: 1180}
+      - {segment: "Partners", members: 380, consented_email: 371, active_30d: 290}
+  arm_sitecore_market_signals:
+    evidence:
+      - {date: "2026-11-10", source: "search trends", signal: "edge AI conference", value: 148, unit: "index, 100 = last year"}
+      - {date: "2026-11-12", source: "registrations", signal: "week-on-week registrations", value: -6.5, unit: percent}
+      - {date: "2026-11-14", source: "social listening", signal: "mentions of the Tokyo event", value: 920, unit: mentions}
+  arm_factory_pipeline_quality:
+    evidence:
+      pipeline: "web build 482"
+      eslint: {errors: 3, warnings: 12}
+      sonarqube: {bugs: 1, vulnerabilities: 0, code_smells: 14, coverage_pct: 71.4, quality_gate: failed}
+      snyk: {critical: 0, high: 1, medium: 4, top: "prototype pollution in a transitive dependency"}
+  arm_factory_onetrust_classifier:
+    evidence:
+      - {name: _ga, domain: .example.com, set_by: "analytics script", expiry_days: 730}
+      - {name: OptanonConsent, domain: .example.com, set_by: "consent platform", expiry_days: 365}
+      - {name: mkto_trk, domain: .example.com, set_by: "marketing automation", expiry_days: 730}
+      - {name: session_id, domain: www.example.com, set_by: "first-party application", expiry_days: 0}

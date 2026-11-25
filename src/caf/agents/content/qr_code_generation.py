@@ -47,7 +47,7 @@ class QRInput(BaseModel):
     quiet_zone: int = Field(default=4, ge=0, le=20, description="Quiet zone in modules (ISO/IEC 18004 requires 4)")
     logo_path: str | None = Field(default=None, description="Optional centre logo (PNG/JPG; SVG is embedded in the SVG output only)")
     logo_scale: float = Field(default=0.22, ge=0.05, le=0.4, description="Logo width as a fraction of the symbol width")
-    formats: list[Literal["png", "svg"]] = Field(default_factory=lambda: ["png", "svg"])
+    formats: list[Literal["png", "svg"]] = Field(default_factory=lambda: ["png", "svg"], description="The image formats to write: png for screens and documents, svg for print at any size")
     tag_utm: bool = Field(default=True, description="Tag URLs that have no UTM parameters with the taxonomy's 'qr' channel")
     utm_campaign: str | None = Field(default=None, description="utm_campaign for tagging (else upstream UTM / brief, else a dated default)")
     utm_content: str | None = Field(default=None, description="utm_content, e.g. placement such as 'booth_banner'")
@@ -439,6 +439,8 @@ class QRCodeGenerationAgent(BaseAgent):
             payload = t["encoded"]
             try:
                 matrix, version = qr_matrix(payload, level, min_version=min_version)
+            except ImportError as exc:   # not a payload that does not fit: the encoder itself is absent
+                raise RuntimeError("QR codes cannot be generated on this server: its QR encoder (the `qrcode` package) is not installed.") from exc
             except Exception as exc:
                 checks.append(Check(rule="payload.capacity", status="fail", severity="critical", target=t["target"],
                                     message=f"Payload of {len(payload.encode('utf-8'))} bytes does not fit any QR version at level {level}: {exc}"))
@@ -513,6 +515,9 @@ class QRCodeGenerationAgent(BaseAgent):
                                     f"Rendered PNG did not decode to the payload (got {decoded!r}) - "
                                     + ("shrink the logo or raise contrast." if has_logo else "check colours and quiet zone.")))
             codes.append(item)
+        if not codes:   # nothing to hand back: fail with the reason, never end well with an empty result
+            why = [str(c.get("message") or "") for c in state.get("checks", []) if c.get("status") == "fail"] + [c.message for c in checks if c.status == "fail"]
+            raise ValueError("No QR code could be generated" + (": " + " ".join(why[:3]) if why else "."))
         return {"data": {"codes": codes}, "checks": checks, "artifacts": artifacts, "warnings": warnings}
 
     def _load_logo(self, path: str, ctx: RunContext) -> tuple[Any, str | None, str | None]:

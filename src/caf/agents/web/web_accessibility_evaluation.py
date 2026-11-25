@@ -472,12 +472,13 @@ class A11yInput(BaseModel):
     url: str | None = Field(default=None, description="Page to evaluate")
     html: str | None = Field(default=None, description="Alternative to url: the page HTML (with url, relative assets resolve against it)",
                              json_schema_extra={"ui": "textarea"})
-    standard: Literal["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] = Field(default="wcag21aa")
+    standard: Literal["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] = Field(
+        default="wcag21aa", description="WCAG version and conformance level to test against (wcag21aa = WCAG 2.1 level AA)")
     include_best_practices: bool = Field(default=True, description="Also run axe best-practice rules (reported, never mapped to a WCAG SC)")
     fail_on: Literal["minor", "moderate", "serious", "critical"] = Field(default="serious", description="CI gate: fail on violations of this impact or worse")
     engine: Literal["auto", "axe", "static"] = Field(default="auto", description="auto = axe-core in Chromium when available, else static checks")
-    viewport_width: int = Field(default=1280, ge=320, le=3840)
-    viewport_height: int = Field(default=900, ge=320, le=4000)
+    viewport_width: int = Field(default=1280, ge=320, le=3840, description="Width in pixels of the browser window the page is rendered in (1280 = desktop, 390 = a phone)")
+    viewport_height: int = Field(default=900, ge=320, le=4000, description="Height in pixels of the browser window the page is rendered in")
 
     @model_validator(mode="after")
     def _need_source(self) -> "A11yInput":

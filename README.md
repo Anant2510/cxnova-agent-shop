@@ -143,7 +143,7 @@ declares and `context`, and answers `{action, runner, summary, result, artifacts
    prioritised recommendations (one model call for the judgement, offline a plain reading of the numbers) and
    Conversational Analytics answers a question in two steps (the model writes a query plan, the engine runs it, the
    model narrates the result; no generated code is ever executed). Wrong input (not a CSV, an unknown column) is an
-   error, never a modelled sample. Give any of them `dataset` (the CSV text), `dataset_name: westjet` (the sample
+   error, never a modelled sample. Give any of them `dataset` (the CSV text), `dataset_name: xperion` (the sample
    under `sample_data/intellisight/`, 1,800 rows of a fictional airline's Adobe export) or let a flow hand the
    `dataset_file` kept with the run from one step to the next.
 2. **home**: the agent's own product ran it, when the pack has a home adapter and it is connected. Campaign
@@ -316,6 +316,27 @@ python3 console/test/harness.py [--llm mock]            # every browser agent, o
 python3 console/test/harness.py --llm mock --orchestrate campaign_launch   # a playbook driven end to end in the browser
 make package                                            # source zip in dist/ (no caches, run outputs or node_modules)
 ```
+
+## Agent quality
+
+Every pack agent says what the figures in its result rest on: `calculated` by code, `authored` or a `judgement` by the
+model, `measured` (reported only when given in the inputs) or `executed` (a dry run unless its platform did the work).
+An agent that reads data declares the least it runs on and refuses below it; a calculation is never replaced by a model's
+answer or a sample; inputs can be uploaded as JSON or CSV and are parsed and checked before use. Wrong input is refused
+in plain words, and a customer's failed model call fails the step instead of returning a sample.
+
+The agents are generic: no instruction or sample names a customer or a real company, and a caller's own estate, brand
+voice, press boilerplate, glossary and rules come from their workspace (`caf shop workspace <customer> --template`),
+given to their runs only. A customer's run that falls back to the bundled demo company's profile or data says so.
+
+```bash
+caf agents audit                                        # what every pack agent declares, against the standard; exit 1 on a fail
+caf agents certify                                      # every agent run through wrong inputs and a misbehaving model
+caf run vai_predictive_propensity --set action=describe # what the propensity agent predicts, from what, with what minimum
+```
+
+The standard and where each pack stands: [`docs/AGENT_QUALITY.md`](docs/AGENT_QUALITY.md). The propensity agent's
+predictions, parameters, method and calibration: [`docs/VOYAGERAI_PROPENSITY.md`](docs/VOYAGERAI_PROPENSITY.md).
 
 ## Extending
 

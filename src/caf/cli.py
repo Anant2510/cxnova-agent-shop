@@ -32,6 +32,9 @@ def _load_json(value: str | None) -> dict[str, Any]:
 def _apply_sets(data: dict[str, Any], sets: list[str]) -> dict[str, Any]:
     for item in sets or []:
         key, _, raw = item.partition("=")
+        if raw.startswith("@") and Path(raw[1:]).is_file():   # --set profile=@passengers.csv: the file's text, as an upload would send it
+            data[key] = Path(raw[1:]).read_text(encoding="utf-8")
+            continue
         try:
             data[key] = json.loads(raw)
         except json.JSONDecodeError:
@@ -46,6 +49,28 @@ def _print(obj: Any, as_json: bool = True) -> None:
 def cmd_agents(args: argparse.Namespace) -> int:
     from .core import catalog
 
+    if getattr(args, "what", None) == "certify":   # caf agents certify: every agent through the battery (caf.certify)
+        from .certify import certify, render
+
+        def tick(row: dict) -> None:
+            if not args.json:
+                print(f"  {'pass' if row['passed'] else 'FAIL'}  {row['id']:<38} {len(row['trials']):>2} trials  {row['ms'] / 1000:>6.1f}s"
+                      + ("" if row["passed"] else "   " + ", ".join(row["failed"])), file=sys.stderr, flush=True)
+
+        if not args.json:
+            print("--live: each agent's self-test runs on the server's own model, and those calls are billed there." if args.live else
+                  "No live model is called (--live runs each agent's self-test on the server's own model).", file=sys.stderr, flush=True)
+        report = certify(pack=args.pack, agents=args.agent or None, fast=args.fast, live=args.live, progress=tick)
+        if args.report:
+            Path(args.report).write_text(render(report, markdown=True), encoding="utf-8")
+        _print(report) if args.json else print(render(report))
+        return 0 if report["ok"] else 1
+    if getattr(args, "what", None) == "audit":   # caf agents audit: every pack agent against the quality standard
+        from .quality import audit, render
+
+        report = audit(args.pack)
+        _print(report) if args.json else print(render(report, verbose=args.verbose))
+        return 0 if report["ok"] else 1
     rows = catalog()
     if args.json:
         _print(rows)
@@ -345,6 +370,25 @@ def cmd_shop(args: argparse.Namespace) -> int:
             c = store.add_customer(args.customer_id, args.name, run_mode=args.mode, contact=args.contact or "")
             print(f"created {c['id']} ({c['name']}), run mode {c['run_mode']}")
             return 0
+        if what == "workspace":   # the customer's own estate, given to every pack agent they call (caf.packs.workspace)
+            from .packs import workspace
+
+            if args.template:
+                print(yaml.safe_dump(workspace.TEMPLATE, sort_keys=False, allow_unicode=True, width=110), end="")
+                return 0
+            if args.customer_id != workspace.OPERATOR and not store.get_customer(args.customer_id):
+                raise ShopError(f"no customer {args.customer_id!r} (the operator's own workspace is `{workspace.OPERATOR}`)")
+            if args.clear:
+                print("cleared" if workspace.clear(args.customer_id) else "nothing was saved")
+                return 0
+            if args.set:
+                facts = workspace.save(args.customer_id, Path(args.set).read_text(encoding="utf-8"))
+                print(f"saved the workspace of {args.customer_id}: {', '.join(sorted(facts))}")
+                return 0
+            facts = workspace.load(args.customer_id)
+            print(yaml.safe_dump(facts, sort_keys=False, allow_unicode=True, width=110), end="") if facts else print(
+                f"{args.customer_id} has no workspace yet: caf shop workspace {args.customer_id} --template > estate.yaml, fill it in, then --set estate.yaml")
+            return 0
         if what == "key":
             full, rec = store.issue_key(args.customer_id, args.label or "")
             print(f"key for {args.customer_id} (shown once, store it safely):\n\n  {full}\n\nprefix {rec['prefix']}, id {rec['id']}")
@@ -422,7 +466,14 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(prog="caf", description=f"{PRODUCT.name} ({PRODUCT.engine})")
     sub = parser.add_subparsers(dest="cmd", required=True)
-    p = sub.add_parser("agents"); p.add_argument("--json", action="store_true"); p.set_defaults(fn=cmd_agents)
+    p = sub.add_parser("agents", help="list the agents; `audit` checks what each declares, `certify` runs each through the battery")
+    p.add_argument("what", nargs="?", choices=["audit", "certify"]); p.add_argument("--pack", help="audit, certify: one pack only (blueprint for the 28)")
+    p.add_argument("--agent", action="append", help="certify: only this agent (repeatable)")
+    p.add_argument("--fast", action="store_true", help="certify: skip the large-input trial")
+    p.add_argument("--live", action="store_true", help="certify: run each agent's self-test on the server's own model (billed); by default no live model is called")
+    p.add_argument("--report", help="certify: also write the results as Markdown to this file")
+    p.add_argument("--verbose", action="store_true", help="audit: list the info findings too")
+    p.add_argument("--json", action="store_true"); p.set_defaults(fn=cmd_agents)
     p = sub.add_parser("describe"); p.add_argument("agent_id"); p.set_defaults(fn=cmd_describe)
     p = sub.add_parser("run"); p.add_argument("agent_id"); p.add_argument("--input"); p.add_argument("--set", action="append", default=[])
     p.add_argument("--selftest", action="store_true"); p.add_argument("--auto-approve", action="store_true"); p.add_argument("--json", action="store_true")
@@ -450,6 +501,9 @@ def main(argv: list[str] | None = None) -> int:
     q = ss.add_parser("add", help="add a customer"); q.add_argument("customer_id"); q.add_argument("name")
     q.add_argument("--mode", default="coforge_cloud", choices=["coforge_cloud", "coforge_cloud_customer_model", "customer_cloud"]); q.add_argument("--contact"); q.set_defaults(fn=cmd_shop)
     q = ss.add_parser("key", help="issue an API key (shown once)"); q.add_argument("customer_id"); q.add_argument("--label"); q.set_defaults(fn=cmd_shop)
+    q = ss.add_parser("workspace", help="a customer's own estate (sites, platforms, standards) and their own skills (brand voice, boilerplate, rules), given to the agents they call")
+    q.add_argument("customer_id", nargs="?", default="_operator"); q.add_argument("--set", help="YAML or JSON file to save")
+    q.add_argument("--clear", action="store_true"); q.add_argument("--template", action="store_true", help="print the roles to fill in"); q.set_defaults(fn=cmd_shop)
     q = ss.add_parser("revoke", help="revoke a key"); q.add_argument("customer_id"); q.add_argument("key_id"); q.set_defaults(fn=cmd_shop)
     q = ss.add_parser("subscribe", help="set what a customer rents"); q.add_argument("customer_id"); q.add_argument("--agents", help="comma-separated agent ids")
     q.add_argument("--flows", help="comma-separated flow ids (a flow is rented as a whole)"); q.add_argument("--playbooks", help=argparse.SUPPRESS)

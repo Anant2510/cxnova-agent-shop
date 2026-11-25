@@ -1,0 +1,103 @@
+{
+ "passenger_id": "P-204117",
+ "name": "Elena Chen",
+ "loyalty_id": "XA198800",
+ "pnr": "K7RQ2M",
+ "tier": "Platinum Elite",
+ "hub": "SIN",
+ "member_since": "2017-03-14",
+ "ltv_usd": 52400,
+ "miles_balance": 196800,
+ "bookings_12m": 14,
+ "bookings_prev_12m": 21,
+ "last_booking_date": "2026-09-29",
+ "nps_last": 5,
+ "segments": [
+  "platinum-elite",
+  "long-haul-business"
+ ],
+ "cabin": "Business",
+ "flight_hours": 13.5,
+ "upgrades_12m": 2,
+ "ancillary_spend_12m_usd": 640,
+ "travel_purpose": "business",
+ "as_of": "2026-11-20",
+ "history_complete": true,
+ "history": [
+  {
+   "date": "2026-10-25",
+   "type": "disruption",
+   "source": "PSS",
+   "detail": "SIN-LHR delayed 3h10, missed onward connection",
+   "severity": "high"
+  },
+  {
+   "date": "2026-11-03",
+   "type": "disruption",
+   "source": "PSS",
+   "detail": "LHR-SIN cancelled, rebooked next day",
+   "severity": "critical"
+  },
+  {
+   "date": "2026-11-14",
+   "type": "disruption",
+   "source": "PSS",
+   "detail": "SIN-HKG delayed 1h45",
+   "severity": "medium"
+  },
+  {
+   "date": "2026-11-15",
+   "type": "competitor_browsing",
+   "source": "Web analytics",
+   "detail": "Viewed a competitor's SIN-DXB fare page",
+   "severity": "critical"
+  },
+  {
+   "date": "2026-11-16",
+   "type": "competitor_browsing",
+   "source": "Web analytics",
+   "detail": "Price comparison on a metasearch for SIN-LHR",
+   "severity": "high"
+  },
+  {
+   "date": "2026-11-08",
+   "type": "redemption_decline",
+   "source": "Loyalty engine",
+   "detail": "Award seat SIN-LHR unavailable",
+   "severity": "medium"
+  },
+  {
+   "date": "2026-11-17",
+   "type": "redemption_decline",
+   "source": "Loyalty engine",
+   "detail": "Upgrade with miles declined",
+   "severity": "medium"
+  },
+  {
+   "date": "2026-11-11",
+   "type": "complaint",
+   "source": "Contact centre",
+   "detail": "Complaint about the missed connection",
+   "severity": "high"
+  },
+  {
+   "date": "2026-11-18",
+   "type": "app_uninstall_intent",
+   "source": "App telemetry",
+   "detail": "Notification permission revoked, uninstall flow opened",
+   "severity": "high"
+  },
+  {
+   "date": "2026-10-30",
+   "type": "app_session",
+   "source": "App telemetry",
+   "detail": "App opened"
+  },
+  {
+   "date": "2026-11-12",
+   "type": "app_session",
+   "source": "App telemetry",
+   "detail": "App opened"
+  }
+ ]
+}

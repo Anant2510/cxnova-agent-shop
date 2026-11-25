@@ -86,6 +86,10 @@ class AgentSpec(BaseModel):
     actions: list[dict[str, Any]] = Field(default_factory=list, description="Pack agents: the actions the agent performs "
                                           "[{id, title, produces}]; the step's `action` input picks one")
     runners: list[str] = Field(default_factory=list, description="Pack agents: how a run can be served (remote, model, twin)")
+    capabilities: list[dict[str, Any]] = Field(default_factory=list, description="What the agent can do and what each needs, for its page "
+                                               "(a prediction type, the parameters it is calculated from, the least data it takes)")
+    minimum: list[Any] = Field(default_factory=list, description="Pack agents: the inputs it does not run without on its own "
+                                                                 "(a list inside the list: any one of them)")
     auto_route: bool = Field(default=True, description="False: the routers and the planner never pick it by themselves; "
                              "it runs when a flow or a caller names it")
     # filled from config/blueprint.yaml

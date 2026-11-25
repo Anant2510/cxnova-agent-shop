@@ -30,6 +30,7 @@ agents:
     category: analytics
     tier: fast
     code: caf.accelerators.intellisight:run
+    selftest: {dataset_name: xperion}
     summary: >-
       Reads and profiles an Adobe Analytics export: classifies every column (eVars and props as dimensions, events as metrics, the time columns), labels them, and proposes the KPIs and the dimension to open with.
     description: >-
@@ -47,17 +48,17 @@ agents:
         type: text
         description: The export as CSV text (Adobe Analytics Data Warehouse format or any flat CSV); leave empty to use a bundled sample
       - name: dataset_name
-        description: "A bundled sample instead of pasted data: westjet (an airline's 2023-2024 web analytics)"
-        example: westjet
+        description: "A bundled sample instead of pasted data: xperion (an airline's 2023-2024 web analytics)"
+        example: xperion
     actions:
       - id: interpret
         title: Profile the dataset
         produces: [dataset_profile]
         output_keys: [dataset, industry, rows, columns, date_column, date_range, years, counts, suggested_kpis, suggested_dimension, key_dimensions, columns_detail, schema, dataset_file]
         example:
-          summary: "westjet sample: 1,800 rows x 79 columns, 2023-01-01 to 2024-12-31; 50 metrics with data, 20 labelled dimensions; Airlines & Travel."
+          summary: "xperion sample: 1,800 rows x 79 columns, 2023-01-01 to 2024-12-31; 50 metrics with data, 20 labelled dimensions; Airlines & Travel."
           result:
-            dataset: westjet sample
+            dataset: xperion sample
             industry: Airlines & Travel
             rows: 1800
             columns: 79
@@ -89,6 +90,7 @@ agents:
     category: analytics
     tier: fast
     code: caf.accelerators.intellisight:run
+    selftest: {dataset_name: xperion}
     summary: >-
       Computes the dashboard on the full dataset: KPI totals with year-over-year, weekly, monthly or yearly series, breakdowns by the key dimensions, the conversion funnel and the derived rates (cart abandonment, checkout completion, AOV), as chart-ready series.
     description: >-
@@ -107,8 +109,8 @@ agents:
         type: text
         description: The export as CSV text; leave empty when an earlier step of the run interpreted it, or name a bundled sample
       - name: dataset_name
-        description: "A bundled sample: westjet"
-        example: westjet
+        description: "A bundled sample: xperion"
+        example: xperion
       - name: grain
         description: "The period of the series: weekly, monthly (default) or yearly"
         example: monthly
@@ -148,6 +150,7 @@ agents:
     category: analytics
     tier: fast
     code: caf.accelerators.intellisight:run
+    selftest: {dataset_name: xperion}
     summary: >-
       Builds a focused report on chosen dimensions and metrics without waiting for a dashboard to be developed: a series over time per metric, the top values per dimension, narrowed by filters, each panel chart-ready.
     description: >-
@@ -163,8 +166,8 @@ agents:
         type: text
         description: The export as CSV text; leave empty when an earlier step of the run interpreted it, or name a bundled sample
       - name: dataset_name
-        description: "A bundled sample: westjet"
-        example: westjet
+        description: "A bundled sample: xperion"
+        example: xperion
       - name: fields
         type: list
         description: The columns or labels to report on (metrics become series, dimensions become top values)
@@ -204,6 +207,7 @@ agents:
     category: strategy
     tier: pro
     code: caf.accelerators.intellisight:run
+    selftest: {dataset_name: xperion}
     summary: Turns the computed facts into six prioritised, specific recommendations, each citing the exact numbers and year-over-year changes it rests on and the metric to track.
     description: >-
       Engine 03 of IntelliSight. Takes the analytics engine's output (KPI totals with year-over-year, breakdowns, the funnel, the
@@ -222,8 +226,8 @@ agents:
         type: text
         description: The export as CSV text, when no analysis is given
       - name: dataset_name
-        description: "A bundled sample: westjet"
-        example: westjet
+        description: "A bundled sample: xperion"
+        example: xperion
       - name: focus
         description: An area to weight (the funnel, mobile, loyalty ...)
     actions:
@@ -255,6 +259,7 @@ agents:
     category: analytics
     tier: balanced
     code: caf.accelerators.intellisight:run
+    selftest: {dataset_name: xperion}
     summary: Answers a natural-language question about the dataset with data-backed numbers and a chart when one helps, by planning what to compute, computing it on the full dataset, and writing the answer from the exact results.
     description: >-
       IntelliSight's chat. The model turns the question into a query plan (metrics, a dimension, the period, filters), the engine
@@ -275,8 +280,8 @@ agents:
         type: text
         description: The export as CSV text; leave empty when an earlier step of the run interpreted it, or name a bundled sample
       - name: dataset_name
-        description: "A bundled sample: westjet"
-        example: westjet
+        description: "A bundled sample: xperion"
+        example: xperion
       - name: history
         type: list
         description: "Earlier turns of the conversation: [{role, content}]"
@@ -311,8 +316,8 @@ flows:
       - name: dataset
         description: The export as CSV text (leave empty to use the bundled sample)
       - name: dataset_name
-        description: "A bundled sample instead: westjet"
-        example: westjet
+        description: "A bundled sample instead: xperion"
+        example: xperion
     steps:
       - id: interpret
         agent: is_data_interpreter
@@ -338,8 +343,8 @@ flows:
       - name: dataset
         description: The export as CSV text (leave empty to use the bundled sample)
       - name: dataset_name
-        description: "A bundled sample instead: westjet"
-        example: westjet
+        description: "A bundled sample instead: xperion"
+        example: xperion
     steps:
       - id: interpret
         agent: is_data_interpreter

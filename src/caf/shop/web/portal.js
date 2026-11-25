@@ -128,16 +128,21 @@
   const S = { view: null, name: "", params: [] };
   const NAV = [["", "Overview", "overview"], ["launch", "Launch", "launch"], ["runs", "Runs", "runs"], ["approvals", "Approvals", "approvals"],
                ["agents", "Agents", "agents"], ["flows", "Flows", "flows"], ["health", "Health", "health"]];
+  const MARK = "<svg viewBox='0 0 32 32' width='30' height='30' aria-hidden='true'><defs>"
+    + "<linearGradient id='cxn-tile' x1='0' y1='0' x2='0' y2='1'><stop offset='0' style='stop-color:var(--mark-a)'/><stop offset='1' style='stop-color:var(--mark-b)'/></linearGradient>"
+    + "<linearGradient id='cxn-gloss' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#fff' stop-opacity='.42'/><stop offset='1' stop-color='#fff' stop-opacity='0'/></linearGradient></defs>"
+    + "<rect width='32' height='32' rx='8' fill='url(#cxn-tile)'/><path d='M0 8 Q0 0 8 0 H24 Q32 0 32 8 V13 Q16 18 0 13 Z' fill='url(#cxn-gloss)'/>"
+    + "<circle cx='9' cy='11' r='3' fill='#fff'/><path d='M9 11 L21 11 Q24 11 24 14 L24 22' stroke='#fff' stroke-width='2.4' fill='none' stroke-linecap='round'/>"
+    + "<path d='M6 24 H26' stroke='#fff' stroke-width='2.4' stroke-linecap='round'/></svg>";
   function renderTop() {
     const t = clear($("#top"));
     const product = document.body.dataset.product || "CX Nova Agent Orchestration Layer";
     const host = D.host;
-    const MARK = "<svg viewBox='0 0 32 32' width='30' height='30' aria-hidden='true'><rect width='32' height='32' rx='7' fill='#1F3D7A'/><circle cx='9' cy='11' r='3' fill='#fff'/><path d='M9 11 L21 11 Q24 11 24 14 L24 22' stroke='#fff' stroke-width='2.4' fill='none' stroke-linecap='round'/><path d='M6 24 H26' stroke='#fff' stroke-width='2.4' stroke-linecap='round'/></svg>";
     put(t, h("a", { class: "brand", href: "#/" }, h("span", { class: "mark", html: MARK }), h("div", null, h("div", { class: "name" }, product.replace(" Agent Orchestration Layer", "")), h("div", { class: "by" }, "Agent orchestration"))),
       h("button", { class: "search", type: "button", onclick: openPalette, "aria-label": "Search, or type a goal" }, icon("search"), h("span", { class: "ph" }, "Search agents, flows and runs, or type a goal"), h("kbd", null, navigator.platform && /Mac/.test(navigator.platform) ? "⌘K" : "Ctrl K")),
       h("div", { class: "who" },
         host ? h("span", { class: "chip prov " + (host.live ? "good" : ""), title: host.live ? "Model calls go to " + host.label : "No model configured: agents answer with placeholders" }, h("span", { class: "lamp " + (host.live ? "good" : "off") }), host.live ? host.label : "Offline model") : null,
-        h("button", { class: "btn sm ghost", type: "button", title: "Switch between the midnight and paper themes", "aria-label": "Switch theme", onclick: () => { setTheme(theme() === "dark" ? "light" : "dark"); renderTop(); } }, themeIcon()),
+        h("button", { class: "btn sm ghost", type: "button", title: "Switch between the porcelain and midnight themes", "aria-label": "Switch theme", onclick: () => { setTheme(theme() === "dark" ? "light" : "dark"); renderTop(); } }, themeIcon()),
         h("span", { class: "chip" }, h("span", { class: "name" }, D.me ? D.me.customer.name : D.operator ? "Operator" : "Local"), tok() ? h("button", { class: "btn sm ghost", type: "button", style: "padding:0 4px", title: "Sign out", onclick: signOut }, "×") : null)));
   }
   function renderSpine() {
@@ -176,14 +181,20 @@
   function signOut() { try { localStorage.removeItem(ADMIN_KEY); } catch (e) {} Shop.setToken(""); location.reload(); }
   function gate(message) {
     clearInterval(liveTimer);
+    $("#app").classList.add("signed-out");   // the frame has nothing to show yet: the page is the sign-in card
     const c = clear($("#content"));
-    put(c, h("section", { class: "panel gate stack" },
-      h("h1", { style: "font-size:20px" }, "Sign in to the portal"),
-      h("p", { class: "muted small" }, "Paste the operator token to see everything, or a customer key to see that customer's agents, flows and runs. It stays in this browser only."),
-      message ? h("div", { class: "notice warn" }, message) : null,
+    const product = document.body.dataset.product || "CX Nova Agent Orchestration Layer", company = document.body.dataset.company || "Coforge";
+    const refused = tok() && message ? message : "";   // a key was sent and turned away: say why. No key yet is not an error
+    put(c, h("section", { class: "signin" },
+      h("div", { class: "signin-brand" }, h("span", { class: "mark", html: MARK }), h("div", null, h("div", { class: "nm" }, product), h("div", { class: "by" }, "by " + company))),
+      h("h1", null, "Sign in"),
+      h("p", { class: "lead" }, "Use your customer key to see your agents, flows and runs, or the operator token to see everything. It is kept in this browser only."),
+      refused ? h("div", { class: "notice bad" }, "That key was not accepted. " + refused) : null,
       h("form", { class: "stack", onsubmit: (e) => { e.preventDefault(); const v = $("#key").value.trim(); if (!v) return; if (v.startsWith("cxn_")) Shop.setToken(v); else { try { localStorage.setItem(ADMIN_KEY, v); } catch (err) {} } location.reload(); } },
-        h("label", { class: "f" }, "Token or key", h("input", { type: "password", id: "key", autocomplete: "off", required: true })),
-        h("div", { class: "row" }, h("button", { class: "btn primary", type: "submit" }, "Open the portal")))));
+        h("label", { class: "f" }, "Key or token", h("input", { type: "password", id: "key", autocomplete: "off", required: true, placeholder: "cxn_…" })),
+        h("button", { class: "btn primary", type: "submit" }, "Open the portal")),
+      h("p", { class: "xs muted" }, "No key yet? ", h("a", { href: BASE + "/shop" }, "See the agents and ask for access"), ".")));
+    const key = $("#key"); if (key) key.focus();
   }
 
   // ------------------------------------------------------------------------------------------------ the graph
@@ -356,7 +367,7 @@
   const SHARED = [["url", "Page URL"], ["audience", "Audience"], ["industry", "Industry"], ["competitors", "Competitors (comma-separated)"], ["campaign_type", "Campaign type"], ["test_idea", "Test idea"], ["question", "Question for the data"], ["dataset", "Data file"]];
   const L = { goal: "", inputs: {}, mode: "auto", plan: null, planning: false, launching: false, autoApprove: false, open: false };
   try { Object.assign(L, JSON.parse(localStorage.getItem("cxnova.launch") || "{}"), { plan: null, planning: false, launching: false }); } catch (e) {}
-  function remember() { try { const inputs = {}; for (const [k, v] of Object.entries(L.inputs)) if (!FILE_INPUTS[k]) inputs[k] = v; localStorage.setItem("cxnova.launch", JSON.stringify({ goal: L.goal, inputs, mode: L.mode, open: L.open })); } catch (e) {} }
+  function remember() { try { const inputs = {}; for (const [k, v] of Object.entries(L.inputs)) if (!FILE_KEYS.has(k)) inputs[k] = v; localStorage.setItem("cxnova.launch", JSON.stringify({ goal: L.goal, inputs, mode: L.mode, open: L.open })); } catch (e) {} }
   function launchBox(opts) {
     opts = opts || {};
     const box = h("section", { class: "goal" });
@@ -376,15 +387,16 @@
     const mustOpen = declared.some((i) => i.required) || L.mode.startsWith("agent:");
     const inputsBox = h("div", { class: "inputs-grid" + (L.open || mustOpen || opts.compact === false ? "" : " hidden") });
     const textField = (k, lbl, desc, required, example) => { const i = h("input", { type: "text", placeholder: example ? "e.g. " + example : "", "aria-label": lbl, oninput: (e) => { const v = e.target.value.trim(); if (v) L.inputs[k] = v; else delete L.inputs[k]; changed(); } }); i.value = L.inputs[k] === undefined ? "" : (typeof L.inputs[k] === "string" ? L.inputs[k] : JSON.stringify(L.inputs[k])); return h("label", { class: "f" }, h("span", null, lbl, required ? h("span", { class: "muted" }, " required") : null), desc ? h("span", { class: "xs muted", style: "font-weight:400" }, desc) : null, i); };
-    const anyField = (k, lbl, desc, required, example) => FILE_INPUTS[k] ? fileField(k, FILE_INPUTS[k][0], desc || FILE_INPUTS[k][1], L.inputs, changed, required) : textField(k, lbl, desc, required, example);
-    put(inputsBox, declared.map((i) => anyField(i.name, i.name, i.description, i.required, i.example)),
+    const anyField = (k, lbl, desc, required, example, file) => FILE_INPUTS[k] ? fileField(k, FILE_INPUTS[k][0], desc || FILE_INPUTS[k][1], L.inputs, changed, required ? "required" : "")
+      : file && file.length ? fileField(k, lbl, desc, L.inputs, changed, required ? "required" : "", file, example) : textField(k, lbl, desc, required, typeof example === "string" ? example : example === undefined || example === null ? "" : JSON.stringify(example).slice(0, 80));
+    put(inputsBox, declared.map((i) => anyField(i.name, i.name, i.description, i.required, i.example, i.file)),
       SHARED.filter(([k]) => !declared.some((i) => i.name === k)).map(([k, lbl]) => anyField(k, lbl)));
     if (L.mode.startsWith("agent:")) {  // one agent: its own contract, filled with its self-test values the first time
       const id = L.mode.slice(6);
       clear(inputsBox).append(h("div", { class: "muted small" }, "Loading the agent's inputs…"));
       agentDetails(id).then((a) => { if (L.mode !== "agent:" + id) return; const props = (a.input_schema && a.input_schema.properties) || {};
         if (!Object.keys(L.inputs).some((k) => k in props)) { Object.assign(L.inputs, a.selftest_input || {}); remember(); }
-        put(clear(inputsBox), schemaFields(props, (a.input_schema && a.input_schema.required) || [], L.inputs, changed)); }).catch((e) => clear(inputsBox).append(h("div", { class: "notice bad small" }, "Could not load the agent: " + e.message)));
+        put(clear(inputsBox), schemaFields(props, (a.input_schema && a.input_schema.required) || [], L.inputs, changed, a.input_schema)); }).catch((e) => clear(inputsBox).append(h("div", { class: "notice bad small" }, "Could not load the agent: " + e.message)));
     }
     const nInputs = () => Object.keys(L.inputs).filter((k) => L.inputs[k] !== undefined && L.inputs[k] !== "").length;
     const planBtn = h("button", { class: "btn", type: "button", onclick: preview, title: "The steps the orchestrator would run, what they cover of the goal, what they cannot do, and the likely cost. Nothing runs." }, L.planning ? "Assessing…" : "Assess and plan");
@@ -840,6 +852,7 @@
     return h("div", { class: "stack" },
       h("p", null, h("span", { class: "chip " + (lampOf(r.status) || "") }, label(r.status)), " ", r.summary || ""),
       r.error ? h("div", { class: "notice bad" }, r.error) : null,
+      groundsOf(r),
       (prov.degraded_reasons || []).length ? h("div", { class: "notice warn small" }, h("strong", null, "Degraded: "), h("ul", { style: "margin:4px 0 0;padding-left:18px" }, prov.degraded_reasons.map((x) => h("li", null, x)))) : null,
       (r.warnings || []).length ? h("div", { class: "notice warn small" }, h("strong", null, "Warnings: "), h("ul", { style: "margin:4px 0 0;padding-left:18px" }, r.warnings.map((x) => h("li", null, x)))) : null,
       h("div", { class: "row" }, h("h4", null, "Output"), h("span", { class: "right row" },
@@ -963,34 +976,86 @@
   // The text travels with the run as a run input; it is never kept in this browser's storage.
   const FILE_INPUTS = { dataset: ["Data file", "The export as CSV: Adobe Analytics Data Warehouse, GA4, any flat table. IntelliSight computes on every row."] };
   const FILE_NAMES = {};
-  function fileField(k, lbl, desc, values, onChange, required) {
-    const note = h("span", { class: "xs" }, values[k] ? "attached: " + (FILE_NAMES[k] || String(values[k]).length + " characters") : "");
-    const attached = (name) => { FILE_NAMES[k] = name; note.textContent = name ? "attached: " + name : ""; if (name && values.dataset_name) delete values.dataset_name; if (onChange) onChange(); };
-    const pick = h("input", { type: "file", accept: ".csv,.tsv,.txt,text/csv,text/plain", "aria-label": lbl, onchange: (e) => {
+  const FILE_KEYS = new Set(Object.keys(FILE_INPUTS));   // inputs that hold a file's text: never written to this browser's storage
+  const ACCEPT = { csv: ".csv,.tsv,text/csv", json: ".json,application/json", ndjson: ".ndjson,.jsonl", txt: ".txt,text/plain" };
+  const BASIS = { calculated: "calculated by code", authored: "written by the model", judgement: "the model's assessment", measured: "measurements it was given", executed: "acts on a platform" };
+  function countOf(text) {
+    const t = String(text).trim();
+    if (/^[\[{]/.test(t)) { try { const v = JSON.parse(t); return Array.isArray(v) ? v.length + " record" + (v.length === 1 ? "" : "s") : "1 record"; } catch (e) { return "JSON that does not parse yet"; } }
+    return Math.max(0, t.split("\n").filter((l) => l.trim()).length - 1) + " rows";
+  }
+  function templateFile(k, example, formats) {
+    if (typeof example === "string") { try { example = JSON.parse(example); } catch (e) { /* plain text: the template is the text */ } }
+    const rows = Array.isArray(example) ? example : null, flat = rows && rows.length && rows.every((r) => r && typeof r === "object" && Object.values(r).every((v) => v === null || typeof v !== "object"));
+    if (flat && formats.indexOf("csv") === 0) {   // a table first: the template is a CSV with the example's columns
+      const cols = [...new Set(rows.flatMap((r) => Object.keys(r)))], cell = (v) => { const t = v === null || v === undefined ? "" : String(v); return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+      return [k + "-template.csv", [cols.join(",")].concat(rows.map((r) => cols.map((c) => cell(r[c])).join(","))).join("\n") + "\n", "text/csv"];
+    }
+    return [k + "-template.json", (typeof example === "string" ? example : JSON.stringify(example, null, 2)) + "\n", "application/json"];
+  }
+  function fileField(k, lbl, desc, values, onChange, required, formats, example) {
+    FILE_KEYS.add(k);
+    const fmts = formats && formats.length ? formats : ["csv", "txt"], names = fmts.map((f) => f.toUpperCase()).join(", ");
+    const has = () => values[k] !== undefined && values[k] !== null && values[k] !== "";
+    const sizeOf = (v) => typeof v === "string" ? countOf(v) : Array.isArray(v) ? v.length + " records" : "1 record";
+    const note = h("span", { class: "xs" }, has() ? "attached: " + (FILE_NAMES[k] || sizeOf(values[k])) : "nothing attached");
+    const remove = h("button", { class: "btn sm ghost" + (has() ? "" : " hidden"), type: "button", onclick: () => { delete values[k]; pick.value = ""; paste.value = ""; attached(""); } }, "Remove");
+    const attached = (name) => { FILE_NAMES[k] = name; note.textContent = name ? "attached: " + name : "nothing attached"; remove.classList.toggle("hidden", !name); if (name && k === "dataset" && values.dataset_name) delete values.dataset_name; if (onChange) onChange(); };
+    const pick = h("input", { type: "file", accept: fmts.map((f) => ACCEPT[f] || "." + f).join(","), "aria-label": lbl, onchange: (e) => {
       const f = e.target.files && e.target.files[0]; if (!f) return;
       if (f.size > 25 * 1024 * 1024) { toast("That file is over 25 MB: export a shorter range or fewer columns"); e.target.value = ""; return; }
-      f.text().then((t) => { values[k] = t; attached(f.name + ", " + Math.max(0, t.split("\n").filter((l) => l.trim()).length - 1) + " rows"); }).catch((err) => toast("Could not read the file: " + err.message));
+      f.text().then((t) => { values[k] = t; attached(f.name + ", " + countOf(t)); }).catch((err) => toast("Could not read the file: " + err.message));
     } });
-    const paste = h("textarea", { class: "hidden", style: "min-height:70px", placeholder: "Paste the CSV text", oninput: (e) => { const v = e.target.value.trim(); if (v) values[k] = v; else delete values[k]; attached(v ? "pasted text, " + Math.max(0, v.split("\n").length - 1) + " rows" : ""); } });
+    const paste = h("textarea", { class: "hidden", style: "min-height:70px", placeholder: "Paste the " + names + " text", oninput: (e) => { const v = e.target.value.trim(); if (v) values[k] = v; else delete values[k]; attached(v ? "pasted text, " + countOf(v) : ""); } });
+    const tpl = example === undefined || example === null ? null : h("button", { class: "btn sm ghost", type: "button", title: "A file in the shape this input reads, filled with an example", onclick: () => { const [name, text, mime] = templateFile(k, example, fmts); saveBlob(new Blob([text], { type: mime }), name); } }, "Download a template");
     return h("div", { class: "f" },
-      h("label", { class: "f" }, h("span", null, lbl, required ? h("span", { class: "muted" }, " required") : null), desc ? h("span", { class: "xs muted", style: "font-weight:400" }, desc) : null, pick),
-      h("div", { class: "row small", style: "gap:10px" }, note, h("button", { class: "btn sm ghost", type: "button", onclick: () => paste.classList.toggle("hidden") }, "or paste the text")), paste);
+      h("label", { class: "f" }, h("span", null, lbl, required ? h("span", { class: "muted" }, " " + required) : null, h("span", { class: "muted", style: "font-weight:400" }, " (" + names + ")")), desc ? h("span", { class: "xs muted", style: "font-weight:400" }, desc) : null, pick),
+      h("div", { class: "row small", style: "gap:10px;flex-wrap:wrap" }, note, remove, h("button", { class: "btn sm ghost", type: "button", onclick: () => paste.classList.toggle("hidden") }, "or paste the text"), tpl), paste);
   }
-  function schemaFields(props, required, values, onChange) {
-    const req = new Set(required || []);
+  function schemaFields(props, required, values, onChange, schema) {
+    const req = new Set(required || []), defs = (schema && schema.$defs) || {}, min = (schema && schema["x-minimum"]) || [];
+    const anyOfThese = {};   // the least the agent runs on: a name, or a group any one of which will do
+    min.forEach((m) => { const names = Array.isArray(m) ? m : [m]; if (names.length === 1) req.add(names[0]); else names.forEach((n) => { anyOfThese[n] = names; }); });
+    const need = (k) => req.has(k) ? "required" : anyOfThese[k] ? "one of " + anyOfThese[k].join(", ") + " is required" : "";
+    const variants = (p) => [p].concat(p.anyOf || []).map((x) => x.$ref ? defs[x.$ref.split("/").pop()] || {} : x);
+    const choicesOf = (p) => { const v = variants(p).find((x) => Array.isArray(x.enum)); return v ? v.enum : null; };
+    const open = (p) => !p.type && Array.isArray(p.anyOf) && p.anyOf.some((x) => !Object.keys(x).length);   // any JSON value
     const kind = (p) => { const t = Array.isArray(p.type) ? p.type.find((x) => x !== "null") : p.type; return t || (p.anyOf ? (p.anyOf.find((x) => x.type && x.type !== "null") || {}).type : "string") || "string"; };
     const long = (k, p) => p.ui === "textarea" || (p.json_schema_extra && p.json_schema_extra.ui === "textarea") || /text|overview|brief|body|content|description|notes|markdown/.test(k);
-    return Object.entries(props).filter(([k]) => k !== "context").map(([k, p]) => {
-      const type = kind(p), init = values[k] !== undefined ? values[k] : p.default;
-      const set = (v) => { if (v === undefined || v === "" || (Array.isArray(v) && !v.length)) delete values[k]; else values[k] = v; if (onChange) onChange(); };
-      let input;
-      if (FILE_INPUTS[k] && type === "string") return fileField(k, k, p.description ? String(p.description).slice(0, 140) : FILE_INPUTS[k][1], values, onChange, req.has(k));
-      if (type === "boolean") { input = h("input", { type: "checkbox", checked: !!init, onchange: (e) => set(e.target.checked) }); if (init !== undefined) values[k] = !!init; }
-      else if (type === "array" || type === "object") { input = h("textarea", { style: "min-height:60px", oninput: (e) => { const v = e.target.value.trim(); if (!v) return set(undefined); try { set(JSON.parse(v)); } catch (err) { set(type === "array" ? v.split(",").map((x) => x.trim()).filter(Boolean) : v); } } }); input.value = init === undefined ? "" : JSON.stringify(init, null, 1); }
-      else if (long(k, p) && type === "string") { input = h("textarea", { style: "min-height:70px;font-family:var(--font);font-size:13px", oninput: (e) => set(e.target.value.trim() || undefined) }); input.value = init === undefined || init === null ? "" : String(init); }
-      else { input = h("input", { type: type === "number" || type === "integer" ? "number" : "text", oninput: (e) => { const v = e.target.value.trim(); set(v === "" ? undefined : (type === "number" || type === "integer") ? Number(v) : v); } }); input.value = init === undefined || init === null ? "" : String(init); }
-      return h("label", { class: "f" }, h("span", null, k, req.has(k) ? h("span", { class: "muted" }, " required") : null), p.description ? h("span", { class: "xs muted", style: "font-weight:400" }, String(p.description).slice(0, 140)) : null, input);
+    const none = (v) => v === undefined || v === null;
+    // an input that belongs to some of the agent's actions is shown only while one of them is chosen
+    const firstAction = props.action ? (choicesOf(props.action) || [])[0] : undefined, made = [];
+    const showFor = () => { const now = values.action || firstAction; made.forEach(([el, acts]) => el.classList.toggle("hidden", !!acts && !!now && acts.indexOf(now) < 0)); };
+    const out = Object.entries(props).filter(([k]) => k !== "context").map(([k, p]) => {
+      const el = field(k, p); made.push([el, p["x-actions"]]); return el;
     });
+    showFor();
+    return out;
+    function field(k, p) {
+      const type = kind(p), init = values[k] !== undefined ? values[k] : p.default, choices = choicesOf(p);
+      const set = (v) => { if (v === undefined || v === "" || (Array.isArray(v) && !v.length)) delete values[k]; else values[k] = v; if (k === "action") showFor(); if (onChange) onChange(); };
+      let input;
+      if (FILE_INPUTS[k] && type === "string") return fileField(k, k, p.description ? String(p.description).slice(0, 140) : FILE_INPUTS[k][1], values, onChange, need(k));
+      if (p["x-file"]) return fileField(k, k, p.description ? String(p.description).slice(0, 320) : "", values, onChange, need(k), p["x-file"], (p.examples || [])[0]);
+      if (choices) { input = h("select", { onchange: (e) => set(e.target.value || undefined) }, h("option", { value: "" }, "not set"), choices.map((c) => h("option", { value: c }, String(c).replace(/_/g, " ")))); input.value = none(init) ? "" : String(init); }
+      else if (type === "boolean") { input = h("input", { type: "checkbox", checked: !!init, onchange: (e) => set(e.target.checked) }); if (!none(init)) values[k] = !!init; }
+      else if (type === "array" || type === "object" || open(p)) { input = h("textarea", { style: "min-height:60px", placeholder: open(p) ? "JSON, or plain text" : "", oninput: (e) => { const v = e.target.value.trim(); if (!v) return set(undefined); try { set(JSON.parse(v)); } catch (err) { set(type === "array" ? v.split(",").map((x) => x.trim()).filter(Boolean) : v); } } }); input.value = none(init) ? "" : typeof init === "string" ? init : JSON.stringify(init, null, 1); }
+      else if (long(k, p) && type === "string") { input = h("textarea", { style: "min-height:70px;font-family:var(--font);font-size:13px", oninput: (e) => set(e.target.value.trim() || undefined) }); input.value = none(init) ? "" : String(init); }
+      else { input = h("input", { type: type === "number" || type === "integer" ? "number" : "text", oninput: (e) => { const v = e.target.value.trim(); set(v === "" ? undefined : (type === "number" || type === "integer") ? Number(v) : v); } }); input.value = none(init) ? "" : String(init); }
+      return h("label", { class: "f" }, h("span", null, k, need(k) ? h("span", { class: "muted" }, " " + need(k)) : null), p.description ? h("span", { class: "xs muted", style: "font-weight:400" }, String(p.description).slice(0, choices ? 320 : 140)) : null, input);
+    }
+  }
+  // what a result rests on, said next to it: the basis of its figures, a dry run, what was read and what would sharpen it
+  function groundsOf(r) {
+    const prov = (r && r.provenance) || {}, given = prov.inputs || {}, out = [];
+    const chips = [prov.basis && BASIS[prov.basis] ? h("span", { class: "chip", title: "What the figures in this result rest on" }, BASIS[prov.basis]) : null,
+      r && r.output && r.output.dry_run ? h("span", { class: "chip warn" }, "dry run: nothing was run or changed") : null,
+      prov.demo_data ? h("span", { class: "chip warn" }, "demo data, not yours") : null].filter(Boolean);
+    if (chips.length) out.push(h("div", { class: "row", style: "gap:6px;flex-wrap:wrap" }, chips));
+    const read = Object.entries(given.records || {}).map(([k, n]) => k + ": " + n + " record" + (n === 1 ? "" : "s"));
+    const helps = Object.entries(given.recommended_missing || {}).map(([k, v]) => k + " has no " + v.join(", "));
+    if (read.length || helps.length || (given.notes || []).length) out.push(h("p", { class: "xs muted", style: "margin:0" }, [read.length ? "Read " + read.join("; ") + ". " : "", helps.length ? "It would be sharper with: " + helps.join("; ") + ". " : "", (given.notes || []).join("; ")].join("")));
+    return out;
   }
   VIEWS.agents = function (c, params, q) {
     if (params[0]) return agentDetail(c, params[0]);
@@ -1026,7 +1091,7 @@
     Promise.all([agentDetails(id), api("/runs?agent=" + encodeURIComponent(id) + "&limit=12").catch(() => [])]).then(([a, history]) => {
       const props = (a.input_schema && a.input_schema.properties) || {};
       const values = Object.assign({}, a.selftest_input || {});
-      const fields = schemaFields(props, (a.input_schema && a.input_schema.required) || [], values);
+      const fields = schemaFields(props, (a.input_schema && a.input_schema.required) || [], values, null, a.input_schema);
       const out = h("div", { id: "agent-run-out" });
       async function runNow(btn) {
         const inputs = Object.assign({}, values);
@@ -1036,7 +1101,9 @@
           clear(out).append(h("div", { class: "panel stack", style: "margin-top:10px" },
             h("div", { class: "row" }, h("span", { class: "chip " + (lampOf(r.status) || "") }, label(r.status)), h("span", null, r.summary || ""), r.run_id ? h("a", { class: "right small", href: "#/runs/" + encodeURIComponent(r.run_id) }, "Open as a run") : null),
             r.error ? h("div", { class: "notice bad" }, r.error) : null,
+            groundsOf(r),
             (r.provenance && r.provenance.degraded_reasons || []).length ? h("div", { class: "notice warn small" }, r.provenance.degraded_reasons.join("; ")) : null,
+            (r.warnings || []).length ? h("div", { class: "notice warn small" }, r.warnings.join("; ")) : null,
             (r.artifacts || []).length ? h("div", { class: "files" }, r.artifacts.map((f) => { const rel = String(f.path || "").replace(/^[^/]+\//, ""), name = rel.split("/").pop(); return h("div", { class: "f" }, h("div", null, h("div", { class: "strong small" }, name), h("div", { class: "xs muted" }, f.description || f.mime)), h("div", { class: "row" }, h("button", { class: "btn sm", type: "button", onclick: () => preview(rel, f.mime, name, r.run_id, $("#agent-preview")) }, "Preview"), h("button", { class: "btn sm", type: "button", onclick: () => download(rel, name, r.run_id) }, "Download"))); })) : null,
             h("div", { class: "preview", id: "agent-preview" }),
             (r.pending_actions || []).length ? h("div", { class: "notice warn small" }, r.pending_actions.length + " action(s) proposed and held: " + r.pending_actions.map((x) => x.summary).join("; ") + ". Approve from the run page.") : null,
@@ -1057,11 +1124,14 @@
             h("section", { class: "panel" }, h("h2", { style: "font-size:16px;margin-bottom:10px" }, "Run it here"),
               h("p", { class: "small muted", style: "margin-bottom:10px" }, "The fields are the agent's contract, filled with its self-test values. Anything that publishes or sends is held for approval."),
               h("div", { class: "form-grid" }, fields),
+              (a.minimum || []).length ? h("p", { class: "xs muted", style: "margin-top:8px" }, "The least it runs on: " + a.minimum.map((m) => Array.isArray(m) ? m.join(" or ") : m).join("; ") + ". With less it stops and says what is missing; it does not fill the gap.") : null,
               h("div", { class: "row", style: "margin-top:12px" }, runBtn, h("a", { class: "btn", href: "#/launch?agent=" + encodeURIComponent(id) }, "Open in Launch"), h("a", { class: "btn ghost", href: BASE + "/shop/designer", target: "_blank", rel: "noopener" }, "Add to a flow"),
                 a.pack === "made" && (D.operator || !D.me) ? h("button", { class: "btn ghost right", type: "button", style: "color:var(--shu)", onclick: async () => { if (!window.confirm("Remove " + a.name + " from the catalog? Its earlier runs keep their records.")) return; try { await api("/agents/made/" + encodeURIComponent(id), { method: "DELETE" }); await loadCatalog(); toast(a.name + " removed"); navigate("#/agents"); } catch (e) { toast("Could not remove: " + e.message, 6000); } } }, "Remove this agent") : null), out),
             h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "History", h("span", { class: "muted", style: "font-size:13px;font-weight:400;margin-left:8px" }, history.length ? "runs that used this agent" : "")),
               history.length ? recentRuns(history) : h("p", { class: "muted small" }, "No run has used this agent yet."), history.length >= 12 ? h("p", { class: "small", style: "margin-top:8px" }, h("a", { href: "#/runs?agent=" + encodeURIComponent(id) }, "All runs with this agent")) : null)),
           h("div", { class: "stack-lg" },
+            (a.capabilities || []).length ? h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "What it can do"),
+              h("div", { class: "stack" }, a.capabilities.map((cap) => h("div", { class: "small" }, h("div", { class: "strong" }, cap.name || cap.id), h("div", null, cap.predicts || cap.does || ""), cap.needs ? h("div", { class: "xs muted" }, "Needs " + cap.needs) : null)))) : null,
             h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "Contract"), h("dl", { class: "kv" },
               h("dt", null, "Produces"), h("dd", null, (a.produces || []).length ? a.produces.join(", ") : "structured output"),
               h("dt", null, "Output fields"), h("dd", null, Object.keys((a.output_schema && a.output_schema.properties) || {}).map((k) => h("code", null, k))),
@@ -1072,7 +1142,7 @@
               h("dt", null, "Typical cost"), h("dd", null, typicalCost(id) ? "about " + money(typicalCost(id).avg_cost_usd) + " a run, the mean of its last " + typicalCost(id).runs + " run(s)" : "no priced run yet"),
               a.feeds && a.feeds.length ? h("dt", null, "Feeds") : null, a.feeds && a.feeds.length ? h("dd", null, a.feeds.map((f, i) => [i ? ", " : "", h("a", { href: "#/agents/" + f }, agent(f).name)])) : null,
               a.pack_name ? h("dt", null, "Source") : null, a.pack_name ? h("dd", null, a.pack_name + (a.accelerator ? ", " + a.accelerator : "")) : null,
-              (a.actions || []).length ? h("dt", null, "Actions") : null, (a.actions || []).length ? h("dd", null, a.actions.map((x) => h("div", { class: "small" }, h("code", null, x.id), x.title ? " " + x.title : ""))) : null)),
+              (a.actions || []).length ? h("dt", null, "Actions") : null, (a.actions || []).length ? h("dd", null, a.actions.map((x) => h("div", { class: "small" }, h("code", null, x.id), x.title ? " " + x.title : "", x.basis && BASIS[x.basis] ? h("span", { class: "xs muted" }, " · " + BASIS[x.basis]) : null))) : null)),
             (a.use_cases || []).length ? h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "Typical asks"), h("ul", { class: "small", style: "margin:0;padding-left:18px" }, a.use_cases.map((u) => h("li", { style: "margin-bottom:4px" }, u)))) : null,
             a.independence ? h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "How it stays vendor-neutral"), h("p", { class: "small" }, a.independence)) : null,
             h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "Call it from your tools"), h("pre", { class: "xs" }, "POST " + BASE + "/agents/" + id + "/run\nMCP tool: run_" + id + "\nA2A skill: " + id)))));

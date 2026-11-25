@@ -63,7 +63,13 @@ class Connector:
         value = self.config.get(key, default)
         if value is None:
             raise ConnectorNotConfigured(f"{self.kind}:{self.provider} needs '{key}' in settings.connectors.{self.kind}")
-        return self.settings.resolve(value)
+        resolved = self.settings.resolve(value)
+        try:   # the bundled demo data is not the caller's: a run that read it says so (see BaseAgent.run)
+            if Path(resolved).resolve().is_relative_to(Path(self.settings.sample_data).resolve()):
+                self.hub.demo[f"{self.kind}:{self.provider}"] = str(value)
+        except Exception:  # pragma: no cover - a hub or settings without these is a test double
+            pass
+        return resolved
 
     def require(self, *keys: str) -> dict[str, Any]:
         missing = [k for k in keys if not self.config.get(k)]

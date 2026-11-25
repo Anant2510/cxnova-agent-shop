@@ -140,7 +140,7 @@ def dispatch(state: OrchestratorState) -> list[Send] | Literal["approve"]:
     if not ready:
         return "approve"
     return [Send("run_step", {"step": s, "goal": state.get("goal", ""), "inputs": state.get("inputs") or {},
-                              "results": results, "request": state.get("request") or {}}) for s in ready]
+                              "results": results, "request": state.get("request") or {}, "steps": len(state.get("plan") or [])}) for s in ready]
 
 
 def run_step(payload: dict[str, Any], runtime: Runtime[RunContext]) -> dict[str, Any]:
@@ -185,7 +185,7 @@ def run_step(payload: dict[str, Any], runtime: Runtime[RunContext]) -> dict[str,
         ctx.tracer.event("orchestrator.step.start", step=step["id"], agent=agent.spec.id)
         t0 = time.perf_counter()
         started_at = _iso()
-        result = agent.run(step_inputs, ctx, upstream=upstream, options={"auto_approve": auto, "step_id": step["id"]})
+        result = agent.run(step_inputs, ctx, upstream=upstream, options={"auto_approve": auto, "step_id": step["id"], "flow_steps": int(payload.get("steps") or 1)})
     data = result.model_dump(mode="json")
     data["step_inputs"] = step_inputs
     # what a run viewer shows: when the step ran, and which earlier steps' work it could read (its dependencies last)

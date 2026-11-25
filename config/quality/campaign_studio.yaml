@@ -1,0 +1,78 @@
+# What the figures of each Campaign Studio action rest on (see caf.packs.model: basis), and the least each data-reading agent
+# runs on. In the studio itself these are computed by the studio (runner `home`, when it is connected and a campaign id is
+# given). Modelled on this layer, an agent has only what the caller gives it:
+#   measured  campaign results, the campaign history, the asset library: observations of the studio's own data. Modelled, the
+#             agent may only repeat figures found in its inputs (the `evidence` inputs), and says so when there are none.
+#   judgement forecasts and synthetic-persona scores: the model's assessment, labelled as one.
+#   executed  the three actions that act on Adobe or on the audience are already `needs_home` in the pack: dry runs here.
+basis:
+  measured:
+    - cs_measurement.measure_and_learn          # sends, opens, clicks, conversions by persona
+    - cs_foresight_history.find_similar_and_fit # past campaigns and how each segment responded
+    - cs_taxonomy_reuse.find_reusable           # a search of the asset library
+  judgement:
+    - cs_market_insight.propose_actions         # forecasts with probabilities
+    - cs_foresight_evaluation.score_variants    # a synthetic persona's scores: a rehearsal, by design
+    - cs_foresight_research.rewrite_low_scorers # rewrites with a predicted score
+    - cs_compliance_check.run_rule_pack         # the studio measures the artwork; a model can only judge the text
+    - cs_design_velocity_check.brand_design_check
+  authored:
+    - cs_brief_intake.*
+    - cs_routing.*
+    - cs_foresight_persona.*
+    - cs_xtender_variants.*
+    - cs_legal_market_rules.*
+    - cs_legal_hq_code.*
+    - cs_legal_claims.*
+evidence:
+  cs_measurement.measure_and_learn: [results]
+  cs_foresight_history.find_similar_and_fit: [history]
+  cs_taxonomy_reuse.find_reusable: [library]
+minimum:
+  cs_market_insight: [signals]                         # a forecast needs the signals it reads; a market's name is not data
+  cs_measurement: [[campaign_id, results]]
+  cs_foresight_history: [[campaign_id, history]]
+  cs_taxonomy_reuse: [[campaign_id, library]]
+  cs_consent_identity: [[campaign_id, audience_id, audience]]
+# What each data-reading agent's self-test runs on: a small invented sample (a fictional UK insurer), so that a check of the
+# agent exercises it on data rather than on a bare request. None of it describes a real campaign.
+selftest:
+  cs_market_insight:
+    market: UK
+    signals:
+      - {week: 2026-W43, segment: "home policyholders 55+", renewal_quotes: 1840, renewals: 1310, avg_premium_change_pct: 6.5}
+      - {week: 2026-W44, segment: "home policyholders 55+", renewal_quotes: 1795, renewals: 1198, avg_premium_change_pct: 6.5}
+      - {week: 2026-W44, segment: "first-time buyers", renewal_quotes: 640, renewals: 512, avg_premium_change_pct: 2.0}
+      - {source: public, note: "Flood warnings issued for three regions in week 44"}
+  cs_measurement:
+    results:
+      - {persona: "Established homeowners", channel: email, sends: 12400, opens: 4712, clicks: 868, conversions: 151}
+      - {persona: "Established homeowners", channel: web, sends: 0, visits: 3120, clicks: 402, conversions: 73}
+      - {persona: "First-time buyers", channel: email, sends: 5300, opens: 1431, clicks: 212, conversions: 19}
+  cs_taxonomy_reuse:
+    library:
+      - {id: AST-1042, title: "Flood-ready home cover: renewal email", market: UK, product: home, channel: email, objective: retention, status: approved}
+      - {id: AST-0987, title: "Storm season checklist landing page", market: UK, product: home, channel: web, objective: engagement, status: approved}
+      - {id: AST-0711, title: "Motor renewal reminder SMS", market: UK, product: motor, channel: sms, objective: retention, status: retired}
+  cs_foresight_history:
+    history:
+      - code: UK-HOME-RET-2025Q4
+        name: "Winter-ready renewal"
+        market: UK
+        objective: retention
+        channels: [email, web]
+        outcome: {sent: 18200, open_rate: 0.36, conv_rate: 0.011, lift_pct: 3.2}
+        by_segment:
+          - {segment: "Established homeowners", open_rate: 0.41, conv_rate: 0.014}
+          - {segment: "First-time buyers", open_rate: 0.27, conv_rate: 0.006}
+      - code: UK-HOME-ACQ-2026Q1
+        name: "New home, new cover"
+        market: UK
+        objective: acquisition
+        channels: [email, social]
+        outcome: {sent: 9400, open_rate: 0.29, conv_rate: 0.007, lift_pct: 1.1}
+        by_segment:
+          - {segment: "First-time buyers", open_rate: 0.33, conv_rate: 0.009}
+  cs_consent_identity:
+    channel: email
+    audience: {total: 48200, consented_email: 39100, verified_identity: 36550, suppressed: 2140, consent_unknown: 6960}

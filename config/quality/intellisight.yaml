@@ -1,0 +1,17 @@
+# IntelliSight's agents are code (src/caf/accelerators/intellisight.py): the figures are computed on every row of the dataset.
+# The Decision Layer writes its recommendations from those computed facts (one model call; offline a plain reading), so its
+# action is authored on calculated evidence.
+basis:
+  calculated:
+    - is_data_interpreter.*
+    - is_analytics_engine.*
+    - is_custom_report.*
+    - is_analytics_chat.*       # the model writes a query plan and narrates; the engine computes the answer
+  authored:
+    - is_recommendations.*
+minimum:
+  is_data_interpreter: [[dataset, dataset_name]]
+  is_analytics_engine: [[dataset, dataset_name]]
+  is_custom_report: [[dataset, dataset_name]]
+  is_recommendations: [[analysis, dataset, dataset_name]]
+  is_analytics_chat: [question, [dataset, dataset_name]]

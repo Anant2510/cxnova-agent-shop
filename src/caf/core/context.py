@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import threading
@@ -107,6 +108,71 @@ class Meter:
         return snap
 
 
+# The skills that describe one company, and the parts of each that are that company's facts (None: all of it). The rest of such a
+# skill is rules any company keeps: style limits, AP abbreviations, the SQL dialect.
+COMPANY_SKILLS: dict[str, tuple[str, ...] | None] = {
+    "brand_voice": None,
+    "press_boilerplate": ("organisation", "legal_name", "name_variants", "headquarters_dateline", "boilerplate", "media_contact",
+                          "disclaimers", "distribution"),
+    "translation_glossary": ("translation_memory", "do_not_translate", "terms"),
+    "semantic_layer": ("description", "entities", "joins", "metrics", "synonyms", "examples"),
+}
+DEMO_COMPANY = "Meridian Mutual"   # the fictional company the bundled skills and sample data describe
+
+
+def _own_skill(customer: str, name: str, settings: Any) -> Any:
+    """The customer's own version of a skill, from their workspace (caf.packs.workspace), or None."""
+    try:
+        from ..packs.workspace import load
+
+        own = (load(customer, settings).get("skills") or {}).get(name)
+    except Exception:  # an unreadable workspace is no workspace
+        return None
+    return own if isinstance(own, (dict, list)) and own else None
+
+
+def _blank(value: Any) -> Any:
+    """The same shape with nothing in it: every key an agent or a template reads is there, and says nothing."""
+    if isinstance(value, dict):
+        return {k: _blank(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return []
+    return "" if isinstance(value, str) else value
+
+
+def _without_company(name: str, value: dict[str, Any]) -> dict[str, Any]:
+    """A company skill with the bundled company's facts taken out and its rules kept: what a customer's own facts are laid on."""
+    facts = COMPANY_SKILLS[name]
+    return {k: (_blank(v) if facts is None or k in facts else v) for k, v in value.items()}
+
+
+class OwnSkillError(ValueError):
+    """A customer's own version of a skill does not have the shape of the skill it stands in for."""
+
+    user_facing = True
+
+
+def _overlay(base: Any, own: Any, path: str) -> Any:
+    if isinstance(base, dict):
+        if not isinstance(own, dict):
+            raise OwnSkillError(f"`{path}` in your workspace's skills must be a set of named values, as it is in this layer's own "
+                                f"`{path.split('.')[0]}` skill; what is saved there is {'a list' if isinstance(own, list) else 'a single value'}")
+        return {**base, **{k: _overlay(base.get(k), v, f"{path}.{k}") for k, v in own.items()}}
+    if isinstance(base, list) and not isinstance(own, list):
+        raise OwnSkillError(f"`{path}` in your workspace's skills must be a list, as it is in this layer's own `{path.split('.')[0]}` skill")
+    return own
+
+
+def own_skill(name: str, value: Any, own: Any) -> Any:
+    """A customer's own version of a skill laid over the server's: they state what differs and the rest stands.
+
+    For a skill that describes a company, the bundled company's facts are taken out first, so nothing of another company's
+    shows through what the customer did not state."""
+    if not isinstance(value, dict):
+        return own
+    return _overlay(_without_company(name, value) if name in COMPANY_SKILLS else value, own, name)
+
+
 @dataclass
 class RunContext:
     run_id: str
@@ -123,6 +189,7 @@ class RunContext:
     options: dict[str, Any] = field(default_factory=dict)
     meter: Meter = field(default_factory=Meter)
     used_connectors: set[str] = field(default_factory=set)
+    demo_profile: set[str] = field(default_factory=set)   # company skills a customer's run took from the bundled demo company
     approvals: Any = None  # orchestrated runs: the run's approvals ledger (caf.orchestrator.service.RunApprovals)
 
     # ---- construction -----------------------------------------------------------------------
@@ -161,6 +228,7 @@ class RunContext:
             artifacts=self.artifacts.for_agent(agent_id),
             meter=Meter(),
             used_connectors=set(),
+            demo_profile=set(),
         )
 
     # ---- helpers for agent stages -----------------------------------------------------------
@@ -168,7 +236,23 @@ class RunContext:
         self.tracer.event("agent.log", agent=self.agent_id, message=message, **data)
 
     def skill(self, name: str, default: Any = ...) -> Any:
-        return self.skills.get(name, default)
+        """A skill by name: the server's, or the caller's own where they saved one in their workspace (`skills: {name: {...}}`).
+
+        A customer's own version is laid over the server's, so they state only what differs (their UTM convention, their
+        channels). The skills that describe a company (brand voice, press boilerplate, glossary, semantic layer) are laid
+        over that skill with the bundled company's facts taken out: a customer's work is never written in another company's
+        voice. When a customer's run does fall back to the bundled demo company, it is noted and the result says so
+        (BaseAgent.run)."""
+        value = self.skills.get(name, default)
+        customer = self.options.get("customer_id")
+        if not customer:
+            return value
+        own = _own_skill(customer, name, self.settings)
+        if own is not None:
+            return own_skill(name, value, own)
+        if name in COMPANY_SKILLS and isinstance(value, (dict, list)) and DEMO_COMPANY in json.dumps(value, default=str):
+            self.demo_profile.add(name)
+        return value
 
     def connector(self, kind: str, provider: str | None = None) -> Any:
         conn = self.connectors.get(kind, provider)
@@ -177,7 +261,7 @@ class RunContext:
 
     @property
     def brand(self) -> dict[str, Any]:
-        return self.skills.get("brand_voice", {})
+        return self.skill("brand_voice", {})
 
     @property
     def policy(self) -> Policy:

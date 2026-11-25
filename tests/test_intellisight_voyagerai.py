@@ -4,6 +4,8 @@ journey with each stage's output bound into the next; both packs are planner-pic
 from __future__ import annotations
 
 import csv
+import json
+from pathlib import Path
 
 import pytest
 
@@ -11,7 +13,7 @@ from caf.accelerators import intellisight as isx
 
 from test_runs import ADMIN, shop_client  # noqa: E402,F401  (the API fixture)
 
-SAMPLE = "sample_data/intellisight/westjet_adobe_analytics_sample.csv"
+SAMPLE = "sample_data/intellisight/xperion_adobe_analytics_sample.csv"
 
 
 @pytest.fixture()
@@ -26,7 +28,7 @@ def sample(packs):
 
 def test_interpreter_classifies_the_adobe_way(sample):
     path, rows = sample
-    ds = isx.parse_csv(path.read_text(encoding="utf-8"), name="westjet", industry="Airlines & Travel")
+    ds = isx.parse_csv(path.read_text(encoding="utf-8"), name="xperion", industry="Airlines & Travel")
     assert len(ds.rows) == len(rows) and ds.date_col() == "Date" and ds.years() == ["2023", "2024"]
     assert "eVar4" in ds.evars and "event9" in ds.events and "event9" in ds.key_events and "Hit Type" in ds.dimensions
     assert ds.label("eVar4") == "Marketing Channel" and ds.label("event9") == "Booking Revenue" and ds.column_for("Booking Revenue") == "event9"
@@ -37,7 +39,7 @@ def test_interpreter_classifies_the_adobe_way(sample):
 
 def test_engine_sums_every_row_and_uses_intellisight_formulas(sample):
     path, rows = sample
-    ds = isx.parse_csv(path.read_text(encoding="utf-8"), name="westjet")
+    ds = isx.parse_csv(path.read_text(encoding="utf-8"), name="xperion")
     a = isx.analyse(ds)
     rev = next(k for k in a["kpis"] if k["column"] == "event9")
     expect = sum(float(r["event9"] or 0) for r in rows)
@@ -59,14 +61,14 @@ def test_engine_sums_every_row_and_uses_intellisight_formulas(sample):
 
 
 def test_intellisight_agents_run_as_code_hand_the_dataset_on_and_fail_plainly(packs, shop_client):
-    v = shop_client.post("/flows/is_executive_review/run", json={"inputs": {"dataset_name": "westjet"}, "wait_s": 120}, headers=ADMIN).json()
+    v = shop_client.post("/flows/is_executive_review/run", json={"inputs": {"dataset_name": "xperion"}, "wait_s": 120}, headers=ADMIN).json()
     assert v["status"] == "completed" and [s["status"] for s in v["steps"]] == ["ok", "ok", "ok"]
     interp, engine, recs = (s["result"] for s in v["steps"])
     assert interp["output"]["runner"] == "code" and interp["output"]["result"]["dataset_file"].endswith("/dataset.csv")
     assert engine["output"]["runner"] == "code" and engine["output"]["result"]["rows"] == 1800 and "degraded_reasons" not in engine["provenance"]
     assert recs["output"]["result"]["method"] == "offline" and recs["output"]["result"]["based_on"]["rows"] == 1800   # the engine's facts reached it
     assert recs["output"]["runner"] == "code" and any(a["name"] == "recommendations.json" for a in recs["artifacts"])
-    q = shop_client.post("/flows/is_question/run", json={"inputs": {"dataset_name": "westjet", "question": "How did Booking Revenue trend by month?"}, "wait_s": 120}, headers=ADMIN).json()
+    q = shop_client.post("/flows/is_question/run", json={"inputs": {"dataset_name": "xperion", "question": "How did Booking Revenue trend by month?"}, "wait_s": 120}, headers=ADMIN).json()
     ans = q["steps"][1]["result"]["output"]["result"]
     assert q["status"] == "completed" and ans["plan"]["grain"] == "monthly" and ans["chart"]["type"] == "line" and "no model" in ans["answer_markdown"]
     bad = shop_client.post("/agents/is_analytics_engine/run", json={"inputs": {"dataset": "not a csv"}}, headers=ADMIN).json()
@@ -76,16 +78,26 @@ def test_intellisight_agents_run_as_code_hand_the_dataset_on_and_fail_plainly(pa
 
 
 def test_voyagerai_journey_binds_each_stage_into_the_next(packs, shop_client):
-    body = {"inputs": {"signals": [{"source": "PSS / Amadeus", "event": "3 disruptions in 28 days", "severity": "high"}],
-                       "passenger": {"name": "Elena Chen", "tier": "Platinum Elite", "hub": "SIN"}}, "wait_s": 120}
+    elena = json.loads((Path(__file__).resolve().parents[1] / "sample_data" / "voyagerai" / "passenger_elena_chen.json").read_text(encoding="utf-8"))
+    body = {"inputs": {"signals": elena["history"], "passenger": elena}, "wait_s": 120}
     v = shop_client.post("/flows/vai_churn_prevention/run", json=body, headers=ADMIN).json()
     assert v["status"] == "completed" and [s["id"] for s in v["steps"]] == ["ingest", "model", "identity", "score", "offer", "creatives", "activate", "feedback"]
     got = {s["id"]: s["result"]["step_inputs"] for s in v["steps"]}
     assert got["score"]["objective"] == "churn" and got["creatives"]["tone"] == "premium-appreciative"
     assert got["creatives"]["offer"] and got["activate"]["creatives"] and got["feedback"]["activation"]   # the stages' outputs, bound
-    act = next(s for s in v["steps"] if s["id"] == "activate")["result"]
+    done = {s["id"]: s["result"] for s in v["steps"]}
+    # the four data stages are code: the score is calculated from the events ingestion typed, never written by a model
+    assert all(done[s]["output"]["runner"] == "code" and done[s]["provenance"]["basis"] == "calculated" for s in ("ingest", "model", "identity", "score"))
+    assert done["score"]["output"]["result"]["score"] == 0.8854 and done["score"]["output"]["result"]["decision"] == "RETAIN CRITICAL"
+    act = done["activate"]
     assert act["output"]["dry_run"] is True   # the channels are not connected: the send is a dry run, said so
     assert any("dry run" in r for r in act["provenance"]["degraded_reasons"])
+    # a name and a tier are not data to predict from: the score stage stops the journey and says what to add
+    thin = {"inputs": {"signals": [{"source": "PSS / Amadeus", "event": "3 disruptions in 28 days", "severity": "high"}],
+                       "passenger": {"name": "Elena Chen", "tier": "Platinum Elite", "hub": "SIN"}}, "wait_s": 120}
+    t = shop_client.post("/flows/vai_churn_prevention/run", json=thin, headers=ADMIN).json()
+    scored = next(s for s in t["steps"] if s["id"] == "score")["result"]
+    assert t["status"] != "completed" and scored["status"] == "error" and "cannot be calculated" in scored["error"]
     packs = {p["id"]: p for p in shop_client.get("/packs", headers=ADMIN).json()}
     assert packs["voyagerai"]["agents"] == 8 and packs["voyagerai"]["flows"] == 4 and packs["voyagerai"]["tag"] == "VAI"
 

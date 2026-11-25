@@ -12,6 +12,7 @@ the customer to run the flow as a whole, not to call its agents one by one; thos
 
 from __future__ import annotations
 
+import json
 import re
 from datetime import datetime, timezone
 from typing import Any
@@ -31,6 +32,7 @@ class FlowInput(BaseModel):
     description: str = ""
     required: bool = False
     example: str = ""
+    file: list[str] = Field(default_factory=list, description="the input reads a file's contents in these formats (json, csv, ndjson, txt): the portal offers a picker")
 
     @field_validator("name")
     @classmethod
@@ -156,8 +158,11 @@ def validate_flow(flow: Flow) -> list[str]:
 
 def flow_from_playbook(pb: Any) -> Flow:
     defs = [d for d in (getattr(pb, "input_defs", None) or []) if d.get("name")]
+    def text(ex: Any) -> str:   # a structured example travels as JSON text, so a template made from it is valid JSON
+        return json.dumps(ex, ensure_ascii=False) if isinstance(ex, (dict, list)) else str(ex or "")
+
     inputs = [FlowInput(name=d["name"], description=str(d.get("description") or ""), required=bool(d.get("required")),
-                        example=str(d.get("example") or "")) for d in defs] or [FlowInput(name=n) for n in pb.inputs]
+                        example=text(d.get("example")), file=[str(f) for f in d.get("file") or []]) for d in defs] or [FlowInput(name=n) for n in pb.inputs]
     return Flow(id=pb.id, name=pb.name, description=pb.description, triggers=list(pb.triggers),
                 inputs=inputs, status="published", source="builtin", pack=getattr(pb, "pack", "") or "", pack_name=getattr(pb, "pack_name", "") or "",
                 steps=[FlowStep(id=s.id, agent=s.agent, purpose=s.purpose, inputs=dict(s.inputs), needs=list(s.needs)) for s in pb.steps])

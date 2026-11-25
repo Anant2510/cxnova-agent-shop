@@ -55,6 +55,7 @@ class ConnectorHub:
         self.settings = settings
         self.llm = llm
         self._cache: dict[tuple[str, str], Connector] = {}
+        self.demo: dict[str, str] = {}   # "kind:provider" -> the bundled sample path it read in this run
         self._lock = threading.Lock()
 
     def provider_for(self, kind: str) -> str:

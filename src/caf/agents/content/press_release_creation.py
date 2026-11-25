@@ -464,8 +464,9 @@ class PressReleaseAgent(BaseAgent):
             if critical:
                 warnings.append("Newswire distribution not proposed: fix the critical checks first ("
                                 + "; ".join(c["rule"] for c in critical) + ").")
+            elif not (regions := list(inp.get("regions") or (rec.get("distribution") or {}).get("default_regions", ["US"]))):
+                warnings.append("Newswire distribution not proposed: no `regions` were given and the press record names no default regions.")
             else:
-                regions = list(inp.get("regions") or rec.get("distribution", {}).get("default_regions", ["US"]))
                 wire_body = (f"{data['release_label']}\n\n" + (f"_{draft.subheadline}_\n\n" if draft.subheadline else "") + body)
                 note = f" ({len(failed)} validation issue(s) - review before approving)" if failed else ""
                 actions.append(PendingAction(

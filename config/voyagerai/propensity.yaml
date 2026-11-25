@@ -1,0 +1,389 @@
+# VoyagerAI propensity models: what the Predictive Propensity Agent can predict, and from which parameters.
+#
+# Every prediction is a scorecard: logit(score) = logit(base_rate) + sum over the parameters present of
+# weight * (x - x_reference), where x is the parameter's value placed between `low` (0) and `high` (1). A parameter that is
+# not in the data contributes nothing and lowers the confidence instead. The score is that logit as a probability.
+#
+# THE WEIGHTS BELOW ARE PRIORS, NOT FITTED TO ANYONE'S DATA. They encode the direction and rough size of each effect as
+# airline loyalty teams describe them, so the agent is useful on day one and every score can be explained. A customer's own
+# model replaces them: `calibrate` fits the weights to the customer's labelled outcomes (logistic regression, validated on a
+# holdout) and, when asked to save, becomes that customer's model; every score says which model produced it.
+#
+# To change a default for every customer, edit this file. To change it for one customer, calibrate or pass `model` on a call.
+version: "2026.11"
+
+# How identifying a passenger works: any one of these fields (first found) names the record.
+identifiers: [passenger_id, pax_id, customer_id, member_id, loyalty_id, loyalty_number, ffn, pnr, id, name]
+
+# Carriers whose fare pages count as competitor browsing when a free-text signal names them. The deploying airline removes
+# itself and adds its market's carriers; a signal that carries an explicit `type` needs none of this.
+competitor_names: [emirates, qatar, etihad, singapore airlines, cathay, lufthansa, british airways, air france, klm, delta, united,
+                   american airlines, air canada, qantas, turkish, ana, jal, ryanair, easyjet, indigo, air india, vistara]
+
+# Event types: how a signal or a history event is typed. An explicit `type` on the event is taken as given (these ids, or one of
+# `also`); free text is matched by `match` (regular expressions, case-insensitive) and the result says which rule typed it.
+event_types:
+  disruption:
+    label: Disruption (delay, cancellation, missed connection, diversion, baggage)
+    also: [disruption.history, delay, cancellation, cancelled, missed_connection, misconnect, diversion, baggage, irops, ground_stop]
+    match: ['disrupt', 'delay', 'cancel', 'missed connection', 'misconnect', 'divert', 'baggage (lost|delay|mishandl)', 'ground stop', '\birops?\b']
+  competitor_browsing:
+    label: Competitor fare browsing
+    also: [competitor.fare_view, competitor_fare_view, competitor_view, competitor_search, price_compare]
+    match: ['competitor', 'rival', 'price[- ]compar', 'metasearch']
+  redemption_decline:
+    label: Declined or failed miles redemption
+    also: [redemption.declined, redemption_declined, award_declined, redemption_failed]
+    match: ['redemption (was )?(declin|fail|reject|unavailab)', '(declin|fail|reject)\w* .*redemption', 'award (seat )?(unavailab|declin)']
+  complaint:
+    label: Complaint or negative contact
+    also: [complaint.filed, complaint_filed, negative_contact, claim, compensation_claim]
+    match: ['complain', 'compensation claim', 'negative (feedback|review)', 'escalat']
+  app_uninstall_intent:
+    label: App uninstall intent
+    also: [app.uninstall_intent, uninstall_intent, app_uninstall, unsubscribe]
+    match: ['uninstall', 'unsubscrib', 'opt(ed)?[- ]out']
+  search:
+    label: Flight search
+    also: [flight_search, search.flight]
+    match: ['\bsearch(ed|es)?\b']
+  fare_page_view:
+    label: Fare page view (own site or app)
+    also: [fare.view, fare_view, fare_page]
+    match: ['fare[- ]page', 'viewed? (the )?fare', 'browsed .*fare']
+  cart_abandon:
+    label: Abandoned booking
+    also: [cart.abandon, cart_abandoned, booking_abandoned, checkout_abandon]
+    match: ['abandon']
+  email_click:
+    label: Email click
+    also: [email.click, email_clicked]
+    match: ['email click', 'clicked .*email', 'click(ed)? through']
+  app_session:
+    label: App session
+    also: [app.session, app_open, app_opened]
+    match: ['app (session|open)', 'opened the app']
+  upgrade_accepted:
+    label: Upgrade bought or accepted
+    also: [upgrade.accepted, upgrade_purchased, upgrade]
+    match: ['upgrad\w* (accept|purchas|bought|taken)', '(accept|purchas|bought)\w* .*upgrade']
+  upgrade_declined:
+    label: Upgrade offer declined
+    also: [upgrade.declined, upgrade_offer_declined]
+    match: ['upgrad\w* .*declin', 'declin\w* .*upgrade']
+  booking:
+    label: Booking made
+    also: [booking.made, booked, booking_made, purchase]
+    match: ['\bbook(ed|ing made)\b', 'ticket (issued|purchased)']
+
+# The parameters a model may use. `from`: the field names a profile may carry it under (first found wins). `events`: it can be
+# counted from typed events within `window_days` of the as-of date. `days_since` / `years_since`: it can be computed from a
+# date field. `ratio`: it is one field over another. `levels`: a category read as a level (the text contains one of the words;
+# the highest level that matches wins).
+parameters:
+  tier_level:
+    label: Loyalty tier
+    kind: category
+    from: [tier, loyalty_tier, status, status_tier, tier_name, tier_level]
+    levels:
+      0: [member, basic, base, blue, classic, none, non-member, entry]
+      1: [silver, bronze, plus]
+      2: [gold]
+      3: [platinum, diamond, elite, emerald, sapphire, black, lifetime]
+  tenure_years:
+    label: Years as a member
+    kind: number
+    from: [tenure_years, tenure, member_years, years_as_member]
+    years_since: [member_since, enrolled_on, join_date, joined]
+  days_since_last_booking:
+    label: Days since the last booking
+    kind: number
+    from: [days_since_last_booking, recency_days, days_since_booking]
+    days_since: [last_booking_date, last_booking, last_booked_on]
+  bookings_12m:
+    label: Bookings in the last 12 months
+    kind: count
+    from: [bookings_12m, bookings_last_12m, bookings_ytd, flights_12m, flights_ytd, segments_12m]
+    events: booking
+    window_days: 365
+  booking_trend:
+    label: Bookings in the last 12 months against the 12 before (1.0 = unchanged)
+    kind: ratio
+    from: [booking_trend]
+    ratio: [[bookings_12m, bookings_last_12m, flights_12m], [bookings_prev_12m, bookings_previous_12m, flights_prev_12m]]
+  disruptions_28d:
+    label: Disruptions in the last 28 days
+    kind: count
+    from: [disruptions_28d, disruptions_last_28d, disruptions_28_days, recent_disruptions]
+    events: disruption
+    window_days: 28
+  competitor_browsing_28d:
+    label: Competitor fare views in the last 28 days
+    kind: count
+    from: [competitor_browsing_28d, competitor_views_28d, competitor_fare_views, competitor_views]
+    events: competitor_browsing
+    window_days: 28
+  redemption_declines_90d:
+    label: Declined redemptions in the last 90 days
+    kind: count
+    from: [redemption_declines_90d, redemption_declines, declined_redemptions]
+    events: redemption_decline
+    window_days: 90
+  complaints_90d:
+    label: Complaints in the last 90 days
+    kind: count
+    from: [complaints_90d, complaints, complaints_last_90d]
+    events: complaint
+    window_days: 90
+  nps_last:
+    label: Last NPS answer (0 to 10)
+    kind: number
+    from: [nps_last, nps, last_nps, nps_score]
+  app_uninstall_intent:
+    label: App uninstall or unsubscribe intent
+    kind: flag
+    from: [app_uninstall_intent, uninstall_intent, unsubscribed]
+    events: app_uninstall_intent
+    window_days: 90
+  app_sessions_30d:
+    label: App sessions in the last 30 days
+    kind: count
+    from: [app_sessions_30d, app_sessions, sessions_30d]
+    events: app_session
+    window_days: 30
+  delay_minutes:
+    label: Delay of the current disruption (minutes)
+    kind: number
+    from: [delay_minutes, delay_min, current_delay_minutes]
+  is_cancelled:
+    label: The flight is cancelled
+    kind: flag
+    from: [is_cancelled, cancelled, flight_cancelled]
+  missed_connection:
+    label: A connection is missed or at risk
+    kind: flag
+    from: [missed_connection, connection_at_risk, misconnect]
+  overnight_required:
+    label: An overnight stay is needed
+    kind: flag
+    from: [overnight_required, overnight, needs_hotel]
+  rebook_options:
+    label: Alternative flights available today
+    kind: count
+    from: [rebook_options, alternatives_today, rebooking_options]
+  party_size:
+    label: Travellers on the booking
+    kind: number
+    from: [party_size, passengers_on_pnr, pax_count, group_size]
+  special_assistance:
+    label: Children, reduced mobility or medical needs on the booking
+    kind: flag
+    from: [special_assistance, has_children, travelling_with_children, prm, medical_needs]
+  business_travel:
+    label: Travelling on business
+    kind: flag
+    from: [business_travel, is_business, travel_purpose_business]
+    truthy_text: {travel_purpose: [business, corporate, work], purpose: [business, corporate, work]}
+  searches_7d:
+    label: Flight searches in the last 7 days
+    kind: count
+    from: [searches_7d, searches, flight_searches_7d]
+    events: search
+    window_days: 7
+  fare_page_views_7d:
+    label: Fare page views in the last 7 days
+    kind: count
+    from: [fare_page_views_7d, fare_views_7d, fare_page_views]
+    events: fare_page_view
+    window_days: 7
+  cart_abandons_14d:
+    label: Abandoned bookings in the last 14 days
+    kind: count
+    from: [cart_abandons_14d, cart_abandons, abandoned_bookings]
+    events: cart_abandon
+    window_days: 14
+  days_to_departure:
+    label: Days to departure of the trip in question
+    kind: number
+    from: [days_to_departure, days_until_departure, lead_time_days]
+    days_until: [departure_date, next_departure, travel_date]
+  price_drop_seen:
+    label: Saw a price drop on the searched route
+    kind: flag
+    from: [price_drop_seen, price_drop, fare_dropped]
+  email_clicks_14d:
+    label: Email clicks in the last 14 days
+    kind: count
+    from: [email_clicks_14d, email_clicks, clicks_14d]
+    events: email_click
+    window_days: 14
+  logged_in:
+    label: Browsing while logged in
+    kind: flag
+    from: [logged_in, is_logged_in, authenticated]
+  upgrades_12m:
+    label: Upgrades bought or accepted in the last 12 months
+    kind: count
+    from: [upgrades_12m, upgrades, upgrades_accepted_12m]
+    events: upgrade_accepted
+    window_days: 365
+  upgrade_offers_declined_12m:
+    label: Upgrade offers declined in the last 12 months
+    kind: count
+    from: [upgrade_offers_declined_12m, upgrades_declined, upgrade_declines_12m]
+    events: upgrade_declined
+    window_days: 365
+  ancillary_spend_12m_usd:
+    label: Ancillary spend in the last 12 months (USD)
+    kind: number
+    from: [ancillary_spend_12m_usd, ancillary_spend_12m, ancillary_spend, ancillary_revenue_12m]
+  flight_hours:
+    label: Length of the flight in question (hours)
+    kind: number
+    from: [flight_hours, trip_length_hours, block_hours, duration_hours]
+  cabin_level:
+    label: Cabin booked
+    kind: category
+    from: [cabin, cabin_class, booked_cabin, cabin_level]
+    levels:
+      0: [economy, coach, main, basic]
+      1: [premium, comfort, plus]
+      2: [business, club, "j class"]
+      3: [first, suite]
+  miles_balance:
+    label: Miles balance
+    kind: number
+    from: [miles_balance, miles, points_balance, points]
+
+objectives:
+  churn:
+    name: Churn propensity
+    predicts: The likelihood that an active loyalty member stops booking with the airline in the next 90 days.
+    window: next 90 days
+    unit: one passenger
+    outcome_field: churned
+    base_rate: 0.12
+    minimum: {parameters: 3, coverage: 0.40, any_of: [disruptions_28d, days_since_last_booking, booking_trend, competitor_browsing_28d]}
+    terms:
+      - {parameter: disruptions_28d, weight: 1.6, low: 0, high: 4, reference: 0}
+      - {parameter: competitor_browsing_28d, weight: 1.4, low: 0, high: 3, reference: 0}
+      - {parameter: booking_trend, weight: -1.3, low: 0, high: 1.5, reference: 1.0}
+      - {parameter: days_since_last_booking, weight: 1.2, low: 0, high: 180, reference: 45}
+      - {parameter: complaints_90d, weight: 0.9, low: 0, high: 3, reference: 0}
+      - {parameter: nps_last, weight: -0.9, low: 0, high: 10, reference: 8}
+      - {parameter: app_uninstall_intent, weight: 0.9, low: 0, high: 1, reference: 0}
+      - {parameter: redemption_declines_90d, weight: 0.8, low: 0, high: 3, reference: 0}
+      - {parameter: app_sessions_30d, weight: -0.6, low: 0, high: 12, reference: 4}
+      - {parameter: tenure_years, weight: -0.5, low: 0, high: 10, reference: 3}
+      - {parameter: tier_level, weight: -0.3, low: 0, high: 3, reference: 1}
+    decisions:
+      - {at: 0.70, decision: RETAIN CRITICAL, priority: HIGH, act: immediately}
+      - {at: 0.45, decision: PROTECT, priority: MEDIUM, act: within 7 days}
+      - {at: 0.25, decision: WATCH, priority: LOW, act: in the next campaign cycle}
+      - {at: 0.0, decision: NO ACTION, priority: NONE, act: no action needed}
+  disruption_sensitivity:
+    name: Disruption sensitivity
+    predicts: The likelihood that the current disruption damages the relationship (a complaint, a compensation claim or lost future bookings) unless this passenger is handled first.
+    window: the current disruption
+    unit: one passenger (or the lead passenger of a booking)
+    outcome_field: adverse_outcome
+    base_rate: 0.20
+    minimum: {parameters: 3, coverage: 0.40, any_of: [delay_minutes, is_cancelled, missed_connection]}
+    terms:
+      - {parameter: delay_minutes, weight: 1.4, low: 0, high: 360, reference: 0}
+      - {parameter: is_cancelled, weight: 1.2, low: 0, high: 1, reference: 0}
+      - {parameter: missed_connection, weight: 1.1, low: 0, high: 1, reference: 0}
+      - {parameter: disruptions_28d, weight: 1.0, low: 0, high: 4, reference: 0}
+      - {parameter: overnight_required, weight: 0.9, low: 0, high: 1, reference: 0}
+      - {parameter: rebook_options, weight: -0.8, low: 0, high: 5, reference: 3}
+      - {parameter: special_assistance, weight: 0.8, low: 0, high: 1, reference: 0}
+      - {parameter: tier_level, weight: 0.6, low: 0, high: 3, reference: 1}
+      - {parameter: party_size, weight: 0.5, low: 1, high: 6, reference: 1}
+      - {parameter: business_travel, weight: 0.5, low: 0, high: 1, reference: 0}
+    decisions:
+      - {at: 0.80, decision: REBOOK FIRST, priority: HIGH, act: immediately}
+      - {at: 0.55, decision: PROACTIVE CARE, priority: MEDIUM, act: within the hour}
+      - {at: 0.30, decision: STANDARD HANDLING, priority: LOW, act: in the normal queue}
+      - {at: 0.0, decision: MONITOR, priority: NONE, act: no action needed}
+  conversion:
+    name: Conversion propensity
+    predicts: The likelihood that an active shopper books the trip being searched within the next 7 days.
+    window: next 7 days
+    unit: one shopper and one searched trip
+    outcome_field: booked
+    base_rate: 0.08
+    minimum: {parameters: 3, coverage: 0.40, any_of: [searches_7d, fare_page_views_7d, cart_abandons_14d]}
+    terms:
+      - {parameter: searches_7d, weight: 1.2, low: 0, high: 8, reference: 0}
+      - {parameter: cart_abandons_14d, weight: 1.1, low: 0, high: 2, reference: 0}
+      - {parameter: fare_page_views_7d, weight: 1.0, low: 0, high: 6, reference: 0}
+      - {parameter: bookings_12m, weight: 0.8, low: 0, high: 12, reference: 2}
+      - {parameter: days_to_departure, weight: -0.8, low: 0, high: 120, reference: 45}
+      - {parameter: email_clicks_14d, weight: 0.7, low: 0, high: 4, reference: 0}
+      - {parameter: competitor_browsing_28d, weight: -0.7, low: 0, high: 3, reference: 0}
+      - {parameter: price_drop_seen, weight: 0.6, low: 0, high: 1, reference: 0}
+      - {parameter: logged_in, weight: 0.5, low: 0, high: 1, reference: 0}
+    decisions:
+      - {at: 0.55, decision: CLOSE NOW, priority: HIGH, act: within 24 hours}
+      - {at: 0.30, decision: NURTURE, priority: MEDIUM, act: within 3 days}
+      - {at: 0.12, decision: KEEP WARM, priority: LOW, act: in the next campaign cycle}
+      - {at: 0.0, decision: NO ACTION, priority: NONE, act: no action needed}
+  upsell:
+    name: Upsell propensity
+    predicts: The likelihood that the passenger accepts an upgrade or a paid ancillary offered for the trip in question.
+    window: the trip in question
+    unit: one passenger and one trip
+    outcome_field: accepted_offer
+    base_rate: 0.10
+    minimum: {parameters: 3, coverage: 0.40, any_of: [upgrades_12m, ancillary_spend_12m_usd, cabin_level, flight_hours]}
+    terms:
+      - {parameter: upgrades_12m, weight: 1.3, low: 0, high: 4, reference: 0}
+      - {parameter: ancillary_spend_12m_usd, weight: 0.9, low: 0, high: 1500, reference: 150}
+      - {parameter: cabin_level, weight: -0.9, low: 0, high: 3, reference: 0}
+      - {parameter: flight_hours, weight: 0.8, low: 1, high: 14, reference: 4}
+      - {parameter: upgrade_offers_declined_12m, weight: -0.8, low: 0, high: 4, reference: 0}
+      - {parameter: miles_balance, weight: 0.6, low: 0, high: 150000, reference: 20000}
+      - {parameter: tier_level, weight: 0.5, low: 0, high: 3, reference: 1}
+      - {parameter: business_travel, weight: 0.4, low: 0, high: 1, reference: 0}
+      - {parameter: days_to_departure, weight: -0.4, low: 0, high: 60, reference: 21}
+    decisions:
+      - {at: 0.50, decision: OFFER UPGRADE, priority: HIGH, act: in this booking flow}
+      - {at: 0.28, decision: OFFER ANCILLARY, priority: MEDIUM, act: in the pre-trip email}
+      - {at: 0.12, decision: SOFT PROMPT, priority: LOW, act: at check-in}
+      - {at: 0.0, decision: NO OFFER, priority: NONE, act: no action needed}
+
+# What the agent says about itself, whatever the model in force.
+method: >-
+  A transparent scorecard per prediction: each parameter is placed on its range, weighted, and summed on the log-odds scale
+  from the base rate; the result is a probability. Parameters come from the profile's own fields or are counted from dated
+  events; the model is never asked for the score. The same data gives the same score.
+limits:
+  - The default weights are priors, not fitted to your outcomes; until you calibrate, read a score as a ranked risk, not as a measured probability.
+  - A score describes association, not cause; it does not say that removing a driver would remove the risk.
+  - A parameter that is missing lowers the confidence, never the score; a score below the minimum data is refused, not guessed.
+  - Free-text signals are typed by rule and the result says which rule; typed events (with `type`) are exact.
+  - It scores passengers one by one; it does not forecast totals, revenue or segment sizes.
+
+# Calibration: what a customer's labelled data must have before a fitted model is accepted.
+calibration:
+  min_rows: 300
+  min_per_class: 40
+  holdout: 0.25
+  l2: 1.0
+  accept_auc: 0.62          # a fitted model below this on the holdout is reported, never saved
+
+# Offer guardrails the 1:1 Personalization Agent's offers are checked against by code when the caller gives none: the most an
+# offer may cost without a person's approval, by loyalty tier level (0 to 3). ILLUSTRATIVE DEFAULTS: pass your policy as `guardrails`.
+offer_guardrails:
+  note: Illustrative defaults; an airline's own policy replaces them (pass `guardrails`).
+  by_tier_level:
+    0: {max_miles: 5000, max_credit_usd: 50}
+    1: {max_miles: 10000, max_credit_usd: 100}
+    2: {max_miles: 20000, max_credit_usd: 250}
+    3: {max_miles: 40000, max_credit_usd: 600}
+
+# Channel limits the Content Generation Agent's creatives are checked against by code.
+channel_limits:
+  sms: {max_chars: 160, why: one SMS segment}
+  push: {max_chars: 178, why: what a lock screen shows}
+  banner: {max_chars: 90, why: one line of an in-app banner}

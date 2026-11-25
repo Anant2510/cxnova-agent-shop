@@ -780,7 +780,7 @@ class GeoInput(BaseModel):
                                           json_schema_extra={"ui": "password"})
     strategy: Literal["mobile", "desktop"] = Field(default="mobile", description="PageSpeed Insights strategy")
     citation_test: bool = Field(default=False, description="Experimental: ask the model generated questions and record whether it cites the page/brand")
-    citation_questions: int = Field(default=5, ge=1, le=10)
+    citation_questions: int = Field(default=5, ge=1, le=10, description="How many questions people ask an AI assistant about this topic to test the page against (1 to 10)")
     citation_tiers: list[Literal["fast", "balanced", "pro", "complex"]] = Field(default_factory=lambda: ["balanced"],
                                                                                 description="Model tiers to query (each tier may map to a different model)")
     brand_name: str | None = Field(default=None, description="Brand to look for in AI answers (defaults to the brand_voice skill)")

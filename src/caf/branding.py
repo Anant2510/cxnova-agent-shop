@@ -33,7 +33,11 @@ PRODUCT = Product(
     tagline=os.environ.get("CAF_PRODUCT_TAGLINE", Product.tagline),
 )
 
-# The CX Nova mark (as in Campaign Studio's favicon): a node, a path and a baseline on indigo.
-MARK_SVG = ("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='#1F3D7A'/>"
+# The CX Nova mark: a node, a path and a baseline on a lacquered red tile (the portal's porcelain theme).
+MARK_SVG = ("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='t' x1='0' y1='0' x2='0' y2='1'>"
+            "<stop offset='0' stop-color='#f6506a'/><stop offset='1' stop-color='#c20e23'/></linearGradient>"
+            "<linearGradient id='g' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#fff' stop-opacity='.42'/>"
+            "<stop offset='1' stop-color='#fff' stop-opacity='0'/></linearGradient></defs>"
+            "<rect width='32' height='32' rx='8' fill='url(#t)'/><path d='M0 8 Q0 0 8 0 H24 Q32 0 32 8 V13 Q16 18 0 13 Z' fill='url(#g)'/>"
             "<circle cx='9' cy='11' r='3' fill='#fff'/><path d='M9 11 L21 11 Q24 11 24 14 L24 22' stroke='#fff' stroke-width='2.4' "
             "fill='none' stroke-linecap='round'/><path d='M6 24 H26' stroke='#fff' stroke-width='2.4' stroke-linecap='round'/></svg>")

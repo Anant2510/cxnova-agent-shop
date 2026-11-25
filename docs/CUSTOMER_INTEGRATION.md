@@ -30,7 +30,7 @@ Every surface in one HTTP API, documented interactively at `<host>/docs`. Send t
 ```bash
 # run a rented flow with its inputs; a run that takes longer than wait_s answers 202 with the run so far
 curl -H 'Authorization: Bearer <key>' -H 'Content-Type: application/json' \
-  <host>/flows/is_executive_review/run -d '{"inputs": {"dataset_name": "westjet"}, "wait_s": 60}'
+  <host>/flows/is_executive_review/run -d '{"inputs": {"dataset_name": "xperion"}, "wait_s": 60}'
 
 # follow it
 curl -H 'Authorization: Bearer <key>' <host>/runs/<run_id>
@@ -109,6 +109,53 @@ plan, a dry run until an airline channel is connected to this layer) into its ow
 
 Both are metered identically: every step, with the agent, tokens, cost and outcome, visible on My account and on the
 operator's usage view. The door changes how your software talks to the layer, not what it pays or what it may run.
+
+## Your estate: the workspace
+
+The agents are generic. Their instructions speak of "the CMS", "the design system", "the consent platform", and name no
+product and no company. What those are for you is your workspace: your sites, the product that plays each role, your
+standards and thresholds, saved once and given to every agent you call.
+
+```bash
+caf shop workspace <your-id> --template > estate.yaml   # the roles, with a line on what each one is
+caf shop workspace <your-id> --set estate.yaml          # save it (YAML or JSON, up to 64 KB)
+caf shop workspace <your-id>                            # show what is saved
+```
+
+It reaches the agents of your runs only; no other customer's agent is shown it. For a single call, pass facts in the
+`context` input instead. What the agents are not told about your estate they treat as unknown and say so in a check,
+rather than assuming it. Today the operator saves it for you; saving it from the portal is not built yet.
+
+### Your company profile and your own rules
+
+The content agents (e-mail, press release, LinkedIn, campaign brief, translation and the rest of the marketing blueprint)
+write from **skills**: a brand voice, a press record with the approved boilerplate, a translation glossary, a UTM
+convention. The ones on the server describe a fictional demo company. Yours go in the `skills` section of your
+workspace, each stated as what differs from the server's:
+
+```yaml
+skills:
+  brand_voice:
+    name: Acme Air
+    voice: {tone: Brisk and friendly, do: [Lead with the route and the price]}
+    banned_phrases: [world-class]
+    media_contact: {name: Rina Shah, email: press@acme-air.example}
+  press_boilerplate:
+    organisation: Acme Air
+    headquarters_dateline: Denver, Colorado
+    boilerplate: {heading: About Acme Air, text: Acme Air flies 40 routes from Denver.}
+  utm_taxonomy:
+    channels: {email: {source: braze, medium: email}}
+```
+
+- For the four skills that describe a company (`brand_voice`, `press_boilerplate`, `translation_glossary`,
+  `semantic_layer`) nothing of the demo company shows through what you leave out: an unstated fact is empty, and the
+  agent's own checks say what is missing (no media contact, no forward-looking disclaimer). Their rules stay: headline
+  limits, AP abbreviations, the label on a release.
+- Any other skill (`utm_taxonomy`, `channel_registry`, `seo_rules`, ...) is the server's with your changes laid over it.
+- A skill that is not this layer's, or not its shape, is refused when the workspace is saved, with the reason.
+- Until you save your own brand voice or press record, a run of yours uses the demo company's and says so: a warning on
+  the result and `demo_profile` in its provenance. It is never passed off as yours.
 
 ## Where your data goes
 
