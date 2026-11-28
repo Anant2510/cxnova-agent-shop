@@ -24,6 +24,10 @@ class ConnectorNotConfigured(ConnectorError):
     pass
 
 
+class ConnectorNotAllowed(ConnectorNotConfigured):
+    """The caller's policy keeps agents from this system, or from writing to it (reach.systems)."""
+
+
 def connector(kind: str, provider: str):
     def deco(cls: type["Connector"]) -> type["Connector"]:
         cls.kind = kind
@@ -52,11 +56,32 @@ class Connector:
     provider: ClassVar[str] = ""
     external: ClassVar[bool] = False       # True when the provider calls a third-party API
     description: ClassVar[str] = ""
+    owner: str = "layer"                   # whose system this is: "customer" (the caller's own connection) or "layer" (this server's)
 
     def __init__(self, config: dict[str, Any], hub: "ConnectorHub"):
         self.config = dict(config or {})
         self.hub = hub
         self.settings = hub.settings
+
+    # tenancy ---------------------------------------------------------------------------------
+    @property
+    def partition(self) -> str:
+        """The customer whose records this connector keeps apart inside a system it shares with others (the layer's
+        vector index, the layer's record store), or "" for the operator's own runs. A customer's own system needs no
+        partition: it is theirs alone."""
+        return "" if self.owner == "customer" else str(getattr(self.hub, "tenant", None) or "")
+
+    def state_dir(self, name: str) -> Path:
+        """Where this connector keeps the files it writes on this server between runs (records, drafts, a registry):
+        runs/<name> for the operator's own runs, runs/_customers/<id>/<name> for a customer's. One customer's files never
+        reach another customer's agents, and the security policy lets a customer's run read only its own folder there."""
+        root = Path(self.settings.runs_dir)
+        tenant = str(getattr(self.hub, "tenant", None) or "")
+        if tenant:
+            root = root / "_customers" / tenant
+        folder = root / name
+        folder.mkdir(parents=True, exist_ok=True)
+        return folder
 
     # helpers ---------------------------------------------------------------------------------
     def path(self, key: str = "path", default: str | None = None) -> Path:

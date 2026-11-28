@@ -134,7 +134,14 @@ From the VM (the CLI needs no token) or from the admin console:
 .venv\Scripts\caf shop policy meridian-mutual --file config\policies\example-customer.yaml   # optional: its own model
 .venv\Scripts\caf shop check meridian-mutual                             # every subscribed agent on its model
 .venv\Scripts\caf shop usage meridian-mutual
+.venv\Scripts\caf shop systems meridian-mutual                           # what its agents reach: demo data until its own systems are connected
 ```
+
+A customer's own analytics, CMS, e-mail platform and the rest are connected per customer, on the admin console's
+**Systems** tab or with `caf shop systems <customer> --set systems.yaml`. Its runs use those and no other customer's, and
+never a system this server is connected to in `.env` (those are the operator's): see
+[CONNECTORS.md](CONNECTORS.md#a-customers-own-connections). The credentials are encrypted with `CAF_SECRET_KEY`, which
+`install.ps1` generated: keep that key with the `.env` backups, since a stored credential cannot be read with another.
 
 ## 8. Designing and renting a flow
 

@@ -92,6 +92,15 @@ Service controls, all in the `security` block of `config/settings.yaml` (or the 
   locales, ESP and newswire names are slugified; experiment ids are validated before they become file names or vendor URLs.
 * **Read-only analytics SQL.** `exploration_generation` compiles a governed semantic layer to a single `SELECT`, and DuckDB
   runs it with external access disabled.
+* **One customer's systems and records are not another's.** A customer's run gets a connector hub of its own: the
+  systems that customer connected (credentials encrypted with `CAF_SECRET_KEY` and read only when a connector is first
+  used), the layer's services, and the bundled demo data; never a system the server is connected to for its operator
+  (`security.shared_connectors` is the operator's way to share one). An address in a customer's connection has to be
+  public, on every request and redirect. What the layer keeps between runs is kept apart per customer under
+  `runs/_customers/<id>/`, and under `runs/` a customer's run reads only its own run folders and that folder. What a
+  customer's policy lets agents do with each kind of system (`reach.systems`: none, read, read_write) is enforced when a
+  connector is asked for, when an agent proposes a write and again when an approved write executes.
+  See [CONNECTORS.md](CONNECTORS.md#a-customers-own-connections).
 
 Residual risk: host names are checked when each request is made, so a DNS answer that changes between the check and the
 connection (DNS rebinding) is not caught. Run the service with network egress controls (no route to cloud metadata

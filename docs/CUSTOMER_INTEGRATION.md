@@ -185,9 +185,56 @@ skills:
 - Until you save your own brand voice or press record, a run of yours uses the demo company's and says so: a warning on
   the result and `demo_profile` in its provenance. It is never passed off as yours.
 
+## Your systems
+
+The agents reach the outside world through connectors: your analytics, your CMS, your e-mail platform, your work
+tracker, your CRM, your testing tool. Until one of yours is connected, an agent that needs that kind of system reads the
+demo data that ships with this layer and its result says so, and what an agent publishes is written to your account's
+folder on the server for hand-off. **My account** lists every kind under *Your systems* with what serves it in your runs.
+
+When your own system is connected:
+
+- **Your runs use it, and only yours.** No other customer's run reaches your system, and yours reach nobody else's. A
+  system the server itself is connected to is its operator's and is not used for your runs either.
+- **Your credentials are not shown again.** They are stored encrypted, or kept in an environment variable on the server
+  and never in the database. Every screen and every API answer shows them as `***`.
+- **A result says whose system answered.** `provenance.systems` on each step names the connectors it used and whether
+  each was yours or this layer's; an action carried out after approval records the system that took it (`via`).
+- **The address has to be a public one.** A connection cannot point at the server, its network or a cloud's internal
+  services, and the check is made again on every request and every redirect.
+
+What can be connected today: Adobe Analytics, GA4, Microsoft Clarity, Search Console, DataForSEO, Optimizely, Adobe
+Target, LaunchDarkly, AEM, Contentful, WordPress, Braze, Mailchimp, Adobe Journey Optimizer, Jira, Azure DevOps, Zoom,
+Salesforce, HubSpot, a SQL warehouse, and your own account for web search, translation or Qdrant. Your operator connects
+one for you (connecting it yourself from the portal is not built yet); it needs the product, its settings and a
+credential with the least access that does the job. Each adapter was written against the vendor's documentation and is
+tested against a stand-in for the vendor's API; [CONNECTORS.md](CONNECTORS.md) says for each one what has and has not
+been confirmed on a live account, so plan a first run on a non-production target.
+
+### What the agents may do with each
+
+Your policy says, per kind of system, what agents may do (`reach.systems`):
+
+```yaml
+reach:
+  systems: {analytics: read, cms: read_write, crm: none}
+```
+
+- `read_write` (the default): agents read it, and what they propose to write (publish, send, create) waits for approval.
+- `read`: agents read it. A write is turned down when the agent proposes it, with the reason, and nobody is asked to
+  approve it. Approving cannot open what the policy closes: the policy is asked again at the moment of the write.
+- `none`: agents do not reach it at all.
+
+### What is kept apart
+
+What this layer keeps between your runs is yours alone: the quote bank, experiment learnings and backlog, research
+caches, the retrieval index, experiment drafts, and the files written when nothing is connected. Each customer's are in
+their own folder and their own records, and an agent given a file path reads it only if it is in one of your own runs.
+
 ## Where your data goes
 
 A run's inputs and outputs (an attached export becomes `dataset.csv` kept with the run) stay on the layer's server for the
 retention your policy sets. Your policy also sets masking before any model call (e-mail, phone, card and account numbers),
 the model your runs use (the layer's, or your own deployment in run mode 2), the sites agents may fetch, and your limits.
+Data an agent reads from one of your connected systems is used in that run and kept with it like any other input.
 Run mode 3 puts this same image in your own cloud when raw data must not leave your estate.

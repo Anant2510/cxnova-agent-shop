@@ -429,6 +429,36 @@ def cmd_shop(args: argparse.Namespace) -> int:
                 print(f"policy saved for {c['id']} (run mode {c['run_mode']})")
             print(yaml.safe_dump(shop.policy_of(store.get_customer(args.customer_id)).redacted(), sort_keys=False))
             return 0
+        if what == "systems":   # the customer's own systems (their policy's connections) and what agents may do with each kind
+            c = store.get_customer(args.customer_id)
+            if args.set:
+                data = yaml.safe_load(Path(args.set).read_text(encoding="utf-8")) or {}
+                if not isinstance(data, dict) or not data or not all(isinstance(v, dict) for v in data.values()):
+                    raise ShopError("the file names each kind and its connection, e.g.  cms: {provider: contentful, space_id: ..., management_token: ...}")
+                policy = json.loads(json.dumps(c.get("policy") or {}))   # as stored; the kinds in the file replace theirs, the rest stay
+                policy.setdefault("connections", {}).update(data)
+                shop.set_policy(args.customer_id, policy)
+                print(f"connected for {args.customer_id}: {', '.join(sorted(data))}")
+            if args.disconnect:
+                shop.set_system(args.customer_id, args.disconnect, disconnect=True)
+                print(f"disconnected {args.disconnect} for {args.customer_id}; its stored credentials are deleted")
+            if args.access:
+                kind, sep, level = args.access.partition("=")
+                if not sep:
+                    raise ShopError("--access takes KIND=LEVEL, e.g. --access cms=read (none | read | read_write)")
+                shop.set_system(args.customer_id, kind.strip(), access=level.strip())
+            rows = shop.systems_view(store.get_customer(args.customer_id))
+            if args.json:
+                print(json.dumps(rows, indent=2, default=str))
+                return 0
+            serves = {"customer": "their own", "layer": "this layer's", "demo": "demo data", "local": "not connected", "closed": "closed by policy"}
+            may = {"read_write": "read and write", "read": "read only", "none": "nothing"}
+            print(f"  {'kind':<13} {'in a run of theirs':<34} {'agents may':<15} can connect")   # the kind's id: what --set, --access and the policy name
+            for r in rows:
+                state = f"{serves.get(r['serves'], r['serves'])}: {r['provider']}" if r["serves"] != "closed" else serves["closed"]
+                note = f"  needs {', '.join(r['needs'])}" if r["connected"] and r["needs"] else f"  ! {r['error']}" if r.get("error") else ""
+                print(f"  {r['kind']:<13} {state:<34} {may.get(r['access'], r['access']):<15} {', '.join(p['provider'] for p in r['can_connect']) or '-'}{note}")
+            return 0
         if what == "check":
             c = store.get_customer(args.customer_id)
             only = [a.strip() for a in args.only.split(",")] if args.only else None
@@ -512,6 +542,11 @@ def main(argv: list[str] | None = None) -> int:
     q.add_argument("--all", action="store_true", help="every agent and flow")
     q.add_argument("--until", help="YYYY-MM-DD"); q.add_argument("--add", action="store_true", help="add to the existing subscriptions instead of replacing them"); q.set_defaults(fn=cmd_shop)
     q = ss.add_parser("policy", help="show or set a customer's policy"); q.add_argument("customer_id"); q.add_argument("--file", help="YAML or JSON policy to apply"); q.set_defaults(fn=cmd_shop)
+    q = ss.add_parser("systems", help="a customer's own systems (analytics, CMS, e-mail platform ...): what serves each kind in their runs, connect one, set what agents may do")
+    q.add_argument("customer_id"); q.add_argument("--set", metavar="FILE", help="YAML or JSON naming each kind and its connection: {cms: {provider: contentful, ...}}; credentials are stored encrypted")
+    q.add_argument("--disconnect", metavar="KIND", help="remove the customer's connection for this kind and its stored credentials")
+    q.add_argument("--access", metavar="KIND=LEVEL", help="what the agents may do with a kind: none | read | read_write")
+    q.add_argument("--json", action="store_true"); q.set_defaults(fn=cmd_shop)
     q = ss.add_parser("demo", help="create (or reset) the two demo customers, Harbor Bank over MCP and Xperion Airways over A2A, and print how each connects")
     q.add_argument("--base-url", help="the address customers use (default: CAF_PUBLIC_URL)"); q.add_argument("--rotate-keys", action="store_true", help="revoke their keys and issue new ones")
     q.add_argument("--json", action="store_true"); q.set_defaults(fn=cmd_shop)

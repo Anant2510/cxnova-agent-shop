@@ -27,8 +27,14 @@ class _FileOut(Connector):
 
     @property
     def out_dir(self) -> Path:
+        """runs/_<kind>/ for the operator's own runs, runs/_customers/<id>/_<kind>/ for a customer's: what one customer
+        published or exported is never overwritten, or read, by another's run."""
         base = self.config.get("path")
-        p = self.settings.resolve(base) if base else self.settings.runs_dir / self.folder_name
+        if not base:
+            return self.state_dir(self.folder_name)
+        p = Path(self.settings.resolve(base))
+        if self.partition:   # the operator chose the folder: each customer gets its own inside it
+            p = p / self.partition
         p.mkdir(parents=True, exist_ok=True)
         return p
 

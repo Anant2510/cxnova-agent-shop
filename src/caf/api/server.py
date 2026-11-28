@@ -641,8 +641,11 @@ def create_app() -> FastAPI:
 
     # ------------------------------------------------------------------ connectors + short links
     @app.get("/connectors")
-    def connectors() -> list[dict[str, Any]]:
-        return ConnectorHub(settings).describe()
+    def connectors(request: Request) -> list[dict[str, Any]]:
+        """The connector behind each kind of system. With a customer key: as it is for that customer's runs (their own
+        connections, this layer's services, what their policy lets agents do); otherwise the server's own."""
+        cust = customer(request)
+        return ConnectorHub(shop.settings_for(cust) if cust is not None else settings).describe()
 
     @app.get("/r/{code}")
     def shortlink(code: str, request: Request) -> RedirectResponse:

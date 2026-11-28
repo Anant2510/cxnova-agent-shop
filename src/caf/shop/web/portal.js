@@ -1306,7 +1306,7 @@
   function agentName(id) { return D.byId && D.byId[id] ? D.byId[id].name : id; }
   VIEWS.customers = function (c) {
     if (!D.operator) { put(c, h("div", { class: "empty" }, "Customers are managed by the operator.")); return; }
-    put(c, h("h1", { class: "page" }, "Customers"), h("p", { class: "page-lead" }, "Who rents what, and what they used. Keys, subscriptions and policies are edited in the admin console."), h("div", { id: "demo-ctl" }), h("div", { id: "cust" }, h("div", { class: "empty small" }, "Loading…")));
+    put(c, h("h1", { class: "page" }, "Customers"), h("p", { class: "page-lead" }, "Who rents what, and what they used. Keys, subscriptions, policies and each customer's own systems are edited in the admin console."), h("div", { id: "demo-ctl" }), h("div", { id: "cust" }, h("div", { class: "empty small" }, "Loading…")));
     const seed = async (btn, rotate) => {
       btn.disabled = true; const was = btn.textContent; btn.textContent = "Working…";
       try { const r = await api("/shop/admin/api/demo" + (rotate ? "?rotate_keys=true" : ""), { method: "POST", body: {} }); openDemoDialog(r); VIEWS.customers(clear(c)); }
@@ -1329,6 +1329,20 @@
         reqs.length ? h("section", { class: "section" }, h("h2", null, "Access requests", h("span", { class: "muted" }, reqs.length)), h("div", { class: "tw" }, h("table", null, h("thead", null, h("tr", null, h("th", null, "When"), h("th", null, "Who"), h("th", null, "Wants"), h("th", null, "Status"))), h("tbody", null, reqs.slice(0, 20).map((r) => h("tr", null, h("td", { class: "small" }, when(r.created_at)), h("td", { class: "small" }, r.name, h("div", { class: "xs muted" }, r.email + (r.company ? ", " + r.company : ""))), h("td", { class: "small" }, (r.items || []).join(", ") || r.message || ""), h("td", null, h("span", { class: "chip" }, r.status)))))))) : null);
     }).catch((e) => { clear($("#cust")).append(h("div", { class: "notice bad" }, "Could not load: " + e.message)); });
   };
+  // What serves each kind of system in this customer's runs: their own connection, this layer's, the demo data, or nothing.
+  function systemsPanel(systems) {
+    const SERVES = { customer: ["Yours", "good"], layer: ["This layer's", ""], demo: ["Demo data", "warn"], local: ["Not connected", ""], closed: ["Closed by your policy", "bad"] };
+    const MAY = { read_write: "read and write", read: "read only", none: "nothing" };
+    const rows = (systems || []).filter((s) => s.group === "yours" || s.connected);
+    if (!rows.length) return null;
+    return h("div", { class: "tw" }, h("table", null, h("thead", null, h("tr", null, h("th", null, "System"), h("th", null, "In your runs"), h("th", null, "Agents may"))),
+      h("tbody", null, rows.map((s) => { const [label, tone] = SERVES[s.serves] || [s.serves, ""];
+        return h("tr", null, h("td", null, h("strong", null, s.name || s.kind.replace(/_/g, " ")), h("div", { class: "small muted" }, s.what)),
+          h("td", null, h("span", { class: "chip " + tone, style: "cursor:default" }, label), s.serves === "customer" ? h("span", { class: "small mono", style: "margin-left:6px" }, s.provider) : null,
+            s.connected && (s.needs || []).length ? h("div", { class: "small", style: "color:var(--kin)" }, "Still needs: " + s.needs.join(", ")) : null),
+          h("td", { class: "small" }, MAY[s.access] || s.access)); }))));
+  }
+
   VIEWS.account = function (c) {
     if (!D.me) { put(c, h("div", { class: "empty" }, "Sign in with a customer key to see an account.")); return; }
     const me = D.me, u = me.usage || { totals: {} };
@@ -1337,7 +1351,8 @@
       h("div", { class: "cols" },
         h("div", { class: "stack-lg" },
           h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "Your agents"), me.entitled_agents.length ? h("div", { class: "row", style: "gap:6px" }, me.entitled_agents.map((a) => h("a", { class: "chip", href: "#/agents/" + a }, agent(a).name))) : h("p", { class: "muted small" }, "No agents yet.")),
-          h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "Your flows"), me.flows.length ? me.flows.map((f) => h("a", { class: "flowrow", href: "#/flows/" + encodeURIComponent(f.id) }, h("div", null, h("div", { class: "nm" }, f.name), stagesOf(f.stages || [])), h("div", { class: "small muted" }, f.agents.length + " agents"))) : h("p", { class: "muted small" }, "No flows yet."))),
+          h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "Your flows"), me.flows.length ? me.flows.map((f) => h("a", { class: "flowrow", href: "#/flows/" + encodeURIComponent(f.id) }, h("div", null, h("div", { class: "nm" }, f.name), stagesOf(f.stages || [])), h("div", { class: "small muted" }, f.agents.length + " agents"))) : h("p", { class: "muted small" }, "No flows yet.")),
+          (me.systems || []).length ? h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "Your systems"), h("p", { class: "small muted", style: "margin-bottom:8px" }, "What your agents reach when they run. A system marked Yours is your own, connected for your account alone, and no other customer's runs reach it. Demo data means nothing of yours is connected for that kind yet, and a result that used it says so. Your operator connects a system for you."), systemsPanel(me.systems)) : null),
         h("div", { class: "stack-lg" },
           h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "Connect your tools"), h("p", { class: "small muted" }, "Four ways to use what you rent. The samples carry your key and your first rented flow; copy them as they are."), connectPanel(me.connection, { key: Shop.token() || undefined, door: demoDoor(me.customer.id) || "mcp" }), h("p", { class: "small", style: "margin-top:10px" }, h("a", { href: BASE + "/shop/account", target: "_blank", rel: "noopener" }, "Keys and the signed policy"))),
           h("section", null, h("h2", { style: "font-size:16px;margin-bottom:8px" }, "Your policy"), h("div", { class: "jt" }, jt(me.policy || {}, undefined, 1))))));

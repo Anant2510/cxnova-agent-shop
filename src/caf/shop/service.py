@@ -6,6 +6,8 @@ ShopService sits between the surfaces (REST, MCP, A2A, console, CLI) and the fra
 * a customer sees and runs only the agents and playbooks it subscribed to (entitlements)
 * every run of a customer gets a RunContext built from its policy: the customer's own model deployment (run modes
   2 and 3) or the shop's (mode 1), masking of prompts, the allowed websites, and the customer id on the run
+* a customer's run reaches that customer's own systems (the policy's `connections`) and the layer's shared services,
+  never the operator's or another customer's; what it keeps between runs is kept apart from everyone else's
 * every agent result is metered: customer, agent, version, surface, run mode, provider, tokens, duration, outcome
 * "check agents" runs the framework's liveness probe on the customer's model, so a customer knows before it
   subscribes which agents pass there
@@ -70,9 +72,15 @@ class ShopService:
 
     def set_policy(self, customer_id: str, policy: dict[str, Any] | CustomerPolicy) -> dict[str, Any]:
         """Save the policy. The run mode follows it: a customer model makes the account mode 2, the layer's model makes it mode 1
-        (mode 3, the customer's own cloud, is a deployment fact and is left alone)."""
+        (mode 3, the customer's own cloud, is a deployment fact and is left alone). A policy that names a system this layer
+        does not have, a setting that is the operator's, or a secret that is not this customer's is refused with the reasons.
+        A credential that comes back as the mask keeps the one stored."""
         pol = policy if isinstance(policy, CustomerPolicy) else load_policy(policy)
-        stored = pol.for_storage()
+        before = self.policy_of(self.store.get_customer(customer_id))
+        problems = pol.problems(customer_id, self.settings)
+        if problems:
+            raise ShopError("policy rejected: " + "; ".join(problems), 400)
+        stored = pol.for_storage(before)
         customer = self.store.update_customer(customer_id, policy=stored)
         if pol.models.uses_customer_model and customer["run_mode"] == "coforge_cloud":
             customer = self.store.update_customer(customer_id, run_mode="coforge_cloud_customer_model")
@@ -191,7 +199,9 @@ class ShopService:
             return RunContext.create(run_id, self.settings, options=options)
         self.check_limits(customer)
         pol = self.policy_of(customer)
-        settings = pol.settings_for(self.settings)
+        # the agent check and a flow test try the agents on the customer's model with this layer's sample inputs: they
+        # stay on the bundled data and never call a system the customer connected
+        settings = self.settings_for(customer, pol, own_systems=surface != "check")
         run_id = run_id or new_run_id(f"c-{customer['id'][:12]}")
         allowed = self.entitled_agents(customer) if allowed_agents is None else set(allowed_agents)
         opts = {**(options or {}), "customer_id": customer["id"], "run_mode": customer["run_mode"],
@@ -209,6 +219,14 @@ class ShopService:
     def owns_run(self, customer: dict[str, Any] | None, run_id: str) -> bool:
         return customer is None or self.store.run_owner(run_id) == customer["id"]
 
+    def settings_for(self, customer: dict[str, Any], policy: CustomerPolicy | None = None, *, own_systems: bool = True) -> Settings:
+        """The settings a run of this customer has: its policy's websites, its own connections, what its agents may do
+        with each system, and which runs are its own (the only ones whose files it may read). `own_systems=False` leaves
+        the customer's connections out (everything else stays): the run is the customer's, on the bundled data."""
+        cid = customer["id"]
+        settings = (policy or self.policy_of(customer)).settings_for(self.settings, cid, lambda run_id: self.store.run_owner(run_id) == cid)
+        return settings if own_systems else settings.model_copy(update={"tenant": {**settings.tenant, "connections": {}}})
+
     def context_for_run(self, run_id: str) -> RunContext:
         """The context of an existing run this process does not hold (approving or continuing it after a restart):
         a customer's run goes back on the customer's model and policy. No limit check and no new run record: the run
@@ -218,8 +236,9 @@ class ShopService:
             return RunContext.create(run_id, self.settings)
         try:
             customer = self.store.get_customer(owner)
-        except ShopError:
-            return RunContext.create(run_id, self.settings, options={"customer_id": owner})
+        except ShopError:   # the account is gone: its run still is not the operator's, and reaches no system of anyone's
+            alone = load_policy({}).settings_for(self.settings, owner, lambda rid: self.store.run_owner(rid) == owner)
+            return RunContext.create(run_id, alone, options={"customer_id": owner})
         return self.customer_context(customer, run_id, surface="resume")
 
     def customer_context(self, customer: dict[str, Any] | None, run_id: str, *, surface: str) -> RunContext:
@@ -229,12 +248,77 @@ class ShopService:
             return RunContext.create(run_id, self.settings)
         pol = self.policy_of(customer)
         opts = {"customer_id": customer["id"], "run_mode": customer["run_mode"], "surface": surface}
-        ctx = RunContext.create(run_id, pol.settings_for(self.settings), options=opts)
+        ctx = RunContext.create(run_id, self.settings_for(customer, pol), options=opts)
         llm = self.llm_for(customer, tracer=ctx.tracer)
         if llm is not None:
             ctx.llm = llm
             ctx.connectors.llm = llm
         return ctx
+
+    # ------------------------------------------------------------------------------- the customer's systems
+    def systems_view(self, customer: dict[str, Any]) -> list[dict[str, Any]]:
+        """Every kind of system an agent can reach, as it stands for this customer. `serves` says what answers a run of
+        theirs: `customer` (their own connection), `layer` (this layer's service or store, or a system the operator
+        shares), `demo` (the bundled sample data), `local` (nothing connected: what agents publish is written to this
+        account's folder on the server) or `closed` (their policy keeps agents out). With it: what the agents may do,
+        whether a connection has the settings it needs, and what can be connected. No system is called to answer this,
+        and no credential is in it."""
+        from ..connectors import KINDS, SERVICES, STORES, ConnectorHub, all_kinds, external_providers, provider_help
+        from ..core import vault
+
+        pol = self.policy_of(customer)
+        hub = ConnectorHub(self.settings_for(customer, pol))
+        rows = []
+        for kind in all_kinds():
+            own = pol.connections.get(kind)
+            row: dict[str, Any] = {"kind": kind, "name": KINDS.get(kind, (kind.replace("_", " ").capitalize(), ""))[0],
+                                   "what": KINDS.get(kind, ("", ""))[1],
+                                   "group": "store" if kind in STORES else "service" if kind in SERVICES else "yours",
+                                   "connected": bool(own), "connection": vault.mask(own) if own else None,
+                                   "provider": (own or {}).get("provider"), "ready": False, "needs": [], "error": None,
+                                   "can_connect": [{**hp, "secret": [k for k in hp["needs"] if vault.is_secret(k)]}
+                                                   for hp in (provider_help(kind, p) for p in external_providers(kind))]}
+            try:
+                cfg, owner = hub.config_for(kind)
+                row["provider"] = hub.provider_for(kind)
+                row["access"] = hub.access(kind, row["provider"])
+                if row["access"] == "none":
+                    row["serves"] = "closed"
+                else:
+                    conn = hub.get(kind)
+                    row["ready"] = bool(conn.available)
+                    row["needs"] = [] if row["ready"] else [k for k in getattr(type(conn), "required", ()) or () if not conn.config.get(k)]
+                    bundled = row["group"] == "yours" and hub._is_bundled(kind, cfg)   # no system of anyone's behind it
+                    row["serves"] = ("customer" if owner == "customer" else
+                                     "demo" if bundled and cfg.get("path") else "local" if bundled else "layer")
+            except Exception as exc:  # noqa: BLE001 - a connection whose stored credential cannot be read, a provider that is gone
+                row.update(access=hub.access(kind), serves="customer" if own else "layer", error=str(exc))
+            rows.append(row)
+        return rows
+
+    def set_system(self, customer_id: str, kind: str, *, connection: dict[str, Any] | None = None, access: str | None = None,
+                   disconnect: bool = False) -> dict[str, Any]:
+        """Connect one of the customer's systems (`connection`: the provider and its settings; a credential given as the
+        mask keeps the one stored), disconnect it, or set what the agents may do with that kind. The rest of the policy
+        stays as it is. Returns that kind's row of the systems view."""
+        customer = self.store.get_customer(customer_id)
+        policy = json.loads(json.dumps(customer.get("policy") or {}))   # as stored: credentials still encrypted
+        if disconnect:
+            (policy.get("connections") or {}).pop(kind, None)
+        elif connection is not None:
+            if not isinstance(connection, dict) or not str(connection.get("provider") or "").strip():
+                raise ShopError("a connection names its provider and that provider's settings")
+            policy.setdefault("connections", {})[kind] = {k: v for k, v in connection.items() if v not in (None, "")}
+        if access is not None:
+            reach = policy.setdefault("reach", {})
+            levels = dict(reach.get("systems") or {})
+            if access == "read_write":
+                levels.pop(kind, None)   # the default: not named
+            else:
+                levels[kind] = access
+            reach["systems"] = levels
+        customer = self.set_policy(customer_id, policy)
+        return next((r for r in self.systems_view(customer) if r["kind"] == kind), {"kind": kind})
 
     def meter(self, customer: dict[str, Any] | None, *, surface: str, provider: str = "") -> Callable[[dict[str, Any]], None] | None:
         """A callback that meters a run's steps whenever the run settles (``Orchestrator.start(on_settled=...)``)."""
@@ -621,7 +705,7 @@ class ShopService:
                 "flows": [self.flow_listing(f) for f in self.flows() if f.id in flows], "policy": pol.redacted(),
                 "usage": self.store.usage_summary(customer["id"]), "recent": self.store.recent_usage(customer["id"], 20),
                 "last_check": customer.get("last_check"), "connection": self.connection_info(customer, base_url),
-                "keys": self.store.list_keys(customer["id"])}
+                "systems": self.systems_view(customer), "keys": self.store.list_keys(customer["id"])}
 
 
 _SERVICES: dict[str, ShopService] = {}

@@ -254,6 +254,18 @@ class RunContext:
             self.demo_profile.add(name)
         return value
 
+    def state_dir(self, name: str) -> Path:
+        """Where an agent keeps a file for later runs of the same caller: runs/<name> for the operator's own runs,
+        runs/_customers/<id>/<name> for a customer's (the one place under runs/, beside its own run folders, that a
+        customer's run may read)."""
+        root = Path(self.settings.runs_dir)
+        tenant = (getattr(self.settings, "tenant", None) or {}).get("id")
+        if tenant:
+            root = root / "_customers" / str(tenant)
+        folder = root / name
+        folder.mkdir(parents=True, exist_ok=True)
+        return folder
+
     def connector(self, kind: str, provider: str | None = None) -> Any:
         conn = self.connectors.get(kind, provider)
         self.used_connectors.add(f"{kind}:{conn.provider}")

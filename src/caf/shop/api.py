@@ -67,6 +67,13 @@ class CloneIn(BaseModel):
     name: str | None = None
 
 
+class SystemIn(BaseModel):
+    connection: dict[str, Any] | None = Field(default=None, description="The customer's own system for this kind: {provider, and that "
+                                              "provider's settings}. A credential given as *** keeps the one stored. Omit to leave "
+                                              "the connection as it is.")
+    access: str | None = Field(default=None, description="What the agents may do with this kind of system: none | read | read_write")
+
+
 class FlowTestIn(BaseModel):
     inputs: dict[str, Any] = Field(default_factory=dict, description="Overrides for the sample inputs")
     customer_id: str | None = Field(default=None, description="Run on this customer's model instead of the shop's")
@@ -273,7 +280,8 @@ def register(app: FastAPI, settings: Any, shop: ShopService, orchestrator: Any =
                 "entitled_agents": sorted(shop.entitled_agents(c)), "entitled_playbooks": shop.entitled_flows(c),
                 "entitled_flows": shop.entitled_flows(c), "warning": shop.model_warning(c),
                 "keys": shop.store.list_keys(customer_id), "usage": shop.store.usage_summary(customer_id),
-                "recent": shop.store.recent_usage(customer_id, 30), "connection": shop.connection_info(c, str(request.base_url).rstrip("/"))}
+                "recent": shop.store.recent_usage(customer_id, 30), "connection": shop.connection_info(c, str(request.base_url).rstrip("/")),
+                "systems": shop.systems_view(c)}
 
     @app.patch("/shop/admin/api/customers/{customer_id}")
     def admin_patch_customer(request: Request, customer_id: str, body: CustomerPatch) -> dict[str, Any]:
@@ -330,6 +338,40 @@ def register(app: FastAPI, settings: Any, shop: ShopService, orchestrator: Any =
         except (ValueError, RuntimeError) as exc:
             raise HTTPException(400, f"policy rejected: {exc}") from exc
         return {"customer": c["id"], "run_mode": c["run_mode"], "policy": shop.policy_of(c).redacted()}
+
+    @app.get("/shop/admin/api/customers/{customer_id}/systems")
+    def admin_systems(request: Request, customer_id: str) -> list[dict[str, Any]]:
+        """Every kind of system an agent can reach, as it stands for this customer: what serves it in their runs (their own
+        connection, this layer's service, demo data, nothing), what the agents may do with it, and what can be connected.
+        Credentials are never in the answer."""
+        require_admin(request)
+        try:
+            return shop.systems_view(shop.store.get_customer(customer_id))
+        except ShopError as exc:
+            raise _err(exc) from exc
+
+    @app.put("/shop/admin/api/customers/{customer_id}/systems/{kind}")
+    def admin_set_system(request: Request, customer_id: str, kind: str, body: SystemIn) -> dict[str, Any]:
+        """Connect one of the customer's own systems, and/or set what the agents may do with that kind. Credentials are
+        stored encrypted (CAF_SECRET_KEY), or named as `<setting>_env`: an environment variable on this server whose name
+        starts with the customer's id."""
+        require_admin(request)
+        try:
+            return shop.set_system(customer_id, kind, connection=body.connection, access=body.access)
+        except ShopError as exc:
+            raise _err(exc) from exc
+        except (ValueError, RuntimeError) as exc:
+            raise HTTPException(400, f"not saved: {exc}") from exc
+
+    @app.delete("/shop/admin/api/customers/{customer_id}/systems/{kind}")
+    def admin_disconnect_system(request: Request, customer_id: str, kind: str) -> dict[str, Any]:
+        """Disconnect the customer's own system for this kind and delete its stored credentials. Their runs go back to
+        what this layer offers for the kind."""
+        require_admin(request)
+        try:
+            return shop.set_system(customer_id, kind, disconnect=True)
+        except ShopError as exc:
+            raise _err(exc) from exc
 
     @app.post("/shop/admin/api/customers/{customer_id}/check")
     def admin_check(request: Request, customer_id: str, only: str | None = Query(None, description="comma-separated agent ids"),

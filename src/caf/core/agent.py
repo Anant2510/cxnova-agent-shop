@@ -242,9 +242,18 @@ class BaseAgent:
             return self._fail(actx, t0, f"Output broke the {self.Output.__name__} contract: {explain_invalid(exc)}")
 
         actions = [PendingAction.model_validate(a) for a in final.get("actions", [])]
+        # What the caller's policy does not let agents write to is turned down here, with the reason: nobody is asked
+        # to approve an action that could not be carried out.
+        refusal = getattr(actx.connectors, "write_refusal", None)
+        refused: list[str] = []
+        for action in actions:
+            why = refusal(action.connector) if callable(refusal) else None
+            if why:
+                action.status, action.result = "rejected", {"refused": why}
+                refused.append(f"{action.summary or action.kind} was not done. {why}.")
         auto = actx.settings.auto_approve or bool(actx.options.get("auto_approve"))
         for action in actions:
-            if not action.requires_approval or (auto and not action.mandatory):
+            if action.status == "pending" and (not action.requires_approval or (auto and not action.mandatory)):
                 self.execute_action(action, actx)
 
         provenance = dict(final.get("provenance") or {})
@@ -259,13 +268,17 @@ class BaseAgent:
             "llm": actx.llm.describe() if self.spec.kind != AgentKind.DETERMINISTIC else {"provider": "none"},
             "connectors": sorted(actx.used_connectors),
         })
-        warnings = list(final.get("warnings", []))
+        warnings = list(final.get("warnings", [])) + refused
+        if getattr(actx.connectors, "tenant", None):   # a customer's run says whose system each connector was: theirs or this layer's
+            systems = {c: o for c, o in (getattr(actx.connectors, "owners", None) or {}).items() if c in actx.used_connectors}
+            if systems:
+                provenance["systems"] = dict(sorted(systems.items()))
         demo = {c: p for c, p in (getattr(actx.connectors, "demo", None) or {}).items() if c in actx.used_connectors}
         if demo:   # the work is real, the data is not the caller's: never let a demo figure pass for theirs
             provenance["demo_data"] = demo
             warnings.append("This ran on the demo data that ships with this layer (" + ", ".join(f"{c}: {p}" for c, p in sorted(demo.items()))
                             + "), not on data of yours. Its figures describe the demo company. Pass your own data in the inputs, "
-                            "or have the connector pointed at your system.")
+                            "or have your own system connected for this account.")
         if actx.demo_profile:   # a customer's work that leaned on the bundled demo company's profile says so
             provenance["demo_profile"] = sorted(actx.demo_profile)
             warnings.append("This used the demo company's profile that ships with this layer (" + ", ".join(sorted(actx.demo_profile)).replace("_", " ")
@@ -293,12 +306,19 @@ class BaseAgent:
         return result
 
     def execute_action(self, action: PendingAction, ctx: RunContext) -> PendingAction:
-        """Perform an approved side effect through its connector."""
+        """Perform an approved side effect through its connector. The caller's policy is asked again here, where the
+        write happens: an approval does not open a system the policy keeps agents from writing to."""
         try:
+            refusal = getattr(ctx.connectors, "write_refusal", None)
+            why = refusal(action.connector) if callable(refusal) else None
+            if why:
+                raise PermissionError(why)
             conn = ctx.connector(action.connector)
             result = getattr(conn, action.method)(**action.payload)
             action.status = "done"
             action.result = result if isinstance(result, dict) else {"result": result}
+            if getattr(ctx.connectors, "tenant", None):   # a customer's run records whose system took the action
+                action.result = {**action.result, "via": {"system": f"{action.connector}:{conn.provider}", "owner": conn.owner}}
             ctx.tracer.event("action.done", agent=self.spec.id, action=action.kind, id=action.id)
         except Exception as exc:
             action.status = "failed"

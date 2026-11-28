@@ -37,21 +37,25 @@ class TfidfVectorStore(VectorStore):
     _collections: dict[str, dict[str, dict[str, Any]]] = {}
     _lock = threading.Lock()
 
+    def _name(self, collection: str) -> str:
+        """The index is one for the process: a customer's collections are kept under that customer's name."""
+        return f"{self.partition}\x1f{collection}" if self.partition else collection
+
     def upsert(self, collection: str, docs: list[dict[str, Any]]) -> int:
         with self._lock:
-            col = self._collections.setdefault(collection, {})
+            col = self._collections.setdefault(self._name(collection), {})
             for d in docs:
                 did = str(d.get("id") or uuid.uuid4().hex)
                 col[did] = {"id": did, "text": d["text"], "metadata": d.get("metadata", {})}
             return len(col)
 
     def count(self, collection: str) -> int:
-        return len(self._collections.get(collection, {}))
+        return len(self._collections.get(self._name(collection), {}))
 
     def search(self, collection: str, query: str, k: int = 5, filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         from ..core.textutil import tfidf_similarity
 
-        docs = list(self._collections.get(collection, {}).values())
+        docs = list(self._collections.get(self._name(collection), {}).values())
         if filters:
             docs = [d for d in docs if all(_match(d["metadata"].get(fk), fv) for fk, fv in filters.items())]
         if not docs:
@@ -77,15 +81,21 @@ class Store(Connector):
 
 @connector("store", "sqlite")
 class SqliteStore(Store):
-    """SQLite record store under runs/_store/caf.sqlite (quote bank, learnings, backlog, caches)."""
+    """SQLite record store under runs/_store/caf.sqlite (quote bank, learnings, backlog, caches). A customer's records
+    are in a file of that customer's own (runs/_customers/<id>/_store/caf.sqlite): what one customer's agents learnt,
+    quoted or queued is never read by another's."""
 
     _lock = threading.Lock()
 
     @property
     def db_path(self) -> Path:
-        p = self.settings.resolve(self.config["path"]) if self.config.get("path") else self.settings.runs_dir / "_store" / "caf.sqlite"
-        p.parent.mkdir(parents=True, exist_ok=True)
-        return p
+        if self.config.get("path"):   # the operator chose where the store lives: a customer's file sits beside it
+            p = Path(self.settings.resolve(self.config["path"]))
+            if self.partition:
+                p = p.with_name(f"{p.stem}.{self.partition}{p.suffix}")
+            p.parent.mkdir(parents=True, exist_ok=True)
+            return p
+        return self.state_dir("_store") / "caf.sqlite"
 
     def _conn(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path, timeout=30)
@@ -203,17 +213,37 @@ class SqliteShortlinks(Shortlinks):
         conn.execute("CREATE TABLE IF NOT EXISTS scans (code TEXT, ts TEXT, meta TEXT)")
         return conn
 
+    def _mine(self, meta: str | None) -> bool:
+        """The link was made for the customer this connector serves (for the operator: a link no customer made)."""
+        try:
+            return str((json.loads(meta or "{}") or {}).get("_customer") or "") == self.partition
+        except (ValueError, AttributeError):
+            return not self.partition
+
     def shorten(self, url: str, *, code: str | None = None, meta: dict[str, Any] | None = None) -> dict[str, Any]:
+        """A short link for the address; the same address shortened again gives the same link. Links live in one table
+        (a code has to resolve for whoever opens it), but each customer's are that customer's own: two customers
+        shortening the same address get a link each, so neither reads the other's scan count, and a code already in
+        use by someone else is never taken over."""
         import random
 
         with self._lock, self._conn() as conn:
-            existing = conn.execute("SELECT code FROM links WHERE target=?", (url,)).fetchone()
-            if existing and not code:
-                code = existing[0]
+            mine = next((r[0] for r in conn.execute("SELECT code, meta FROM links WHERE target=?", (url,)).fetchall() if self._mine(r[1])), None)
+            if mine and not code:
+                return {"code": mine, "short_url": self.base_url + mine, "target": url}
+            if code:
+                taken = conn.execute("SELECT meta FROM links WHERE code=?", (code,)).fetchone()
+                if taken and not self._mine(taken[0]):
+                    raise ConnectorError(f"The short link code '{code}' is already in use")
             else:
-                rnd = random.Random(url)
-                code = code or "".join(rnd.choice(self._alphabet) for _ in range(7))
-                conn.execute("INSERT OR REPLACE INTO links VALUES (?,?,?,?)", (code, url, json.dumps(meta or {}), _stamp()))
+                seed = f"{self.partition}|{url}" if self.partition else url
+                for attempt in range(50):
+                    rnd = random.Random(seed if not attempt else f"{seed}|{attempt}")
+                    code = "".join(rnd.choice(self._alphabet) for _ in range(7))
+                    if not conn.execute("SELECT 1 FROM links WHERE code=?", (code,)).fetchone():
+                        break
+            kept = {**(meta or {}), **({"_customer": self.partition} if self.partition else {})}
+            conn.execute("INSERT OR REPLACE INTO links VALUES (?,?,?,?)", (code, url, json.dumps(kept), _stamp()))
         return {"code": code, "short_url": self.base_url + code, "target": url}
 
     def resolve(self, code: str) -> str | None:

@@ -561,7 +561,16 @@ class SqlAlchemyWarehouse(ExternalProvider, Warehouse):
         with self._lock:
             if self._engine is None:
                 url = self.require("url")["url"]
-                self._engine = sa.create_engine(url, pool_pre_ping=True, **(self.config.get("engine_options") or {}))
+                options = self.config.get("engine_options") or {}
+                if self.owner == "customer":   # an address a customer gave: a database server at a public address, driver options as shipped
+                    from ..core.security import Policy, PolicyError
+
+                    try:
+                        Policy(self.settings).check_database(url)
+                    except PolicyError as exc:
+                        raise ConnectorError(f"warehouse:sqlalchemy: {exc}") from exc
+                    options = {}
+                self._engine = sa.create_engine(url, pool_pre_ping=True, **options)
             return self._engine
 
     def tables(self) -> dict[str, list[tuple[str, str]]]:
@@ -642,7 +651,9 @@ class QdrantVectorStore(ExternalProvider, VectorStore):
         return int(self.config.get("vector_size") or 512)
 
     def _name(self, collection: str) -> str:
-        return re.sub(r"[^A-Za-z0-9_-]", "_", f"{self.config.get('collection_prefix', 'caf_')}{collection}")
+        # on the layer's own Qdrant a customer's collections carry that customer's id, so no customer's agents search another's
+        own = f"{self.partition}__" if self.partition else ""
+        return re.sub(r"[^A-Za-z0-9_-]", "_", f"{self.config.get('collection_prefix', 'caf_')}{own}{collection}")
 
     @staticmethod
     def _point_id(collection: str, doc_id: str) -> str:

@@ -82,7 +82,7 @@ class JsonExperiments(Experiments):
         """Base registry plus experiments written during runs (run-local copies win)."""
         p = self._registry_path()
         items = json.loads(p.read_text(encoding="utf-8")).get("experiments", []) if p.exists() else []
-        local = self.settings.runs_dir / "_experiments" / "registry.json"
+        local = self.state_dir("_experiments") / "registry.json"   # a customer's experiments are that customer's alone
         if local.exists():
             extra = json.loads(local.read_text(encoding="utf-8")).get("experiments", [])
             ids = {e.get("id") for e in extra}
@@ -107,8 +107,7 @@ class JsonExperiments(Experiments):
     def upsert(self, definition: dict[str, Any] | ExperimentDefinition) -> ExperimentDefinition:
         """Writes go to a run-local copy so sample data is never mutated."""
         exp = definition if isinstance(definition, ExperimentDefinition) else ExperimentDefinition.model_validate(definition)
-        out = self.settings.runs_dir / "_experiments" / "registry.json"
-        out.parent.mkdir(parents=True, exist_ok=True)
+        out = self.state_dir("_experiments") / "registry.json"
         with self._lock:
             items = json.loads(out.read_text(encoding="utf-8")).get("experiments", []) if out.exists() else []
             items = [e for e in items if e.get("id") != exp.id] + [exp.model_dump(mode="json")]

@@ -40,7 +40,7 @@
 
   const POLICIES = {
     "Coforge model (mode 1)": { version: 1, models: { provider: "coforge" }, data: { mask_before_model: [] }, reach: { websites: [] }, actions: { need_approval: ["*"] }, limits: { runs_per_day: 200 } },
-    "Customer's Azure OpenAI (mode 2)": { version: 1, signed_by: "ciso@customer.example", models: { provider: "azure_openai", endpoint: "https://<resource>.openai.azure.com/", api_version: "2025-04-01-preview", region: "westeurope", api_key_env: "CUSTOMER_X_AZURE_OPENAI_KEY", tiers: { fast: "gpt-5-mini", balanced: "gpt-5", pro: "gpt-5", complex: "gpt-5" }, images_allowed: false }, data: { mask_before_model: ["email", "phone", "policy_number"], keep_run_records_days: 30, provider_training: "forbidden" }, reach: { websites: ["*.customer.example"], systems: { cms: "read_write", ga4: "read" } }, actions: { need_approval: ["cms.publish", "email.send", "experiment.start"] }, limits: { runs_per_day: 500, tokens_per_month: 20000000 } },
+    "Customer's Azure OpenAI (mode 2)": { version: 1, signed_by: "ciso@customer.example", models: { provider: "azure_openai", endpoint: "https://<resource>.openai.azure.com/", api_version: "2025-04-01-preview", region: "westeurope", api_key_env: "CUSTOMER_X_AZURE_OPENAI_KEY", tiers: { fast: "gpt-5-mini", balanced: "gpt-5", pro: "gpt-5", complex: "gpt-5" }, images_allowed: false }, data: { mask_before_model: ["email", "phone", "policy_number"], keep_run_records_days: 30, provider_training: "forbidden" }, reach: { websites: ["*.customer.example"], systems: { cms: "read_write", analytics: "read" } }, actions: { need_approval: ["cms.publish", "email.send", "experiment.start"] }, limits: { runs_per_day: 500, tokens_per_month: 20000000 } },
     "Customer's Claude on Foundry (mode 2)": { version: 1, models: { provider: "anthropic_foundry", base_url: "https://<resource>.services.ai.azure.com/anthropic/", api_key_env: "CUSTOMER_X_FOUNDRY_KEY", tiers: { fast: "claude-sonnet-5-5", balanced: "claude-sonnet-5-5", pro: "claude-opus-5", complex: "claude-opus-5" } }, data: { mask_before_model: ["email", "phone"] }, reach: { websites: [] }, actions: { need_approval: ["*"] }, limits: {} },
     "Customer's Bedrock (mode 2)": { version: 1, models: { provider: "bedrock", region: "eu-central-1", tiers: { fast: "anthropic.claude-sonnet-5-5-v1:0", balanced: "anthropic.claude-sonnet-5-5-v1:0", pro: "anthropic.claude-opus-5-v1:0", complex: "anthropic.claude-opus-5-v1:0" } }, data: { mask_before_model: ["email"] }, reach: { websites: [] }, actions: { need_approval: ["*"] }, limits: {} },
   };
@@ -126,7 +126,7 @@
   }
   function detailPanel() {
     const c = selected;
-    const tabs = [["subscriptions", "Subscriptions"], ["keys", "Keys"], ["policy", "Policy"], ["check", "Agent check"], ["usage", "Usage"], ["connect", "Connection"]];
+    const tabs = [["subscriptions", "Subscriptions"], ["keys", "Keys"], ["policy", "Policy"], ["systems", "Systems"], ["check", "Agent check"], ["usage", "Usage"], ["connect", "Connection"]];
     return h("section", { class: "panel" },
       h("div", { class: "panel-head" }, h("h2", null, c.name), h("span", { class: "muted small mono" }, c.id), statusChip(c.status), warnChip(c.warning, () => { tab = "policy"; select(c.id); }),
         h("span", { class: "right row" },
@@ -134,7 +134,7 @@
             Object.entries(catalog.run_modes).map(([k, m]) => h("option", { value: k, selected: k === c.run_mode }, m.name))),
           h("button", { class: "btn sm " + (c.status === "active" ? "danger" : ""), type: "button", onclick: async () => { await api("/shop/admin/api/customers/" + c.id, { method: "PATCH", body: { status: c.status === "active" ? "suspended" : "active" } }); select(c.id); } }, c.status === "active" ? "Suspend" : "Activate"))),
       h("div", { class: "tabs", role: "tablist" }, tabs.map(([id, label]) => h("button", { role: "tab", "aria-selected": id === tab, type: "button", onclick: () => { tab = id; select(c.id); } }, label))),
-      { subscriptions: subsTab, keys: keysTab, policy: policyTab, check: checkTab, usage: usageTab, connect: connectTab }[tab](c));
+      { subscriptions: subsTab, keys: keysTab, policy: policyTab, systems: systemsTab, check: checkTab, usage: usageTab, connect: connectTab }[tab](c));
   }
   function subsTab(c) {
     const current = new Map(c.subscriptions.map(s => [s.kind + ":" + s.item_id, s]));
@@ -191,6 +191,7 @@
     const needs = h("p", { class: "xs muted" });
     const templates = Object.keys(POLICIES).map(name => h("button", { class: "btn sm" + (pendingModel && NEEDS[name] ? " primary" : ""), type: "button", onclick: () => {
       const t = JSON.parse(JSON.stringify(POLICIES[name]));
+      if (Object.keys(c.policy.connections || {}).length) t.connections = c.policy.connections;   // their systems stay connected whichever model answers
       if (!NEEDS[name]) { t.data = c.policy.data || t.data; t.reach = c.policy.reach || t.reach; t.actions = c.policy.actions || t.actions; t.limits = c.policy.limits || t.limits; }   // back to the layer's model, the rest kept
       ta.value = JSON.stringify(t, null, 2); needs.textContent = NEEDS[name] ? "Fill in: " + NEEDS[name] : "The layer's own deployment answers; nothing to fill in. Saving makes the account mode 1."; } }, name));
     return h("div", { class: "stack" },
@@ -199,11 +200,65 @@
         "Pick the customer's provider below, fill in what the template asks for, then Save policy: the run mode follows the policy, so it becomes 2 once a policy naming their model is saved, and 1 if the policy uses the layer's model.") : null,
       h("div", { class: "row" }, h("span", { class: "small muted" }, pendingModel ? "Customer's model provider:" : "Templates:"), templates), needs,
       ta,
-      h("p", { class: "xs muted" }, "api_key_env names an environment variable on this server (preferred). An inline api_key is encrypted with CAF_SECRET_KEY. The run mode follows the policy: a customer model makes the account mode 2, the layer's model mode 1. Run Agent check after saving: it tries the rented agents on that model."),
+      h("p", { class: "xs muted" }, "api_key_env names an environment variable on this server (preferred). An inline api_key is encrypted with CAF_SECRET_KEY. A credential shows as ***; leave it so and the stored one is kept. The run mode follows the policy: a customer model makes the account mode 2, the layer's model mode 1. Run Agent check after saving: it tries the rented agents on that model. The customer's own systems (connections) are easier to edit on the Systems tab."),
       h("div", { class: "row" }, h("button", { class: "btn primary", type: "button", onclick: async () => { let body; try { body = JSON.parse(ta.value); } catch (e) { return toast("Not valid JSON: " + e.message, 4000); }
         try { let r = await api("/shop/admin/api/customers/" + c.id + "/policy", { method: "PUT", body });
           if (pendingModel && ownModel(body) && r.run_mode !== MODE2) { await api("/shop/admin/api/customers/" + c.id, { method: "PATCH", body: { run_mode: MODE2 } }); r = { run_mode: MODE2 }; }   // asked for from mode 3
           pendingModel = false; toast("Policy saved · run mode " + r.run_mode + (r.run_mode === MODE2 ? " · run Agent check to try their model" : ""), 5000); select(c.id); } catch (err) { toast(err.message, 6000); } } }, "Save policy")));
+  }
+  // ---- Systems: the customer's own systems (analytics, CMS, e-mail platform ...) and what the agents may do with each kind
+  const SERVES = { customer: ["Their own", "good"], layer: ["This layer's", ""], demo: ["Demo data", "warn"], local: ["Not connected", ""], closed: ["Closed by policy", "bad"] };
+  const LEVELS = [["read_write", "Read and write"], ["read", "Read only"], ["none", "Nothing"]];
+  const kindName = (k) => k.replace(/_/g, " ");
+  function systemsTab(c) {
+    const rows = c.systems || [], url = "/shop/admin/api/customers/" + c.id + "/systems/";
+    const setAccess = async (kind, access) => { try { await api(url + kind, { method: "PUT", body: { access } }); toast("Saved"); } catch (err) { toast(err.message, 6000); } select(c.id); };
+    const state = (r) => { const [label, tone] = SERVES[r.serves] || [r.serves, ""];
+      return h("div", null, h("span", { class: "chip " + tone }, label), r.serves === "closed" ? null : h("span", { class: "small mono", style: "margin-left:8px" }, r.provider),
+        r.connected && r.needs.length ? h("div", { class: "xs", style: "color:var(--kin);margin-top:3px" }, "Still needs: " + r.needs.join(", ")) : null,
+        r.error ? h("div", { class: "xs", style: "color:var(--shu);margin-top:3px" }, r.error) : null); };
+    const table = (list) => h("table", { style: "table-layout:fixed;width:100%" },
+      h("colgroup", null, h("col", { style: "width:34%" }), h("col", { style: "width:27%" }), h("col", { style: "width:25%" }), h("col", { style: "width:14%" })),
+      h("thead", null, h("tr", null, h("th", null, "System"), h("th", null, "In a run of this customer"), h("th", null, "Agents may"), h("th", null, ""))),
+      h("tbody", null, list.map(r => h("tr", null,
+        h("td", null, h("strong", null, r.name || kindName(r.kind)), h("code", { class: "xs muted", style: "margin-left:6px", title: "The id the policy and the command line use" }, r.kind), h("div", { class: "xs muted" }, r.what)),
+        h("td", null, state(r)),
+        h("td", null, h("select", { class: "sm", style: "width:100%;min-width:118px", "aria-label": "What agents may do with the " + (r.name || kindName(r.kind)), onchange: (e) => setAccess(r.kind, e.target.value) }, LEVELS.map(([v, t]) => h("option", { value: v, selected: v === r.access }, t)))),
+        h("td", null, r.can_connect.length ? h("button", { class: "btn sm", type: "button", onclick: () => connectDialog(c, r) }, r.connected ? "Edit" : "Connect") : null)))));
+    const part = (title, lead, list) => list.length ? h("div", { class: "stack", style: "gap:6px" }, h("h4", null, title), h("p", { class: "xs muted" }, lead), table(list)) : null;
+    return h("div", { class: "stack" },
+      h("p", { class: "small muted" }, "What a run of " + c.name + " reaches. A system connected here is used by their runs only, with their credentials, which are stored encrypted and not shown again. No run of theirs reaches another customer's system, or one this server is connected to for its operator."),
+      part("Their systems", "Until one is connected, their agents read the demo data that ships with this layer and say so, and what they publish is written to their folder on this server.", rows.filter(r => r.group === "yours")),
+      part("This layer's services", "Provided by this server to every customer. A customer can bring their own account for one.", rows.filter(r => r.group === "service")),
+      part("This layer's stores", "Kept on this server, apart for each customer.", rows.filter(r => r.group === "store")));
+  }
+  function connectDialog(c, r) {
+    const url = "/shop/admin/api/customers/" + c.id + "/systems/" + r.kind, have = r.connection || {};
+    const pick = h("select", null, r.can_connect.map(p => h("option", { value: p.provider, selected: p.provider === have.provider }, p.provider)));
+    const fields = h("div"), more = h("textarea", { style: "min-height:110px", spellcheck: "false" });
+    const chosen = () => r.can_connect.find(x => x.provider === pick.value);
+    const draw = () => { const p = chosen(), same = have.provider === p.provider, rest = {};
+      if (same) Object.keys(have).forEach(k => { if (k !== "provider" && !p.needs.includes(k)) rest[k] = have[k]; });
+      more.value = Object.keys(rest).length ? JSON.stringify(rest, null, 2) : "";
+      clear(fields).append(h("div", { class: "stack" }, h("p", { class: "small" }, p.what + "."),   // h() takes lists and nulls; a bare append() would print them
+        p.needs.map(k => { const secret = p.secret.includes(k), kept = same && have[k] === "***";
+          return h("label", { class: "f" }, h("code", null, k), h("input", { type: secret ? "password" : "text", name: k, autocomplete: "off", value: same && !secret && have[k] != null ? String(have[k]) : "", placeholder: kept ? "stored: leave empty to keep it" : "" })); }),
+        p.settings ? h("p", { class: "xs muted" }, "All its settings: " + p.settings + ". Put any beyond the fields above in More settings.") : null)); };
+    pick.onchange = draw; draw();
+    const prefix = c.id.toUpperCase().replace(/[^A-Z0-9]+/g, "_") + "_";
+    const called = (r.name || kindName(r.kind)).replace(/^([A-Z])(?=[a-z])/, (m) => m.toLowerCase());   // "Analytics" reads as "analytics" mid-sentence; "CMS" stays
+    dialog((r.connected ? "Edit " : "Connect ") + c.name + "'s " + called, h("form", { class: "stack", onsubmit: async (e) => { e.preventDefault();
+      const p = chosen(), same = have.provider === p.provider, connection = { provider: p.provider };
+      if (more.value.trim()) { try { Object.assign(connection, JSON.parse(more.value)); } catch (err) { return toast("More settings is not valid JSON: " + err.message, 5000); } }
+      p.needs.forEach(k => { const v = e.target.elements[k].value.trim(); if (v) connection[k] = v; else if (same && have[k] === "***") connection[k] = "***"; });
+      try { const saved = await api(url, { method: "PUT", body: { connection } }); $("#dlg").close();
+        toast(saved.ready ? "Connected. " + c.name + "'s next run uses it." : "Saved. It still needs: " + (saved.needs || []).join(", "), 6000); select(c.id); } catch (err) { toast(err.message, 9000); } } },
+      h("label", { class: "f" }, "Product", pick), fields,
+      h("label", { class: "f" }, "More settings (JSON, optional)", more),
+      h("p", { class: "xs muted" }, "A setting whose name says key, token, secret or password is encrypted with CAF_SECRET_KEY and shown as *** from then on; leave *** in place to keep it. To keep a credential out of the database, name an environment variable on this server instead, for example \"api_key_env\": \"" + prefix + "API_KEY\". Its name has to start with " + prefix + "."),
+      h("div", { class: "row" }, h("button", { class: "btn primary", type: "submit" }, "Save connection"),
+        r.connected ? h("button", { class: "btn danger", type: "button", onclick: async () => { if (!confirm("Disconnect " + c.name + "'s " + called + "? Its stored credentials are deleted.")) return;
+          try { await api(url, { method: "DELETE" }); $("#dlg").close(); toast("Disconnected"); select(c.id); } catch (err) { toast(err.message, 6000); } } }, "Disconnect") : null)));
   }
   function checkTab(c) {
     const out = h("div", { class: "stack" });

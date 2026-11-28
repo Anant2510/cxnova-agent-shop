@@ -109,6 +109,20 @@ def http_client(conn: Any, base_url: str | None = None, headers: dict[str, str] 
     }
     if auth is not None:
         kwargs["auth"] = auth
+    if getattr(conn, "owner", "layer") == "customer":
+        # The address came from a customer's settings: every request it leads to (redirects and token endpoints
+        # included) has to go to a public address, never this server, its network or a cloud's internal services.
+        from ..core.security import Policy, PolicyError
+
+        policy = Policy(conn.settings)
+
+        def public_only(request: httpx.Request) -> None:
+            try:
+                policy.check_endpoint(str(request.url))
+            except PolicyError as exc:
+                raise ConnectorError(f"{_label(conn)}: {exc}") from exc
+
+        kwargs["event_hooks"] = {"request": [public_only]}
     transport = cfg.get("_transport")
     if transport is not None:
         kwargs["transport"] = transport

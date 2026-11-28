@@ -135,6 +135,10 @@ class Settings(BaseModel):
     approvals: dict[str, Any] = Field(default_factory=dict)
     orchestrator: dict[str, Any] = Field(default_factory=dict)
     security: dict[str, Any] = Field(default_factory=dict)
+    # Set on the settings of a customer's run (CustomerPolicy.settings_for), empty for the operator's own: who the run is
+    # for, the systems that customer connected (as stored: credentials still encrypted) and what its policy lets agents do
+    # with each. The connector hub and the security policy read it; see ConnectorHub and Policy.
+    tenant: dict[str, Any] = Field(default_factory=dict)
     runs_dir: Path
     skills_dirs: list[Path]
     prompts_dirs: list[Path]

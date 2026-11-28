@@ -26,7 +26,25 @@ data:
 
 reach:
   websites: ["*.meridian-mutual.example"]    # the agents may fetch only these hosts (empty = any public host)
-  systems: {cms: read_write, ga4: read, crm: none}
+  # What the agents may do with each kind of system: none | read | read_write (the default; writes wait for approval
+  # either way). A kind (cms, analytics, crm, esp, tasks ...) or a product (ga4) can be named.
+  systems: {cms: read_write, analytics: read, crm: none}
+
+# The customer's own systems, by kind. Their runs use these and nobody else's; without one, a kind falls back to the demo
+# data that ships with the layer (and the result says so). Settings are the provider's own (docs/CONNECTORS.md).
+# A credential is stored encrypted (needs CAF_SECRET_KEY) and never shown again, or stays out of the database as
+# <setting>_env: an environment variable on the server whose name starts with the customer's id (MERIDIAN_MUTUAL_).
+# Easier one at a time: caf shop systems meridian-mutual --set systems.yaml, or the admin console's Systems tab.
+# Left as comments here, so that loading this example connects nothing that does not exist:
+# connections:
+#   analytics:
+#     provider: ga4
+#     property_id: "123456789"
+#     credentials_json_env: MERIDIAN_MUTUAL_GA4_KEY          # the service-account key (JSON) in an environment variable
+#   cms:
+#     provider: contentful
+#     space_id: mm-space
+#     management_token_env: MERIDIAN_MUTUAL_CONTENTFUL_TOKEN
 
 actions:
   need_approval: [cms.publish, email.send, experiment.start]   # publish-type actions are always held; this documents which

@@ -34,6 +34,68 @@ Implementation: `src/caf/connectors/_http.py` (client, retries, OAuth helpers),
 `search_providers.py`, `analytics_providers.py`, `marketing_providers.py`,
 `experiment_providers.py`, `misc_providers.py` and `crm.py` (the new `crm` kind).
 
+## A customer's own connections
+
+The `connectors` block in `config/settings.yaml` is this server's: the operator's own systems, or the demo data. In a
+shop with customers, a connection is somebody's system, so each customer's runs get their own:
+
+| Kind of system | What serves a customer's run |
+|---|---|
+| One the customer connected (its policy's `connections`) | That connection, with the customer's credentials, and nothing else |
+| The layer's services: `ingestion`, `crawler`, `search`, `translation` | The server's, for every customer. A customer can bring its own account for one |
+| The layer's stores: `store`, `vectorstore`, `shortlink` | The server's, kept apart per customer |
+| Every other kind (`analytics`, `cms`, `esp`, `tasks`, `crm` ...) where the server has only the bundled demo data | The bundled data, read by the local provider; the result says it is demo data |
+| Every other kind where the server is connected to a real system | **Not** that system (it is the operator's): the bundled local provider instead |
+
+`security.shared_connectors` (`CAF_SHARED_CONNECTORS`) changes the last row: name the kinds the server's own connection
+may serve customers for (`keyword_data,warehouse`), `all` when this image runs in the customer's own cloud (run mode 3:
+the server's systems are the customer's), or `none` to keep even the services to the operator.
+
+Connect a customer's system on the admin console (customer → **Systems**), with the CLI, or over the API:
+
+```bash
+caf shop systems acme                      # every kind: what serves it in acme's runs, what agents may do, what can be connected
+caf shop systems acme --set systems.yaml   # connect: {cms: {provider: contentful, space_id: ..., management_token: ...}}
+caf shop systems acme --access cms=read    # none | read | read_write
+caf shop systems acme --disconnect cms     # the connection and its stored credentials are deleted
+```
+
+```http
+GET    /shop/admin/api/customers/{id}/systems
+PUT    /shop/admin/api/customers/{id}/systems/{kind}     {"connection": {"provider": "...", ...}, "access": "read"}
+DELETE /shop/admin/api/customers/{id}/systems/{kind}
+```
+
+The settings are the provider's own, as listed under [Settings to add](#settings-to-add), with these rules:
+
+* **Credentials.** A setting whose name says key, token, secret, password or credentials (and a URL that carries a
+  password) is encrypted with `CAF_SECRET_KEY` before it is stored, decrypted only when a connector is first used in a
+  run, and shown as `***` everywhere. Saving `***` back keeps the stored value. To keep a credential out of the database,
+  give `<setting>_env` instead: the name of an environment variable on the server, which has to start with the customer's
+  id in capitals (`ACME_BRAZE_KEY` for `acme`, `HARBOR_BANK_...` for `harbor-bank`), so no account's settings can name
+  another's secret or the server's own.
+* **Only external providers.** A local provider (`csv`, `file`, `json` ...) works on this server's files and is not a
+  customer's to connect. `path`, `credentials_file`, `fixtures`, `providers`, `engine_options` and `_transport` are
+  refused for the same reason; a Google service-account key goes in `credentials_json`.
+* **Public addresses only.** An address in a customer's settings may not be this server, a private network or a cloud's
+  internal service. It is checked when the settings are saved and again on every request and redirect the connection
+  makes. A warehouse URL has to name a database server, never a file database (`sqlite`, `duckdb`).
+* **Complete or not.** An incomplete connection is saved and the Systems view says what it still needs. Nothing calls
+  the customer's system to test it: the first run does. The external adapters are tested against stand-ins for the
+  vendors' APIs and none has been run against a live account here (see the legend below), so plan a customer's first
+  run on a non-production target.
+
+What a customer's policy lets agents do with a kind (`reach.systems: {cms: read, crm: none}`) is enforced in the hub
+and again where an approved action executes; see [CUSTOMER_INTEGRATION.md](CUSTOMER_INTEGRATION.md#your-systems).
+
+**Where a customer's records are.** Local state is under `runs/_customers/<id>/` (`_store/caf.sqlite`, `_cms/`,
+`_esp/`, `_tasks/`, `_newswire/`, `_flags/`, `_experiments/`); the in-process index and a shared Qdrant keep a
+customer's collections under the customer's id; short links stay in one table, because a code has to resolve for
+whoever opens it, with each customer's links marked as theirs. In service mode a customer's run reads, under `runs/`,
+only its own run folders and its own `runs/_customers/<id>/`. Records written before this separation existed stay in
+`runs/_store/` and the `runs/_<kind>/` folders, which now belong to the operator's own runs: customers start with empty
+stores.
+
 ## Verification legend
 
 | Label | Meaning |

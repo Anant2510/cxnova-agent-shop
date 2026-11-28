@@ -32,6 +32,7 @@ SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 INTERNAL_NAMES = {"localhost", "metadata", "metadata.google.internal", "instance-data", "instance-data.ec2.internal",
                   "kubernetes", "kubernetes.default", "kubernetes.default.svc"}
 TRUTHY = {"1", "true", "yes", "on"}
+FILE_DATABASES = ("sqlite", "duckdb")   # SQLAlchemy dialects whose address is a file on the machine that opens it
 
 
 class PolicyError(PermissionError):
@@ -120,7 +121,12 @@ class Policy:
         fixtures = (settings.connector_config("crawler").get("fixtures") or {}) if hasattr(settings, "connector_config") else {}
         self.fixture_hosts = {str(h).lower() for h in fixtures}
         roots = _list(cfg.get("file_roots")) or ["sample_data"]
-        self.file_roots = [Path(settings.resolve(r)).resolve() for r in roots] + [Path(settings.runs_dir).resolve()]
+        self.runs_root = Path(settings.runs_dir).resolve()
+        self.file_roots = [Path(settings.resolve(r)).resolve() for r in roots] + [self.runs_root]
+        # a customer's run (the settings carry who it is for): under runs/ it reads its own runs and its own records only
+        tenant = dict(getattr(settings, "tenant", None) or {})
+        self.tenant = str(tenant["id"]) if tenant.get("id") else None
+        self._owns_run = tenant.get("owns_run") if callable(tenant.get("owns_run")) else None
 
     # ------------------------------------------------------------------------------ network
     def _host_listed(self, host: str) -> bool:
@@ -167,16 +173,67 @@ class Policy:
         except PolicyError:
             return False
 
+    def check_endpoint(self, url: str, *, resolve: bool = True) -> str:
+        """Return the address if a connection a customer configured may call it, else raise PolicyError.
+
+        This is the address of a system (an API, a database), not a page an agent fetches, so the website allowlist
+        does not apply; what applies is that the address a customer names must be on the public internet, never this
+        server, its private network or a cloud's internal services. `resolve=False` judges the name alone (when the
+        settings are saved); a request is judged again with the name resolved."""
+        parsed = urlparse(str(url or "").strip())
+        host = (parsed.hostname or "").lower().rstrip(".")
+        if not host:
+            raise PolicyError(f"The address has no host: {str(url).split('@')[-1][:120]}")
+        if self.allow_private_network:
+            return url
+        if host in INTERNAL_NAMES or host.endswith((".localhost", ".internal", ".local", ".svc", ".cluster.local")):
+            raise PolicyError(f"'{host}' is an internal name: a customer's connection has to be to a public address")
+        literal = host.strip("[]")
+        try:
+            ipaddress.ip_address(literal)
+            addrs = [literal]
+        except ValueError:
+            addrs = _resolve(host) if resolve else []
+        for addr in addrs:
+            if not is_public_address(addr):
+                raise PolicyError(f"'{host}' is not a public address ({addr}): a customer's connection has to be to a public address")
+        return url
+
     # ------------------------------------------------------------------------------ files
     def check_path(self, path: str | Path) -> Path:
         """Resolve a local path (relative to the framework home) and return it if this run may read it."""
         raw = Path(str(path)).expanduser()
         p = raw if raw.is_absolute() else Path(self.settings.resolve(raw))
         resolved = p.resolve()
-        if self.allow_any_file or any(resolved == root or resolved.is_relative_to(root) for root in self.file_roots):
+        if self.allow_any_file:
+            return resolved
+        if self.tenant and (resolved == self.runs_root or resolved.is_relative_to(self.runs_root)):
+            # runs/ holds every customer's runs and records. A customer's run reads its own there and nobody else's:
+            # not another customer's run or records, and not what the operator's own runs kept.
+            parts = resolved.relative_to(self.runs_root).parts
+            if parts and (parts[:2] == ("_customers", self.tenant) or (self._owns_run is not None and self._owned(parts[0]))):
+                return resolved
+            raise PolicyError(f"That file is not in one of this account's own runs: {raw}")
+        if any(resolved == root or resolved.is_relative_to(root) for root in self.file_roots):
             return resolved
         raise PolicyError(f"Reading local files outside the allowed folders is disabled for this service: {raw} "
                           "(see security.file_roots)")
+
+    def check_database(self, url: str, *, resolve: bool = True) -> str:
+        """Return a database address a customer configured if a connection may use it, else raise PolicyError: a
+        database server at a public address, never a database file on this machine (which is how the layer's own
+        records, every customer's included, are kept)."""
+        scheme = str(url or "").strip().split(":", 1)[0].split("+", 1)[0].lower()
+        if scheme in FILE_DATABASES or not scheme:
+            raise PolicyError(f"'{scheme or 'no scheme'}' names a database file on this server: a customer's connection has to be "
+                              "to a database server")
+        return self.check_endpoint(url, resolve=resolve)
+
+    def _owned(self, run_id: str) -> bool:
+        try:
+            return bool(self._owns_run(run_id))   # type: ignore[misc]
+        except Exception:  # noqa: BLE001 - whatever answers for ownership failing is not a yes
+            return False
 
     def path_allowed(self, path: str | Path) -> bool:
         try:

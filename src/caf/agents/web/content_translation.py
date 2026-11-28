@@ -871,8 +871,7 @@ class ContentTranslationAgent(BaseAgent):
         checks: list[Check] = []
         tm_file = None
         if new_units:
-            store = ctx.settings.runs_dir / "_store"
-            store.mkdir(parents=True, exist_ok=True)
+            store = ctx.state_dir("_store")   # a customer's new units go to that customer's own folder
             path = store / f"tm-{ctx.run_id}.tmx"
             sample = Path(ctx.settings.sample_data).resolve()
             if sample in path.resolve().parents:  # never write into the sample / source TM folder
@@ -883,7 +882,7 @@ class ContentTranslationAgent(BaseAgent):
             artifacts.append(ctx.artifacts.write_text(f"tm-{ctx.run_id}.tmx", xml, "application/x-tmx+xml",
                                                       "New translation units for review (TMX 1.4)"))
             checks.append(Check(rule="tm.write", status="info", severity="low",
-                                message=f"{len(new_units)} new unit(s) written to runs/_store/tm-{ctx.run_id}.tmx (status: unreviewed)."))
+                                message=f"{len(new_units)} new unit(s) written to runs/{tm_file} (status: unreviewed)."))
         else:
             checks.append(Check(rule="tm.write", status="info", severity="low",
                                 message="No new TM units" + (" (offline placeholders are never stored)." if offline else ".")))

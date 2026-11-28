@@ -236,6 +236,12 @@ security:
                                                     # when empty, only loopback clients are served
   cors_origins: ${CAF_CORS_ORIGINS:-}               # comma-separated browser origins allowed to call the API (none by default)
   allowed_hosts: ${CAF_ALLOWED_HOSTS:-}             # optional allowlist of hosts agents may fetch ("*.example.com" wildcards)
+  # Whose connections a customer's run may use. Its own (the `connections` in its policy) always. The connections in the
+  # `connectors` block above are this server's, so the operator's: unset, a customer's run gets only the layer's services
+  # from them (ingestion, crawler, search, translation) and the bundled demo data, never a real system the server is
+  # connected to. Name other kinds to share them (comma-separated), `all` when this image runs in the customer's own cloud
+  # (run mode 3: the server's systems are the customer's), or `none`. See docs/CONNECTORS.md.
+  shared_connectors: ${CAF_SHARED_CONNECTORS:-}
   allow_private_network: ${CAF_ALLOW_PRIVATE_NETWORK:-false}   # let agents fetch loopback / private / link-local hosts
   file_roots: [sample_data]                         # folders agents may read local files from (runs/ is always readable)
   allow_any_local_file: ${CAF_ALLOW_ANY_LOCAL_FILE:-false}

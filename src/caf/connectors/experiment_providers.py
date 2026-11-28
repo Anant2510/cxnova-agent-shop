@@ -34,8 +34,7 @@ class _ExternalExperiments(ExternalProvider, Experiments):
     def upsert(self, definition: dict[str, Any] | ExperimentDefinition) -> ExperimentDefinition:
         """Store a local draft for hand-off; the platform is never modified from here."""
         exp = definition if isinstance(definition, ExperimentDefinition) else ExperimentDefinition.model_validate(definition)
-        out = self.settings.runs_dir / "_experiments" / f"{self.provider}_drafts.json"
-        out.parent.mkdir(parents=True, exist_ok=True)
+        out = self.state_dir("_experiments") / f"{self.provider}_drafts.json"   # a customer's drafts in that customer's folder
         with _draft_lock:
             items = json.loads(out.read_text(encoding="utf-8")).get("experiments", []) if out.exists() else []
             items = [e for e in items if e.get("id") != exp.id] + [exp.model_dump(mode="json")]
