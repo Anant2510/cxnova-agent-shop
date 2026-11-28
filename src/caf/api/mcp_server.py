@@ -15,6 +15,11 @@ explicit approve_actions call, which MCP clients show to the user for confirmati
 A customer key (set on the request by the API's auth middleware) narrows the server to that customer: tools/list
 shows only the rented agents and flows, and every call is checked, metered and run under the customer's policy.
 Flow tools follow the shop: publishing a flow adds its tool, unpublishing or deleting removes it, without a restart.
+
+In step with the 2026-07-28 revision of the protocol (the SDK carries the wire format): nothing here depends on a
+session or a handshake, since who is calling comes with every request; every tool says what calling it does (tool
+annotations: reads only, can change something outside, reaches outside systems) and carries a title for people; the
+tool list comes in one stable order with a freshness hint, private to the caller because it is the caller's subscription.
 """
 
 from __future__ import annotations
@@ -39,7 +44,38 @@ except ImportError:  # pragma: no cover - MCP SDK 1.x
     from mcp.server.fastmcp import FastMCP as _Server  # type: ignore
     from mcp.server.fastmcp.exceptions import ToolError  # type: ignore
 
+try:
+    from mcp.types import ToolAnnotations
+except ImportError:  # pragma: no cover - an SDK from before tool annotations
+    ToolAnnotations = None  # type: ignore[assignment,misc]
+try:
+    from mcp.server.caching import CacheHint
+except ImportError:  # pragma: no cover - an SDK from before the 2026-07-28 revision
+    CacheHint = None  # type: ignore[assignment,misc]
+
 GENERIC_TOOLS = ("list_agents", "list_flows", "run_flow", "orchestrate", "approve_actions", "get_run")
+TOOLS_FRESH_MS = 60_000   # how long a client may keep the tool list before asking again
+
+
+def tool_hints(title: str, *, read_only: bool = False, destructive: bool = False, idempotent: bool = False,
+               open_world: bool = False) -> dict[str, Any]:
+    """What a client is told a tool does before it calls it (MCP tool annotations), as keyword arguments for add_tool.
+
+    read_only: it changes nothing, here or elsewhere. destructive: it can change something outside this layer that
+    cannot be taken back. idempotent: calling it again with the same arguments changes nothing more. open_world: it
+    reaches systems outside this layer (the web, a connector). They are hints for the client's own caution: what a
+    caller may do is decided on the server, by its subscription and the approval gates."""
+    if ToolAnnotations is None:
+        return {}
+    return {"title": title, "annotations": ToolAnnotations(title=title, readOnlyHint=read_only, destructiveHint=destructive,
+                                                           idempotentHint=idempotent, openWorldHint=open_world)}
+
+
+def _add(server: Any, fn: Any, *, name: str, description: str, hints: dict[str, Any] | None = None) -> None:
+    try:
+        server.add_tool(fn, name=name, description=description, **(hints or {}))
+    except TypeError:  # pragma: no cover - an SDK whose add_tool takes no title or annotations
+        server.add_tool(fn, name=name, description=description)
 
 
 def _tool_error(exc: Exception) -> ToolError:
@@ -73,7 +109,9 @@ def _make_runner(agent_id: str, input_model: type[BaseModel], settings: Any = No
         return data
 
     runner.__name__ = f"run_{agent_id}"
-    runner.__annotations__ = {"inputs": input_model, "return": dict}  # resolvable without module globals
+    # resolvable without module globals; a typed return gives the tool an output schema, so its result also arrives as
+    # structured content a client can read without parsing text
+    runner.__annotations__ = {"inputs": input_model, "return": dict[str, Any]}
     return runner
 
 
@@ -105,7 +143,7 @@ def _make_flow_runner(flow_id: str, args_model: type[BaseModel], orch: Any):
         return follow_hint(view, "mcp")
 
     runner.__name__ = f"run_flow_{flow_id}"
-    runner.__annotations__ = {"args": args_model, "return": dict}
+    runner.__annotations__ = {"args": args_model, "return": dict[str, Any]}
     return runner
 
 
@@ -140,22 +178,34 @@ class ShopMCPServer(_Server):  # type: ignore[misc,valid-type]
     async def list_tools(self) -> list[Any]:  # type: ignore[override]
         tools = await super().list_tools()
         cust = shop_context.customer()
-        if cust is None:
-            return tools
-        shop = _shop(self.shop_settings)
-        agents = {f"run_{a}" for a in shop.entitled_agents(cust)}
-        flows = {f"run_flow_{f}" for f in shop.entitled_flows(cust)}
-        return [t for t in tools if t.name in GENERIC_TOOLS or t.name in agents or t.name in flows]
+        if cust is not None:
+            shop = _shop(self.shop_settings)
+            agents = {f"run_{a}" for a in shop.entitled_agents(cust)}
+            flows = {f"run_flow_{f}" for f in shop.entitled_flows(cust)}
+            tools = [t for t in tools if t.name in GENERIC_TOOLS or t.name in agents or t.name in flows]
+        # one order every time (the general tools, then the rest by name): a client can cache the list, and a model's
+        # prompt cache is not broken by a flow that was republished and so registered again at the end
+        rank = {name: i for i, name in enumerate(GENERIC_TOOLS)}
+        return sorted(tools, key=lambda t: (rank.get(t.name, len(rank)), t.name))
 
 
 def build_mcp(orchestrator: Any = None) -> Any:
     from ..orchestrator import Orchestrator
 
+    from .. import __version__
+    from ..branding import PRODUCT
+
     orch = orchestrator or Orchestrator(service_settings())
-    server = ShopMCPServer("cxnova-orchestration", instructions="Run the agents in your subscription directly (run_<agent>), run a rented "
-                                                            "orchestration flow (run_flow_<flow>), or orchestrate a goal across them. A long run "
-                                                            "answers while it is still going: follow it with get_run.")
+    instructions = ("Run the agents in your subscription directly (run_<agent>), run a rented orchestration flow (run_flow_<flow>), or "
+                    "orchestrate a goal across them. A long run answers while it is still going: follow it with get_run. Actions that "
+                    "publish or send are held: decide them with approve_actions.")
+    try:   # the server says who it is, and that a caller's tool list is that caller's own and how long it stays fresh
+        hints = {"tools/list": CacheHint(ttl_ms=TOOLS_FRESH_MS, scope="private")} if CacheHint is not None else None
+        server = ShopMCPServer("cxnova-orchestration", title=PRODUCT.name, version=__version__, instructions=instructions, cache_hints=hints)
+    except TypeError:  # pragma: no cover - an SDK whose server takes neither
+        server = ShopMCPServer("cxnova-orchestration", instructions=instructions)
     server.shop_settings = orch.settings
+    acts_unasked = bool(getattr(orch.settings, "auto_approve", False))   # the operator let held actions execute without a decision
     shop = _shop(orch.settings)
 
     def list_agents() -> str:
@@ -164,7 +214,8 @@ def build_mcp(orchestrator: Any = None) -> Any:
         allowed = shop.entitled_agents(cust) if cust is not None else None
         return json.dumps([a for a in catalog() if allowed is None or a["id"] in allowed], indent=2)
 
-    server.add_tool(list_agents, name="list_agents", description="List the agents available to you (id, category, kind, summary)")
+    _add(server, list_agents, name="list_agents", description="List the agents available to you (id, category, kind, summary)",
+         hints=tool_hints("List agents", read_only=True, idempotent=True))
 
     def list_flows() -> str:
         """List the orchestration flows available to you: id, name, description, expected inputs, steps and stages."""
@@ -177,7 +228,8 @@ def build_mcp(orchestrator: Any = None) -> Any:
                 rows.append({k: d[k] for k in ("id", "name", "description", "inputs", "agents", "stages", "tool")})
         return json.dumps(rows, indent=2)
 
-    server.add_tool(list_flows, name="list_flows", description="List the orchestration flows available to you (id, inputs, steps, tool name)")
+    _add(server, list_flows, name="list_flows", description="List the orchestration flows available to you (id, inputs, steps, tool name)",
+         hints=tool_hints("List flows", read_only=True, idempotent=True))
 
     def run_flow(args: RunFlowArgs) -> dict[str, Any]:
         try:
@@ -187,7 +239,8 @@ def build_mcp(orchestrator: Any = None) -> Any:
             raise _tool_error(exc) from exc
         return follow_hint(view, "mcp")
 
-    server.add_tool(run_flow, name="run_flow", description="Run an orchestration flow by id with its shared inputs; returns the run view")
+    _add(server, run_flow, name="run_flow", description="Run an orchestration flow by id with its shared inputs; returns the run view",
+         hints=tool_hints("Run a flow", destructive=acts_unasked, open_world=True))
 
     def orchestrate(args: OrchestrateArgs) -> dict[str, Any]:
         cust = shop_context.customer()
@@ -211,7 +264,8 @@ def build_mcp(orchestrator: Any = None) -> Any:
         shop.record_view(cust, view, surface="mcp", provider=ctx.llm.provider)
         return follow_hint(view, "mcp")
 
-    server.add_tool(orchestrate, name="orchestrate", description="Plan and run a multi-agent workflow for a goal; returns the run view")
+    _add(server, orchestrate, name="orchestrate", description="Plan and run a multi-agent workflow for a goal; returns the run view",
+         hints=tool_hints("Orchestrate a goal", destructive=acts_unasked, open_world=True))
 
     def approve(args: ApproveArgs) -> dict[str, Any]:
         cust = shop_context.customer()
@@ -228,8 +282,9 @@ def build_mcp(orchestrator: Any = None) -> Any:
         shop.record_view(cust, view, surface="mcp")
         return follow_hint(view, "mcp")
 
-    server.add_tool(approve, name="approve_actions", description="Approve or reject publish-type actions held by a run: while it is "
-                                                                 "still going (they execute at once) or at its approval gate")
+    _add(server, approve, name="approve_actions", description="Approve or reject publish-type actions held by a run: while it is "
+                                                              "still going (they execute at once) or at its approval gate",
+         hints=tool_hints("Decide held actions", destructive=True, idempotent=True, open_world=True))   # an approved action publishes or sends
 
     def get_run(args: GetRunArgs) -> dict[str, Any]:
         cust = shop_context.customer()
@@ -240,8 +295,9 @@ def build_mcp(orchestrator: Any = None) -> Any:
         except KeyError as exc:
             raise ToolError(f"Unknown run '{args.run_id}'") from exc
 
-    server.add_tool(get_run, name="get_run", description="Follow a run: its status (queued, running, awaiting_approval, completed, "
-                                                         "failed, stalled), each step's result so far and the actions waiting for approval")
+    _add(server, get_run, name="get_run", description="Follow a run: its status (queued, running, awaiting_approval, completed, "
+                                                      "failed, stalled), each step's result so far and the actions waiting for approval",
+         hints=tool_hints("Follow a run", read_only=True, idempotent=True))
 
     agent_tools: set[str] = set()
 
@@ -258,8 +314,11 @@ def build_mcp(orchestrator: Any = None) -> Any:
         for aid, agent in wanted.items():
             if aid in agent_tools:
                 continue
-            server.add_tool(_make_runner(aid, agent.Input, orch.settings), name=f"run_{aid}",
-                            description=f"{agent.spec.name}: {agent.spec.summary}"[:1000])
+            # a run is metered and kept, so it is not read-only; what it publishes or sends is held for approve_actions
+            _add(server, _make_runner(aid, agent.Input, orch.settings), name=f"run_{aid}",
+                 description=f"{agent.spec.name}: {agent.spec.summary}"[:1000],
+                 hints=tool_hints(agent.spec.name, destructive=acts_unasked and bool(agent.spec.side_effects),
+                                  open_world=bool(agent.spec.connectors)))
             agent_tools.add(aid)
 
     sync_agent_tools()
@@ -284,7 +343,8 @@ def build_mcp(orchestrator: Any = None) -> Any:
                     continue
                 desc = f"Flow '{flow.name}'" + (f": {flow.description}" if flow.description else "") + ". Steps: " + \
                     " → ".join(" + ".join(st) for st in flow.stages())
-                server.add_tool(_make_flow_runner(fid, flow_args_model(flow), orch), name=f"run_flow_{fid}", description=desc[:1000])
+                _add(server, _make_flow_runner(fid, flow_args_model(flow), orch), name=f"run_flow_{fid}", description=desc[:1000],
+                     hints=tool_hints(flow.name, destructive=acts_unasked, open_world=True))
                 current[fid] = flow.version
 
     sync_flow_tools()

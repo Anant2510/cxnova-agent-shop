@@ -194,7 +194,7 @@ passenger to VoyagerAI's agents, and the blueprint's goals route as before.
   so no action is executed twice, even across a restart.
 * **Runs off the request.** REST, MCP and A2A runs execute on a worker pool (`orchestrator.max_concurrent_runs`, more wait
   in a queue). A call waits up to `orchestrator.run_wait_s` (`CAF_RUN_WAIT_S`, default 60; a request can pass `wait_s`)
-  and then answers **202** with the run so far; follow it with `GET /runs/{id}` (MCP: `get_run`; A2A: `tasks/get`). Short
+  and then answers **202** with the run so far; follow it with `GET /runs/{id}` (MCP: `get_run`; A2A: `GetTask`). Short
   runs still answer in one call. Keep `run_wait_s` under your reverse proxy's read timeout. The CLI runs in the foreground.
 * **Durable runs.** Checkpoints, run status and approval decisions are in `$CAF_DATA_DIR/orchestrator.db` (SQLite,
   `orchestrator.run_store`). After a restart, finished runs stay viewable, runs at the approval gate stay approvable, and a
@@ -212,7 +212,7 @@ passenger to VoyagerAI's agents, and the blueprint's goals route as before.
 |---|---|---|
 | REST | `caf serve` then `/docs` | `/agents`, `/agents/{id}/run`, `/flows`, `/flows/{id}/run`, `/plan` (preview the steps a goal would run, nothing started), `/orchestrate`, `/runs` (list, filtered by status, agent, flow or text), `/runs/stats`, `/runs/{id}`, `/runs/{id}/trace`, `/runs/{id}/approvals`, `/runs/{id}/continue`, `/runs/{id}/artifacts/...`, `/approvals` (every held action), `/health`, `/health/agents`, `/playbooks`, `/connectors`, `/r/{code}` short links |
 | MCP | `/mcp` (streamable HTTP) or `caf mcp` (stdio) | `run_<agent_id>` for every agent, `run_flow_<flow_id>` for every published flow, plus `list_agents`, `list_flows`, `run_flow`, `orchestrate`, `approve_actions`, `get_run`; with a customer key the tool list is that customer's subscription |
-| A2A | `/.well-known/agent-card.json`, `POST /a2a` | Orchestrator card listing every agent as a skill; JSON-RPC `message/send`, `tasks/get` |
+| A2A | `/.well-known/agent-card.json`, `POST /a2a` | Protocol 1.0, and 0.3 for clients that still speak it. Orchestrator card listing every agent as a skill; JSON-RPC `SendMessage`, `GetTask`, `ListTasks`, `GetExtendedAgentCard`; held actions are decided by a message to the task |
 | CLI | `caf` | `agents`, `describe`, `run`, `orchestrate`, `playbooks`, `health`, `serve`, `mcp`, `export-catalog` |
 | Portal | `caf serve` then `/` (or `/portal`) | The one place to run and watch everything: launch, every run live and step by step, approvals, agents, flows, health, customers (below) |
 | Console | `/console` | The engineering console: browser twins of all agents, model calls on the server's provider (see below) |

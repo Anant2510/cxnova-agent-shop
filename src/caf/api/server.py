@@ -18,6 +18,7 @@ served from loopback only. Cross-origin browser access is off unless CAF_CORS_OR
 
 from __future__ import annotations
 
+import hashlib
 import hmac
 import json
 import logging
@@ -656,20 +657,46 @@ def create_app() -> FastAPI:
     def shortlink_stats(code: str) -> dict[str, Any]:
         return ConnectorHub(settings).get("shortlink").stats(code)
 
-    # ------------------------------------------------------------------ A2A
-    @app.get("/.well-known/agent-card.json")
-    def agent_card(request: Request) -> dict[str, Any]:
-        """The orchestrator's A2A card. With a customer key, the skills are the customer's subscribed agents."""
+    # ------------------------------------------------------------------ A2A (protocol 1.0, and 0.3 for clients that still speak it)
+    def a2a_version(request: Request) -> str | None:
+        return request.headers.get("a2a-version") or request.query_params.get("A2A-Version")
+
+    def a2a_card(request: Request, agent_id: str | None = None, version: str | None = None) -> dict[str, Any]:
+        """The card in the version the reader asked for (A2A-Version; none is a 0.3 reader). With a customer key the skills
+        are that customer's subscription and the interfaces carry the customer as tenant."""
         cust = customer(request)
+        try:
+            wanted = a2a.requested_version(version if version is not None else a2a_version(request))
+        except a2a.A2AError:
+            wanted = a2a.V1   # a version this layer does not speak: the newest card it has
+        common = {"version": wanted, "secured": bool(_api_token(settings)), "tenant": cust["id"] if cust else None}
+        if agent_id:
+            return a2a.single_agent_card(agent_id, base_url(request), **common)
         allowed = shop.entitled_agents(cust) if cust else None
         flows = set(shop.entitled_flows(cust))
-        return a2a.orchestrator_card(base_url(request), allowed=allowed, flows=[shop.flow_listing(f) for f in shop.flows() if f.id in flows])
+        return a2a.orchestrator_card(base_url(request), allowed=allowed,
+                                     flows=[shop.flow_listing(f) for f in shop.flows() if f.id in flows], **common)
+
+    def card_response(request: Request, card: dict[str, Any]) -> Response:
+        """A card with what a client needs to cache it: it varies with the version asked for and with who asks."""
+        body = json.dumps(card, ensure_ascii=False, separators=(",", ":")).encode()
+        etag = '"' + hashlib.sha256(body).hexdigest()[:32] + '"'
+        headers = {"ETag": etag, "Vary": "A2A-Version, Authorization, X-API-Key",
+                   "Cache-Control": ("private" if customer(request) else "public") + ", max-age=300"}
+        if request.headers.get("if-none-match") == etag:
+            return Response(status_code=304, headers=headers)
+        return Response(body, media_type="application/json", headers=headers)
+
+    @app.get("/.well-known/agent-card.json")
+    def agent_card(request: Request) -> Response:
+        """The orchestrator's A2A card. With a customer key, the skills are the customer's subscribed agents."""
+        return card_response(request, a2a_card(request))
 
     @app.get("/a2a/agents/{agent_id}/agent-card.json")
-    def single_card(agent_id: str, request: Request) -> dict[str, Any]:
+    def single_card(agent_id: str, request: Request) -> Response:
         entitled(request, agent_id)
         try:
-            return a2a.single_agent_card(agent_id, base_url(request))
+            return card_response(request, a2a_card(request, agent_id))
         except KeyError as exc:
             raise HTTPException(404, str(exc)) from exc
 
@@ -688,17 +715,31 @@ def create_app() -> FastAPI:
 
         wait = run_wait_s(settings)
 
-        def run_flow(flow_id: str, inputs: dict[str, Any], goal: str | None) -> dict[str, Any]:
-            return shop.run_flow(cust, flow_id, inputs, orchestrator=orch, goal=goal, surface="a2a", wait=wait)
+        def run_flow(flow_id: str, inputs: dict[str, Any], goal: str | None, wait_s: float | None = None) -> dict[str, Any]:
+            return shop.run_flow(cust, flow_id, inputs, orchestrator=orch, goal=goal, surface="a2a", wait=wait if wait_s is None else wait_s)
+
+        def decide(run_id: str, decisions: dict[str, str], wait_s: float | None = None) -> dict[str, Any]:
+            """Held actions decided by a message to the task: the same ledger and metering as POST /runs/{id}/approvals."""
+            view = orch.resume(run_id, decisions, wait=wait if wait_s is None else wait_s, actor=f"a2a:{actor(request)}",
+                               on_settled=shop.meter(cust, surface="a2a"))
+            shop.record_view(cust, view, surface="a2a")
+            return view
+
+        def list_runs(limit: int, agent: str | None) -> list[dict[str, Any]]:
+            return orch.list_runs(limit=limit, customer_id=cust["id"] if cust else None, agent=agent)
 
         def settled(view: dict[str, Any]) -> None:  # every step metered once, when the run settles
             shop.record_view(cust, view, surface="a2a", provider=made[0].llm.provider if made else "")
 
         try:
             reply = a2a.handle_jsonrpc(body, orch, agent_id=agent_id, ctx=make_ctx, run_owner=(lambda rid: shop.owns_run(cust, rid)),
-                                       run_flow=run_flow, wait=wait, on_settled=settled if cust is not None else None)
+                                       run_flow=run_flow, wait=wait, on_settled=settled if cust is not None else None,
+                                       version=a2a_version(request), approve=decide, list_runs=list_runs,
+                                       card=(lambda: a2a_card(request, agent_id, a2a.V1)) if (cust or _api_token(settings)) else None,
+                                       tenant=cust["id"] if cust else None,
+                                       check_agent=(lambda aid: shop.require_entitled(cust, aid)) if cust is not None else None)
         except ShopError as exc:
-            return JSONResponse({"jsonrpc": "2.0", "id": body.get("id"), "error": {"code": -32000, "message": str(exc)}})
+            return JSONResponse(a2a.error_reply(body, "not_found" if exc.status == 404 else "refused", str(exc), status=exc.status))
         for ctx in made:
             if "result" in reply:
                 try:

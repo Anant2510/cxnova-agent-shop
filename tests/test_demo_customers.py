@@ -72,16 +72,19 @@ def test_xperion_airways_delegates_a_journey_over_a2a_with_the_sample_message(pa
     skills = {s["id"] for s in card["skills"]}
     assert skills == {"vai_predictive_propensity", "flow:vai_passenger_journey", "flow:vai_churn_prevention", "flow:vai_irops_recovery", "flow:vai_airport_disruption", "flow:is_executive_review"}
     assert {s.replace("agent:", "") for s in air["connection"]["a2a"]["skills"]} == skills
-    msg = air["connection"]["samples"]["a2a_message"]
-    assert msg["params"]["message"]["parts"][1]["data"]["flow"] == "vai_passenger_journey"
-    task = shop_client.post("/a2a", json=msg, headers=hdr).json()["result"]
-    assert task["kind"] == "task" and task["status"]["state"] in ("working", "completed", "submitted")
+    # the sample is A2A 1.0, sent with the version header the account page shows beside it
+    samples, v1 = air["connection"]["samples"], {**hdr, **air["connection"]["a2a"]["headers"]}
+    msg = samples["a2a_message"]
+    assert v1["A2A-Version"] == "1.0" and msg["method"] == "SendMessage" and msg["params"]["message"]["parts"][1]["data"]["flow"] == "vai_passenger_journey"
+    task = shop_client.post("/a2a", json=msg, headers=v1).json()["result"]["task"]
+    assert task["status"]["state"] in ("TASK_STATE_WORKING", "TASK_STATE_COMPLETED", "TASK_STATE_SUBMITTED")
     for _ in range(60):
-        got = shop_client.post("/a2a", json={"jsonrpc": "2.0", "id": 2, "method": "tasks/get", "params": {"id": task["id"]}}, headers=hdr).json()["result"]
-        if got["status"]["state"] in ("completed", "failed", "input-required"):
+        got = shop_client.post("/a2a", json={**samples["a2a_follow"], "params": {"id": task["id"]}}, headers=v1).json()["result"]
+        if got["status"]["state"] in ("TASK_STATE_COMPLETED", "TASK_STATE_FAILED", "TASK_STATE_INPUT_REQUIRED"):
             break
         time.sleep(1)
-    assert got["status"]["state"] == "completed" and [a["name"].split(" ")[0] for a in got["artifacts"]] == ["ingest", "model", "identity", "score", "offer", "creatives", "activate", "feedback"]
+    assert got["status"]["state"] == "TASK_STATE_COMPLETED" and [a["name"].split(" ")[0] for a in got["artifacts"]] == ["ingest", "model", "identity", "score", "offer", "creatives", "activate", "feedback"]
+    assert samples["a2a_decide"]["params"]["message"]["parts"] == [{"data": {"decisions": {"*": "approve"}}}]   # how a held action is decided on this door
     # a flow outside the rental is refused on this door too
     other = json.loads(json.dumps(msg)); other["params"]["message"]["parts"][1]["data"]["flow"] = "campaign_launch"
     assert "error" in shop_client.post("/a2a", json=other, headers=hdr).json()

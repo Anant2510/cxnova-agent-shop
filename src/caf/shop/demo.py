@@ -46,12 +46,12 @@ DEMO_CUSTOMERS: list[dict[str, Any]] = [
         "why": "Machine to machine with no person waiting is what A2A is for: the airline's orchestrator reads this layer's agent card (its "
                "skills are the rented journeys), sends a task when an event happens, polls it to completion and takes the artifacts "
                "(the offer, the creatives, the activation plan) into its own channels. Task states carry the hold: input-required when an "
-               "activation waits for approval.",
+               "activation waits for approval, decided with a message to the same task.",
         "walkthrough": [
             "Their orchestrator fetches /.well-known/agent-card.json with the key once: six skills, the five rented journeys and the propensity agent.",
-            "A passenger is disrupted three times in a month. Their orchestrator sends message/send with a data part "
+            "A passenger is disrupted three times in a month. Their orchestrator sends SendMessage (A2A 1.0) with a data part "
             "{\"flow\": \"vai_churn_prevention\", \"inputs\": {passenger, signals}} and gets a task back in state working.",
-            "It polls tasks/get until completed: eight artifacts, one per stage, the activation a dry run that lists what would be sent and "
+            "It polls GetTask until completed: eight artifacts, one per stage, the activation a dry run that lists what would be sent and "
             "through which channel, because no airline channel is connected to this layer.",
             "Their orchestrator sends the offer through its own channels, or the airline connects them to this layer as the VoyagerAI pack's home.",
         ],
@@ -72,7 +72,7 @@ DOORS: list[dict[str, str]] = [
              "with a person reading the answers. The tool list is your subscription; a held action comes back as a question."},
     {"id": "a2a", "name": "A2A", "for": "Your orchestrator delegates tasks",
      "when": "Your own orchestrator (Copilot Studio, Agentforce, Google ADK, LangGraph) owns the end-to-end process and hands whole tasks "
-             "to this layer: it reads the agent card, sends message/send, polls tasks/get, and reads the task state for holds."},
+             "to this layer: it reads the agent card, sends SendMessage, polls GetTask, and reads the task state for holds (A2A 1.0; 0.3 clients are still answered)."},
 ]
 
 

@@ -67,6 +67,9 @@ function Show-Status {
     $h = Invoke-RestMethod "http://127.0.0.1:$Port/health" -TimeoutSec 5
     $all = if ($h.agents_total -and $h.agents_total -gt $h.agents_registered) { " blueprint, $($h.agents_total) with agent packs" } else { "" }
     "health: $($h.status), agents $($h.agents_registered)/$($h.agents_expected)$all, provider $($h.llm.provider)"
+    $a2a = if ($h.protocols -and $h.protocols.a2a) { "A2A $($h.protocols.a2a -join ' + ')" } else { "" }
+    $mcp = if ($h.protocols -and $h.protocols.mcp) { ", MCP $($h.protocols.mcp.revision) (SDK $($h.protocols.mcp.sdk))" } else { "" }
+    if ($a2a) { "protocols: $a2a$mcp" }
   }
   catch { "health: not answering on port $Port yet (give it 20 seconds after a start, then check logs\service.log)" }
 }

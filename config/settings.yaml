@@ -225,7 +225,7 @@ orchestrator:
   stall_after_s: 60                             # a run whose process stopped beating this long ago is "stalled" (continuable)
   # REST / MCP / A2A runs execute on a worker pool, not on the HTTP request. A call waits up to run_wait_s for the run to
   # settle; a longer run answers 202 with the run so far, and the caller follows it with GET /runs/{id} (MCP: get_run;
-  # A2A: tasks/get). Keep run_wait_s under the reverse proxy's read timeout.
+  # A2A: GetTask). Keep run_wait_s under the reverse proxy's read timeout.
   run_wait_s: ${CAF_RUN_WAIT_S:-60}
   max_concurrent_runs: ${CAF_MAX_CONCURRENT_RUNS:-4}   # orchestrated runs executing at once; more wait in a queue
 

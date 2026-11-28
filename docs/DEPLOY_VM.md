@@ -258,6 +258,17 @@ they were. A run that was cut off mid-way reports `running` for up to a minute (
 is stale), then `stalled` in `GET /runs/{id}`; `POST /runs/{id}/continue` picks it up from its last checkpoint and does
 not run its finished steps again.
 
+The status the update ends with names the protocol versions the service answers, for example
+`protocols: A2A 1.0 + 0.3, MCP 2026-07-28 (SDK 2.3.0)` (`/health` carries the same under `protocols`). A2A's versions are
+this layer's own. MCP's is the newest revision the installed MCP SDK speaks, and the update does not replace an SDK that
+is already installed. If the line shows a revision before 2026-07-28, upgrade the SDK and restart:
+
+```powershell
+Stop-Service CXNovaAgentShop        # the service holds the files pip replaces
+.\.venv\Scripts\python.exe -m pip install -U "mcp>=2.3"
+.\deploy\windows\service.ps1 -Restart
+```
+
 ## Where things are
 
 | | |

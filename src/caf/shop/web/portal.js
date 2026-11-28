@@ -1259,9 +1259,10 @@
       a2a: () => h("div", { class: "stack" }, h("p", { class: "small" }, guide("a2a").when),
         h("div", { class: "xs muted" }, "Discovery: the agent card (its skills are the rented agents and flows)."), code("curl -H 'Authorization: Bearer <your key>' " + conn.a2a.agent_card),
         h("div", { class: "row", style: "gap:6px" }, (conn.a2a.skills || []).map((t) => h("code", { class: "chip" }, t))),
-        h("div", { class: "xs muted" }, "Delegate a task: POST " + conn.a2a.endpoint), code(sm.a2a_message || {}),
-        h("div", { class: "xs muted" }, "The answer is a task (submitted, working, input-required, completed, failed) with one artifact per step; poll it:"), code(sm.a2a_follow || {}),
-        h("p", { class: "xs muted" }, "input-required means an action is held for approval: decide it on the portal, over REST (POST /runs/<id>/approvals) or with the MCP approve_actions tool.")),
+        h("div", { class: "xs muted" }, "Delegate a task: POST " + conn.a2a.endpoint + " with the header A2A-Version: 1.0"), code(sm.a2a_message || {}),
+        h("div", { class: "xs muted" }, "The answer is a task (TASK_STATE_SUBMITTED, WORKING, INPUT_REQUIRED, COMPLETED, FAILED) with one artifact per step; poll it:"), code(sm.a2a_follow || {}),
+        sm.a2a_decide ? h("div", { class: "xs muted" }, "INPUT_REQUIRED means actions are held for approval; decide them with a message to the same task:") : null, sm.a2a_decide ? code(sm.a2a_decide) : null,
+        h("p", { class: "xs muted" }, "A held action can also be decided on the portal, over REST (POST /runs/<id>/approvals) or with the MCP approve_actions tool. A client that still speaks A2A 0.3 (message/send, tasks/get, no version header) is answered in 0.3.")),
     };
     const body = h("div");
     const buttons = doors.map((d) => h("button", { class: "door", type: "button", role: "tab", onclick: () => { state.door = d.id; draw(); } }, icon(d.id), h("div", null, h("div", { class: "nm" }, d.name), h("div", { class: "xs muted" }, d.for))));

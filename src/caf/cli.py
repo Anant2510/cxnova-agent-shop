@@ -260,6 +260,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
               "Set CAF_API_TOKEN to serve other machines.", file=sys.stderr)
     settings = get_settings()
     from .branding import PRODUCT
+    from .health import protocols_line
 
     root_path = (os.environ.get("CAF_ROOT_PATH") or "").rstrip("/")  # e.g. /agentshop behind a reverse proxy prefix
     host = "127.0.0.1" if args.host in ("0.0.0.0", "::") else args.host
@@ -269,7 +270,8 @@ def cmd_serve(args: argparse.Namespace) -> int:
           f"  Agent console:   {base}/console\n"
           f"  Admin:           {base}/shop/admin\n"
           f"  API docs:        {base}/docs\n"
-          f"  Model provider:  {settings.llm.resolved_provider()}\n", file=sys.stderr, flush=True)
+          f"  Model provider:  {settings.llm.resolved_provider()}\n"
+          f"  Protocols:       {protocols_line()}\n", file=sys.stderr, flush=True)
     uvicorn.run("caf.api.server:app", host=args.host, port=args.port, reload=False, root_path=root_path, proxy_headers=True,
                 forwarded_allow_ips=os.environ.get("CAF_FORWARDED_ALLOW_IPS", "127.0.0.1"))
     return 0

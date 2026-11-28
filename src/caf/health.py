@@ -62,6 +62,28 @@ def liveness(*, offline: bool | None = None, max_workers: int = 4, only: list[st
             "missing": missing_agents(), "duration_ms": round((time.perf_counter() - t0) * 1000, 1), "agents": rows}
 
 
+def protocols() -> dict[str, Any]:
+    """The protocol versions this install answers. A2A's are this layer's own. MCP's is the newest revision the installed
+    SDK speaks: the SDK carries the wire format, so an older SDK serves the revisions it knows and this says which."""
+    from .api import a2a
+
+    out: dict[str, Any] = {"a2a": list(a2a.VERSIONS), "mcp": None}
+    try:
+        from importlib.metadata import version
+
+        import mcp.types as mcp_types
+
+        out["mcp"] = {"revision": str(getattr(mcp_types, "LATEST_PROTOCOL_VERSION", "") or "unknown"), "sdk": version("mcp")}
+    except Exception:  # noqa: BLE001 - the MCP extra is not installed: there is no MCP surface to speak of
+        pass
+    return out
+
+
+def protocols_line() -> str:
+    p = protocols()
+    return "A2A " + " + ".join(p["a2a"]) + (f", MCP {p['mcp']['revision']}" if p["mcp"] else ", MCP not installed")
+
+
 def summary() -> dict[str, Any]:
     from .connectors import ConnectorHub
     from .orchestrator import coverage, validate_playbooks
@@ -76,6 +98,7 @@ def summary() -> dict[str, Any]:
     return {
         "service": "coforge-agentic-framework",
         "version": __import__("caf").__version__,
+        "protocols": protocols(),
         "llm": LLM(settings.llm).describe(),
         "agents_expected": len(expected_agent_ids()),
         "agents_registered": len(registered),

@@ -66,6 +66,16 @@ action appears in `pending_approvals`; the assistant asks its user and decides i
 attach an export, ask "what should we fix first?", and the assistant calls `run_flow_is_executive_review` with the file as
 `dataset`, then answers follow-up questions with `run_is_analytics_chat`.
 
+The server follows the protocol's 2026-07-28 revision (clients on earlier revisions are still answered):
+
+- **No session.** Every request stands on its own and carries your key, so the server sits behind any load balancer.
+- **Every tool says what calling it does.** `list_agents`, `list_flows` and `get_run` are marked read-only. A `run_...`
+  tool is not (a run is metered and kept) and is marked as reaching outside systems when its agent crawls or uses a
+  connector. Only `approve_actions` is marked destructive, because an approved action publishes or sends. These are
+  hints for the client's own confirmation prompts; what your key may do is decided on the server.
+- **The tool list** comes in one stable order, marked private to you (it is your subscription) and fresh for a minute.
+- **Results are structured.** Each tool returns its result as structured content as well as text.
+
 ## A2A: your orchestrator delegates tasks
 
 Discovery is the agent card; execution is JSON-RPC 2.0.
@@ -74,23 +84,41 @@ Discovery is the agent card; execution is JSON-RPC 2.0.
 curl -H 'Authorization: Bearer <key>' <host>/.well-known/agent-card.json
 ```
 
-The card describes this layer as one agent whose **skills** are your rented agents and flows (a flow as `flow:<id>`). To
-delegate, send `message/send` to `<host>/a2a`; a data part names the flow (or agent) and carries the inputs, a text part
-carries the goal:
+The card describes this layer as one agent whose **skills** are your rented agents and flows (a flow as `flow:<id>`). The
+endpoint speaks **A2A 1.0**, the protocol's first stable version. Send the header `A2A-Version: 1.0` with every request,
+the card included. To delegate, send `SendMessage` to `<host>/a2a`; a data part names the flow (or agent) and carries the
+inputs, a text part carries the goal:
 
 ```json
-{ "jsonrpc": "2.0", "id": 1, "method": "message/send",
-  "params": { "message": { "role": "user", "messageId": "m-1", "parts": [
-    { "kind": "text", "text": "Retain this Platinum passenger after three disruptions" },
-    { "kind": "data", "data": { "flow": "vai_churn_prevention",
+{ "jsonrpc": "2.0", "id": 1, "method": "SendMessage",
+  "params": { "message": { "role": "ROLE_USER", "messageId": "m-1", "parts": [
+    { "text": "Retain this Platinum passenger after three disruptions" },
+    { "data": { "flow": "vai_churn_prevention",
         "inputs": { "passenger": { "name": "Elena Chen", "tier": "Platinum Elite", "hub": "SIN" },
                     "signals": [ { "source": "PSS", "event": "3 disruptions in 28 days", "severity": "high" } ] } } } ] } } }
 ```
 
-The answer is a **task**: `id` (the run), `status.state` (`submitted`, `working`, `input-required` when an action is held,
-`completed`, `failed`), a status message with the run's summary, and one **artifact per step** with that step's output. Poll
-it with `tasks/get` until it settles. Without a data part the text is a goal and the planner chooses among what you rent.
-`input-required` is decided on the portal, over REST or with the MCP `approve_actions` tool (A2A 0.3 has no approval verb).
+The answer is `{"task": ...}`: `id` (the run), `status.state` (`TASK_STATE_SUBMITTED`, `TASK_STATE_WORKING`,
+`TASK_STATE_INPUT_REQUIRED` when an action is held, `TASK_STATE_COMPLETED`, `TASK_STATE_FAILED`), a status message with the
+run's summary, and one **artifact per step** with that step's output. Poll it with `GetTask` until it settles; add
+`"configuration": {"returnImmediately": true}` to get the task back at once. Without a data part the text is a goal and the
+planner chooses among what you rent.
+
+- **Held actions.** `TASK_STATE_INPUT_REQUIRED` lists what is held in `metadata.pendingApprovals`. Decide them with a
+  message to the same task: `"taskId": "<id>"` and a data part `{"decisions": {"<step>/<action>": "approve"}}` (`"*"` decides
+  all of them; the one word `approve` or `reject` as text does too). The portal, REST and the MCP `approve_actions` tool
+  decide them as well. A run takes no other message once it has started.
+- **Your tasks.** `ListTasks` pages through your runs, newest first (`status`, `pageSize`, `pageToken`,
+  `includeArtifacts`). `GetExtendedAgentCard` returns your own card over the endpoint.
+- **What is not offered** is said in the card and refused by name: no streaming and no push notifications
+  (`UNSUPPORTED_OPERATION`, `PUSH_NOTIFICATION_NOT_SUPPORTED`), and a run in flight cannot be cancelled.
+- **Errors** carry the reason as the protocol defines it, for example `TASK_NOT_FOUND` for a task that is not yours.
+- **Your tenant.** Your card's interfaces carry your customer id as `tenant`. A request that names a tenant has to name
+  that one.
+- **A client that still speaks 0.3** (`message/send`, `tasks/get`, no version header) is answered in 0.3, exactly as
+  before, and the card it reads keeps the 0.3 fields beside the new ones.
+
+Not built yet: signed agent cards, streaming, push notifications.
 
 ## Two customers, two doors
 

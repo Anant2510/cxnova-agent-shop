@@ -40,7 +40,7 @@
     return [
       ["REST", "curl -X POST " + base + "/agents/" + a.id + "/run \\\n  -H 'Authorization: Bearer <your key>' -H 'Content-Type: application/json' \\\n  -d '" + JSON.stringify({ inputs: a.selftest_input || {} }) + "'"],
       ["MCP (Claude, Copilot Studio, Agentforce)", JSON.stringify({ mcpServers: { "cxnova-orchestration": { type: "http", url: base + "/mcp", headers: { Authorization: "Bearer <your key>" } } } }, null, 2) + "\n\nThen call the tool run_" + a.id + "."],
-      ["A2A", "Agent card: " + base + "/a2a/agents/" + a.id + "/agent-card.json\nJSON-RPC message/send to " + base + "/a2a/agents/" + a.id],
+      ["A2A", "Agent card: " + base + "/a2a/agents/" + a.id + "/agent-card.json\nJSON-RPC SendMessage (A2A 1.0) to " + base + "/a2a/agents/" + a.id],
       ["Example input", input],
     ];
   }

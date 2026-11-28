@@ -556,6 +556,7 @@ class ShopService:
                     "client_config": {"mcpServers": {"cxnova-orchestration": {"type": "http", "url": f"{base}/mcp",
                                                                          "headers": {"Authorization": "Bearer <your key>"}}}}},
             "a2a": {"agent_card": f"{base}/.well-known/agent-card.json", "endpoint": f"{base}/a2a",
+                    "protocol_versions": ["1.0", "0.3"], "headers": {"A2A-Version": "1.0"},
                     "skills": [f"agent:{a}" for a in allowed] + [f"flow:{f}" for f in flows]},
             "portal": f"{base}/portal",
             "console": f"{base}/console",
@@ -597,12 +598,16 @@ class ShopService:
             out["rest_curl"] = f"curl {auth} {base}/orchestrate -d '{json.dumps({'goal': goal})}'"
             out["mcp_tool_call"] = {"name": "orchestrate", "arguments": {"args": {"goal": goal}}}
             data_part = {}
-        parts: list[dict[str, Any]] = [{"kind": "text", "text": goal}]
+        parts: list[dict[str, Any]] = [{"text": goal}]
         if data_part:
-            parts.append({"kind": "data", "data": data_part})
-        out["a2a_message"] = {"jsonrpc": "2.0", "id": 1, "method": "message/send",
-                              "params": {"message": {"role": "user", "messageId": "m-1", "parts": parts}}}
-        out["a2a_follow"] = {"jsonrpc": "2.0", "id": 2, "method": "tasks/get", "params": {"id": "<the task id the answer carried>"}}
+            parts.append({"data": data_part})
+        # A2A 1.0, sent with the header A2A-Version: 1.0 (a 0.3 client's message/send and tasks/get are still answered)
+        out["a2a_message"] = {"jsonrpc": "2.0", "id": 1, "method": "SendMessage",
+                              "params": {"message": {"role": "ROLE_USER", "messageId": "m-1", "parts": parts}}}
+        out["a2a_follow"] = {"jsonrpc": "2.0", "id": 2, "method": "GetTask", "params": {"id": "<the task id the answer carried>"}}
+        out["a2a_decide"] = {"jsonrpc": "2.0", "id": 3, "method": "SendMessage",
+                             "params": {"message": {"role": "ROLE_USER", "messageId": "m-2", "taskId": "<the task id>",
+                                                    "parts": [{"data": {"decisions": {"*": "approve"}}}]}}}
         out["rest_follow"] = f"curl -H 'Authorization: Bearer <your key>' {base}/runs/<run_id>"
         return out
 
